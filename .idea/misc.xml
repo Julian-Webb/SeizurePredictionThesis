@@ -3,4 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="uv (SeizurePredictionThesis)" />
   </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.10.12 (sftp://webb@10.4.28.46:22/data/home/webb/.virtualenvs/SeizurePredictionThesis/bin/python)" project-jdk-type="Python SDK" />
 </project>
