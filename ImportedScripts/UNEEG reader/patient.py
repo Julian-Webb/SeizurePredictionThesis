@@ -10,7 +10,7 @@ from scipy.signal import butter, filtfilt
 # get path for each patient
 def getPatients():
     patientPaths = []
-    base_path = "D:\\Ruh_thesis\\20240201_UNEEG_ForMayo"
+    base_path = r'/data/datasets/20240201_UNEEG_ForMayo/B52K3P3G/V5a'
     for patient_ in os.listdir(base_path):
         p = base_path + "/" + patient_
         if os.path.isdir(p):
