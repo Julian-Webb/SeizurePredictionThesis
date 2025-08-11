@@ -1,0 +1,5 @@
+type,start,single_marker,end,comment
+M unique,,2000-01-05 01:00:00.000,,a*
+M contained in SE,,2000-02-01 01:30:00.000,,b*
+M duplicate,,2000-03-01 01:30:00.000,,c*
+M duplicate but different time,,2000-03-02 01:30:00.000,,change the time to 01:45 to check if the assertion fails 

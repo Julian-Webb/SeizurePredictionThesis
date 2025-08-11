@@ -1,0 +1,2 @@
+# Abbreviations  
+`szr`: seizure

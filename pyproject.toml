@@ -3,4 +3,12 @@ name = "seizurepredictionthesis"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "matplotlib==3.10.3",
+    "notebook>=7.4.4",
+    "pandas==2.3.1",
+    "pandas-stubs==2.3.0.250703",
+    "pillow>=11.3.0",
+    "pyedflib>=0.1.42",
+    "scipy>=1.16.1",
+]
