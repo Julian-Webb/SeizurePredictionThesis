@@ -1,9 +1,11 @@
 # See data_handling.ipynb for detailed documentation
+import logging
 import re
 import pandas as pd
 from pathlib import Path
 
-from config import get_data_folders
+from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, SEIZURE_ANNOTATIONS_FILE_NAME, BASE_PATH, \
+    FOR_MAYO_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR
 from data_cleaning.file_correction import clean_mac_files
 
 # the possible ways a line can start
@@ -137,38 +139,56 @@ def annotations_txt_to_dataframe(annotation_path: Path):
     return seizures
 
 
-# 20240201_UNEEG_ForMayo seizure annotations
-def convert_for_mayo(for_mayo_path: Path):
-    # loop through all patients and generate the seizure csv
-    for patient_path in for_mayo_path.iterdir():
-        patient = patient_path.name
-        print(f'---- {patient} ----')
-        annotation_path = patient_path / f'{patient}.txt'
-        save_path = patient_path / f'seizure_annotations_{patient}.csv'
+def convert_uneeg_extended_and_for_mayo(for_mayo: Path, uneeg_extended: Path):
+    for patient_folder in [*for_mayo.iterdir(), *uneeg_extended.iterdir()]:
+        patient = patient_folder.name
+        logging.info(f'--- {patient} ---')
 
-        seizures = annotations_txt_to_dataframe(annotation_path)
-        seizures.to_csv(save_path, index=False)
-
-
-# 20250217_UNEEG_Extended
-def convert_uneeg_extended(uneeg_extended_path: Path):
-    for patient_path in uneeg_extended_path.iterdir():
-        patient = patient_path.name
-        print(f'------ {patient}')
-
-        # Find annotation txt files
-        txt_annotations = list(patient_path.glob('*.txt'))
+        # find annotation txt files
+        annotations_folder = patient_folder / SEIZURE_ANNOTATIONS_FOLDER_NAME
+        txt_annotations = [*annotations_folder.glob('*.txt')]
         for txt_annotation in txt_annotations:
-            print(f'---- {txt_annotation.name}')
             seizures = annotations_txt_to_dataframe(txt_annotation)
-            save_path = patient_path / f'{txt_annotation.stem}.csv'
+            save_path = annotations_folder / f'{txt_annotation.stem}.csv'
             seizures.to_csv(save_path, index=False)
+            txt_annotation.unlink()
+
+
+def convert_competition_data(competition_dir: Path):
+    patient_folders = [item for item in competition_dir.iterdir() if item.is_dir()]
+    sheet_path = competition_dir / "SeizureDatesTraining.xls"
+    for patient_folder in patient_folders:
+        patient = patient_folder.name
+        logging.info(f'--- {patient} ---')
+        # make a folder for the annotations
+        annotations_folder = patient_folder / SEIZURE_ANNOTATIONS_FOLDER_NAME
+        annotations_folder.mkdir(exist_ok=True)
+
+        # Retrieve the annotations xls file from the joined annotations file
+        if sheet_path.exists():
+            sheet = pd.read_excel(sheet_path, sheet_name=patient)
+        else:
+            logging.warning(f"{sheet_path} not found — could not split sheets")
+            return
+
+        # save seizure onset data
+        seizures = pd.DataFrame(columns=['type', 'start', 'single_marker', 'end', 'comment'], dtype=str)
+        seizures['start'] = sheet['onset']
+        seizures.to_csv(annotations_folder / SEIZURE_ANNOTATIONS_FILE_NAME, index=False)
+
+        # Save the start of recording and approximate day span data
+        additional_info = sheet[['Day Start', 'Days Span approx.']]
+        additional_info.to_csv(annotations_folder / "Time Span Info.csv", index=False)
+
+    # delete the original sheet
+    sheet_path.unlink()
+
+
+def annotations_to_csv(for_mayo_dir: Path, uneeg_extended_dir: Path, competition_dir: Path):
+    convert_uneeg_extended_and_for_mayo(for_mayo_dir, uneeg_extended_dir)
+    convert_competition_data(competition_dir)
 
 
 if __name__ == '__main__':
-    base_dir = Path('/data/home/webb/UNEEG_data')
-    clean_mac_files(base_dir)
-    for_mayo, uneeg_extended, competition_dir = get_data_folders(base_dir)
-
-    convert_for_mayo(for_mayo)
-    convert_uneeg_extended(uneeg_extended)
+    clean_mac_files(BASE_PATH)
+    annotations_to_csv(FOR_MAYO_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR)
