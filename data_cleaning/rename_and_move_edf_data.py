@@ -1,12 +1,14 @@
 import logging
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
-import re
+
 import pandas as pd
 import pyedflib
 
-from config import EDF_DATA_FOLDER_NAME, PROBLEMATIC_EDFS_FOLDER, PROBLEMATIC_EDFS_FILE, FOR_MAYO_DIR, \
-    UNEEG_EXTENDED_DIR, COMPETITION_DIR
+from config import EDF_DIR_NAME, PROBLEMATIC_EDFS_FOLDER, PROBLEMATIC_EDFS_FILE, COMPETITION_DIR, get_patient_dirs, \
+    EDF_FILES_SHEET_NAME, ORIGINAL_EDF_DIR_NAME, BASE_DIR
+from data_cleaning.file_correction import clean_mac_files
 
 VISIT_FOLDER_PATTERN = re.compile(r"^[vV]\d")
 
@@ -29,27 +31,38 @@ def _handle_problematic_edf_file(patient: str, visit: str, edf_path: Path, probl
         edf_path.unlink()
 
 
-def move_and_list_edf_files(patient_folder: Path, problematic_edfs_folder: Path = None):
+def move_and_list_edf_files(patient_folder: Path, is_competition_patient: bool, problematic_edfs_folder: Path = None):
     """Make a list of all edf files in a patient folder, rename the files, and move them to a single folder.
     :problematic_edfs_dir: if specified, move problematic edf files to this folder.
+    :is_competition_patient: whether the patient is from dataset 20250501_SUBQ_SeizurePredictionCompetition_2025final
     :return: a dataframe with all edf files and their metadata, and a dataframe with all problematic edf files."""
     edfs = []
     problematic_edfs = []
 
-    # Get all visit folders - these contain the edf files
-    visit_folders = [f for f in patient_folder.iterdir() if f.is_dir() and VISIT_FOLDER_PATTERN.match(f.name)]
+    if is_competition_patient:
+        # The competition data is already moved into the single folder for original edf data. It's added if it still exists.
+        old_edf_dirs = []
+        original_edf_dir = patient_folder / ORIGINAL_EDF_DIR_NAME
+        if original_edf_dir.exists():
+            old_edf_dirs.append(original_edf_dir)
+    else:
+        # Get all visit folders - these contain the edf files
+        old_edf_dirs = [f for f in patient_folder.iterdir() if f.is_dir() and VISIT_FOLDER_PATTERN.match(f.name)]
 
     # make a new folder for all edf files
-    edf_folder = patient_folder / EDF_DATA_FOLDER_NAME
-    edf_folder.mkdir(exist_ok=True)
-
+    new_edf_dir = patient_folder / EDF_DIR_NAME
+    new_edf_dir.mkdir(exist_ok=True)
     patient = patient_folder.name
 
-    # loop through all visit folders and handle edf files
-    for visit_folder in visit_folders:
-        # remove the leading "v" or "V" from the visit folder name
-        visit = visit_folder.name[1:]
-        for edf_path in visit_folder.iterdir():
+    # loop through all old edf folders/visit folders and handle edf files
+    for old_edf_dir in old_edf_dirs:
+        if is_competition_patient:
+            visit = ''
+        else:
+            # remove the leading "v" or "V" from the visit folder name
+            visit = old_edf_dir.name[1:]
+
+        for edf_path in old_edf_dir.iterdir():
             logging.debug(f"Processing {edf_path}")
             # read edf info
             try:
@@ -67,7 +80,7 @@ def move_and_list_edf_files(patient_folder: Path, problematic_edfs_folder: Path 
                 _handle_problematic_edf_file(patient, visit, edf_path, problematic_edfs_folder)
                 continue
 
-            new_edf_path = edf_folder / name_file(patient, start_datetime)
+            new_edf_path = new_edf_dir / name_file(patient, start_datetime)
 
             # move the file to the new folder
             if not new_edf_path.exists():
@@ -87,37 +100,42 @@ def move_and_list_edf_files(patient_folder: Path, problematic_edfs_folder: Path 
                      'old_file_name': edf_path.name})
                 _handle_problematic_edf_file(patient, visit, edf_path, problematic_edfs_folder)
 
-        # delete visit folder
+        # delete visit folder or old edf directory
         try:
-            visit_folder.rmdir()
+            old_edf_dir.rmdir()
         except OSError as e:
-            logging.error(f"Error removing {visit_folder}: {e}")
+            logging.error(f"Error removing {old_edf_dir}: {e}")
 
     edfs_df = pd.DataFrame(edfs)
-    edfs_df.sort_values("start", inplace=True, ascending=True)
+    if not edfs_df.empty:
+        edfs_df.sort_values("start", inplace=True, ascending=True)
     edfs_df.reset_index(drop=True, inplace=True)
 
     problematic_edfs_df = pd.DataFrame(problematic_edfs)
     return edfs_df, problematic_edfs_df
 
 
-def rename_and_move_edf_data(parent_folders: list[Path], problematic_edfs_folder: Path = None) -> pd.DataFrame:
+def rename_and_move_edf_data(problematic_edfs_folder: Path = None) -> pd.DataFrame:
     """Rename and move all edf files in the patient folders.
     :return: a dataframe with all problematic edf files."""
     problematic_edfs_df = pd.DataFrame()
+
     # iterate through patient folders
-    for parent_folder in parent_folders:
-        for patient_folder in parent_folder.iterdir():
-            if patient_folder.is_dir():
-                logging.info(f"Processing {parent_folder.name}/{patient_folder.name}")
-                edfs_df, problematic_edfs = move_and_list_edf_files(patient_folder, problematic_edfs_folder)
-                edfs_df.to_csv(patient_folder / "edf_files.csv", index=False)
-                problematic_edfs_df = pd.concat([problematic_edfs_df, problematic_edfs])
+    for patient_dir in get_patient_dirs():
+        logging.info(f"Processing {patient_dir.parent}/{patient_dir.name}")
+        is_competition_patient = patient_dir.is_relative_to(COMPETITION_DIR)
+        edfs_df, problematic_edfs = move_and_list_edf_files(patient_dir, is_competition_patient,
+                                                            problematic_edfs_folder)
+        if not edfs_df.empty:
+            edfs_df.to_csv(patient_dir / EDF_FILES_SHEET_NAME, index=False)
+        problematic_edfs_df = pd.concat([problematic_edfs_df, problematic_edfs])
+
     return problematic_edfs_df
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+    clean_mac_files(BASE_DIR)
     # problem_edfs = rename_and_move_edf_data([FOR_MAYO_DIR, UNEEG_EXTENDED_DIR], PROBLEMATIC_EDFS_FOLDER)
-    problem_edfs = rename_and_move_edf_data([COMPETITION_DIR], PROBLEMATIC_EDFS_FOLDER)
+    problem_edfs = rename_and_move_edf_data(PROBLEMATIC_EDFS_FOLDER)
     problem_edfs.to_csv(PROBLEMATIC_EDFS_FILE, index=False)

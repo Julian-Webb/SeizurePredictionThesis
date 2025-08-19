@@ -8,8 +8,8 @@ import os
 
 import pyedflib
 
-from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, BASE_PATH, UNEEG_EXTENDED_DIR, COMPETITION_DIR, \
-    FOR_MAYO_DIR
+from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, BASE_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR, \
+    FOR_MAYO_DIR, ORIGINAL_EDF_DIR_NAME
 
 
 def remove_png(uneeg_extended: Path):
@@ -118,7 +118,7 @@ def handle_competition_data(competition_dir: Path):
         # move their edf data into the patient folder
         old = competition_dir / f'TrainingP{i}'
         if old.exists():
-            new = patient_folder / 'edf_files'
+            new = patient_folder / ORIGINAL_EDF_DIR_NAME
             old.rename(new)
 
 
@@ -232,8 +232,8 @@ def remove_duplicates(base_path: Path):
     """
     duplicate_groups = run_fdupes(base_path)
 
-    with open(base_path / 'duplicates.txt', "w") as f:
-        f.writelines(duplicate_groups)
+    # with open(base_path / 'duplicates.txt', "w") as f:
+    #     f.writelines(duplicate_groups)
 
     # loop through the groups and delete files
     unprocessed_duplicate_groups = []
@@ -351,4 +351,4 @@ def file_correction(base_path: Path) -> list[Path]:
 
 if __name__ == '__main__':
     logging.basicConfig(level='DEBUG')
-    file_correction(BASE_PATH)
+    file_correction(BASE_DIR)

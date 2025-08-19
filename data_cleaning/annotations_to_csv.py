@@ -4,7 +4,7 @@ import re
 import pandas as pd
 from pathlib import Path
 
-from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, SEIZURE_ANNOTATIONS_FILE_NAME, BASE_PATH, \
+from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, SEIZURE_ANNOTATIONS_FILE_NAME, BASE_DIR, \
     FOR_MAYO_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR
 from data_cleaning.file_correction import clean_mac_files
 
@@ -190,5 +190,5 @@ def annotations_to_csv(for_mayo_dir: Path, uneeg_extended_dir: Path, competition
 
 
 if __name__ == '__main__':
-    clean_mac_files(BASE_PATH)
+    clean_mac_files(BASE_DIR)
     annotations_to_csv(FOR_MAYO_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR)

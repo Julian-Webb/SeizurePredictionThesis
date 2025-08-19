@@ -12,6 +12,9 @@ def copy_folder(src, dst, folder_name):
         shutil.copytree(src, dst, dirs_exist_ok=True,
                         copy_function=shutil.copy2,
                         ignore_dangling_symlinks=True)
+        # Ensure the directory timestamp is preserved
+        shutil.copystat(src, dst)
+
         elapsed = time.time() - start
         print(f"✓ Copied {folder_name} in {elapsed:.1f}s")
         return folder_name, elapsed, True
@@ -28,9 +31,11 @@ def get_folder_size(path):
         return 0
 
 
-if __name__ == "__main__":
+def main():
     src_base = Path("/data/datasets")
-    dst_base = Path("/data/home/webb/UNEEG_data_3")
+    #||||||||||||||||||||||||||||||||||||||||||||||||||||
+    dst_base = Path("/data/home/webb/UNEEG_data")
+    #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     folders = [
         "20240201_UNEEG_ForMayo",
@@ -91,3 +96,6 @@ if __name__ == "__main__":
     total_time = time.time() - start_time
     print(f"\n🎉 Finished in {total_time:.1f} seconds")
     print(f"Average speed: ~{(total_size / 1e9) / total_time:.1f} GB/s")
+
+if __name__ == "__main__":
+    main()
