@@ -34,7 +34,7 @@ def get_folder_size(path):
 def main():
     src_base = Path("/data/datasets")
     #||||||||||||||||||||||||||||||||||||||||||||||||||||
-    dst_base = Path("/data/home/webb/UNEEG_data")
+    dst_base = Path("/data/home/webb/UNEEG_data_1")
     #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     folders = [

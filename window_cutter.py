@@ -10,9 +10,9 @@ class WindowCutter:
 
 
 if __name__ == '__main__':
-    data_folder = r'/Users/julian/Developer/EEG Data/'
+    data_dir = r'/Users/julian/Developer/EEG Data/'
     # data_folder = r'/data/datasets/'
-    data_path = os.path.join(data_folder, r'20240201_UNEEG_ForMayo/B52K3P3G/V5a')
+    data_path = os.path.join(data_dir, r'20240201_UNEEG_ForMayo/B52K3P3G/V5a')
 
     file_path = os.path.join(data_path, 'B52K3P3G_01_0004245_20211008_01_EEGdata.edf')
     edf = pyedflib.EdfReader(file_path)
