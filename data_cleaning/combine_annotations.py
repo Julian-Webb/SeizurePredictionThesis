@@ -5,7 +5,7 @@ from typing import Iterable
 
 import pandas as pd
 
-from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, UNEEG_EXTENDED_DIR
+from config import Paths
 from data_cleaning.file_correction import clean_mac_files
 
 
@@ -110,16 +110,16 @@ def combine_annotation_files(paths: list[Path]):
     return seizures
 
 
-def combine_annotations(patient_folders: Iterable[Path]):
-    for patient_folder in patient_folders:
-        annotations_folder = patient_folder / SEIZURE_ANNOTATIONS_FOLDER_NAME
-        save_path = annotations_folder / f'combined_annotations_{patient_folder.name}.csv'
-        annotation_files = [file for file in annotations_folder.iterdir() if
+def combine_annotations(patient_dirs: Iterable[Path]):
+    for patient_dir in patient_dirs:
+        annotations_dir = Paths.seizure_annotations_dir(patient_dir)
+        save_path = annotations_dir / f'combined_annotations_{patient_dir.name}.csv'
+        annotation_files = [file for file in annotations_dir.iterdir() if
                             file.suffix == '.csv' and not 'all automatic detections' in file.name and save_path != file]
         combine_annotation_files(annotation_files).to_csv(save_path, index=False)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level='INFO')
-    clean_mac_files(UNEEG_EXTENDED_DIR)
-    combine_annotations(UNEEG_EXTENDED_DIR.iterdir())
+    clean_mac_files(Paths.UNEEG_EXTENDED_DIR)
+    combine_annotations(Paths.UNEEG_EXTENDED_DIR.iterdir())

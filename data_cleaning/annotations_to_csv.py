@@ -4,8 +4,7 @@ import re
 import pandas as pd
 from pathlib import Path
 
-from config import SEIZURE_ANNOTATIONS_FOLDER_NAME, SEIZURE_ANNOTATIONS_FILE_NAME, BASE_DIR, \
-    FOR_MAYO_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR
+from config import Paths
 from data_cleaning.file_correction import clean_mac_files
 
 # the possible ways a line can start
@@ -140,12 +139,12 @@ def annotations_txt_to_dataframe(annotation_path: Path):
 
 
 def convert_uneeg_extended_and_for_mayo(for_mayo: Path, uneeg_extended: Path):
-    for patient_folder in [*for_mayo.iterdir(), *uneeg_extended.iterdir()]:
-        patient = patient_folder.name
+    for patient_dir in [*for_mayo.iterdir(), *uneeg_extended.iterdir()]:
+        patient = patient_dir.name
         logging.info(f'--- {patient} ---')
 
         # find annotation txt files
-        annotations_folder = patient_folder / SEIZURE_ANNOTATIONS_FOLDER_NAME
+        annotations_folder = Paths.seizure_annotations_dir(patient_dir)
         txt_annotations = [*annotations_folder.glob('*.txt')]
         for txt_annotation in txt_annotations:
             seizures = annotations_txt_to_dataframe(txt_annotation)
@@ -155,13 +154,13 @@ def convert_uneeg_extended_and_for_mayo(for_mayo: Path, uneeg_extended: Path):
 
 
 def convert_competition_data(competition_dir: Path):
-    patient_folders = [item for item in competition_dir.iterdir() if item.is_dir()]
+    patient_dirs = [item for item in competition_dir.iterdir() if item.is_dir()]
     sheet_path = competition_dir / "SeizureDatesTraining.xls"
-    for patient_folder in patient_folders:
-        patient = patient_folder.name
+    for patient_dir in patient_dirs:
+        patient = patient_dir.name
         logging.info(f'--- {patient} ---')
         # make a folder for the annotations
-        annotations_folder = patient_folder / SEIZURE_ANNOTATIONS_FOLDER_NAME
+        annotations_folder = Paths.seizure_annotations_dir(patient_dir)
         annotations_folder.mkdir(exist_ok=True)
 
         # Retrieve the annotations xls file from the joined annotations file
@@ -174,7 +173,7 @@ def convert_competition_data(competition_dir: Path):
         # save seizure onset data
         seizures = pd.DataFrame(columns=['type', 'start', 'single_marker', 'end', 'comment'], dtype=str)
         seizures['start'] = sheet['onset']
-        seizures.to_csv(annotations_folder / SEIZURE_ANNOTATIONS_FILE_NAME, index=False)
+        seizures.to_csv(Paths.seizure_annotations_file(patient_dir), index=False)
 
         # Save the start of recording and approximate day span data
         additional_info = sheet[['Day Start', 'Days Span approx.']]
@@ -190,5 +189,5 @@ def annotations_to_csv(for_mayo_dir: Path, uneeg_extended_dir: Path, competition
 
 
 if __name__ == '__main__':
-    clean_mac_files(BASE_DIR)
-    annotations_to_csv(FOR_MAYO_DIR, UNEEG_EXTENDED_DIR, COMPETITION_DIR)
+    clean_mac_files(Paths.BASE_DIR)
+    annotations_to_csv(Paths.FOR_MAYO_DIR, Paths.UNEEG_EXTENDED_DIR, Paths.COMPETITION_DIR)
