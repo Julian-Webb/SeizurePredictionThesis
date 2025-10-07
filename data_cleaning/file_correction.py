@@ -10,6 +10,13 @@ import pyedflib
 
 from config import Paths
 
+MAC_PATTERNS = [
+    '._.DS_Store',  # Resource fork for .DS_Store
+    '.DS_Store',  # Finder metadata
+    '._*',  # All resource fork files
+    '.AppleDouble',  # Apple Double format directory
+    '.LSOverride'  # Finder custom attributes
+]
 
 def remove_png(uneeg_extended: Path):
     # This folder contains a random .png -> Delete it
@@ -22,14 +29,6 @@ def remove_png(uneeg_extended: Path):
 
 def clean_mac_files(directory: Path):
     """Removes macOS system files, such as .DS_Store and ._ files"""
-    mac_patterns = [
-        '._.DS_Store',  # Resource fork for .DS_Store
-        '.DS_Store',  # Finder metadata
-        '._*',  # All resource fork files
-        '.AppleDouble',  # Apple Double format directory
-        '.LSOverride'  # Finder custom attributes
-    ]
-
     # go through all the files in the directory and delete them
     # logging.info('===== Removing macOS system files =====')
     removed_files = []
@@ -37,7 +36,7 @@ def clean_mac_files(directory: Path):
         for filename in files:
             # Check exact matches
             path = Path(root, filename)
-            if filename in mac_patterns:
+            if filename in MAC_PATTERNS:
                 try:
                     path.unlink()
                     removed_files.append(path)
@@ -149,8 +148,12 @@ def line_correction(annotation_path: Path, false_line_start: str, correct_line: 
     """Corrects individual typos throughout the files."""
 
     # First read the file line by line
-    with open(annotation_path, 'r') as f:
-        lines = f.readlines()
+    try:
+        with open(annotation_path, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        logging.warning(f"Could not find {annotation_path} to correct")
+        return
 
     # Find and fix the specific line
     fixed = False
@@ -202,12 +205,16 @@ def line_corrections(uneeg_extended: Path):
     # (Seizures from D63Q51K2N have been duplicated into it)
     # First read the file line by line
     path = Paths.seizure_annotations_dir(uneeg_extended / 'E15T65H3Z') / 'E15T65H3Z_EMU_SUBQ_CONSENSUS.txt'
-    with open(path, 'r') as f:
-        lines = f.readlines()
-    correct_lines = [lines[0], 'No Seizures']
-    with open(path, 'w') as f:
-        f.writelines(correct_lines)
-        logging.info(f"Removed all seizures from {path.name}")
+    try:
+        with open(path, 'r') as f:
+            lines = f.readlines()
+        correct_lines = [lines[0], 'No Seizures']
+        with open(path, 'w') as f:
+            f.writelines(correct_lines)
+            logging.info(f"Removed all seizures from {path.name}")
+    except FileNotFoundError:
+        logging.warning(f"Could not find {path} to remove seizures from")
+
 
 
 def run_fdupes(base_path: Path):

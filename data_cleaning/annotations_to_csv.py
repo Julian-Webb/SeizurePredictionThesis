@@ -8,10 +8,11 @@ from config import Paths
 from data_cleaning.file_correction import clean_mac_files
 
 # the possible ways a line can start
-SINGLE_MARKER_STARTS = ['Seizure-rhythmic', 'Seizure-rhythmic +', 'Seizure-tonic', 'Seizure_Start', 'Seizure_End',
-                        'BUTTON DOUBLE PRESSED']
-
-LINE_START_STRINGS = SINGLE_MARKER_STARTS + ['User seizure marker']
+# todo why are seizure_start and seizure_end possible start string? these make a start and end, not a single marker
+SINGLE_MARKER_STARTS = ['Seizure-rhythmic', 'Seizure-rhythmic +', 'Seizure-tonic', 'Seizure_Start', 'Seizure_End']
+STARTS_TO_IGNORE = ['BUTTON DOUBLE PRESSED']
+USER_SEIZURE_MARKER_STR = 'User seizure marker'
+LINE_START_STRINGS = SINGLE_MARKER_STARTS + STARTS_TO_IGNORE + [USER_SEIZURE_MARKER_STR]
 
 SEIZURE_START_STRINGS = ['Seizure_Start', 'Seizure Start']
 SEIZURE_END_STRINGS = ['Seizure_End', 'Seizure End']
@@ -76,7 +77,7 @@ def process_start_end(start_line: str, end_line: str):
 
     # process start line
     szr_type, datetime, comment, comment_parts = read_line(start_line)
-    assert szr_type == 'User seizure marker' and comment_parts[0] in SEIZURE_START_STRINGS, \
+    assert szr_type == USER_SEIZURE_MARKER_STR and comment_parts[0] in SEIZURE_START_STRINGS, \
         f"This line should be the start of a seizure: {start_line}"
     seizure['type'] = szr_type
     seizure['start'] = datetime
@@ -85,7 +86,7 @@ def process_start_end(start_line: str, end_line: str):
 
     # process end line
     szr_type, datetime, comment, comment_parts = read_line(end_line)
-    assert szr_type == 'User seizure marker' and comment_parts[0] in SEIZURE_END_STRINGS, \
+    assert szr_type == USER_SEIZURE_MARKER_STR and comment_parts[0] in SEIZURE_END_STRINGS, \
         f"This line should be the end of a seizure: {end_line}"
     seizure['end'] = datetime
     if len(comment_parts) > 1:
@@ -120,17 +121,23 @@ def annotations_txt_to_dataframe(annotation_path: Path):
     # convert the lines into seizure annotations
     i = 0
     while i < len(lines):
-        if lines[i].startswith('User seizure marker'):
-            if lines[i + 1].startswith('User seizure marker'):
+        if lines[i].startswith(USER_SEIZURE_MARKER_STR):
+            if lines[i + 1].startswith(USER_SEIZURE_MARKER_STR):
                 seizure = process_start_end(lines[i], lines[i + 1])
                 i += 2  # The next line already gets processed
             else:
                 # a single marker is between the start and end
                 seizure = process_start_single_marker_end(lines[i], lines[i + 1], lines[i + 2])
                 i += 3  # The next two lines already get processed
-        else:
+        elif lines[i].startswith(tuple(SINGLE_MARKER_STARTS)):
             seizure = process_single_marker(lines[i])
             i += 1
+        elif lines[i].startswith(tuple(STARTS_TO_IGNORE)):
+            logging.info(f"Ignoring line: {lines[i]}")
+            i += 1
+            continue
+        else:
+            raise ValueError(f"Line doesn't start with a valid type: {lines[i]}")
 
         # Add seizure to DataFrame
         seizures.loc[len(seizures)] = seizure
