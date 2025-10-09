@@ -74,6 +74,7 @@ def preictal_windows_table(patient_dir: Path, seizure_annotations_file: Path) ->
                 f'The differences between two starts indexes is not {Durations.SEGMENT_N_SAMPLES=}'
 
         segments.update(szr_segs)
+        ...
 
     return segments
 
