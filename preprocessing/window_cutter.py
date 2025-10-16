@@ -81,5 +81,5 @@ def preictal_windows_table(patient_dir: PatientDir, seizure_annotations_file: Pa
 
 if __name__ == '__main__':
     patient_dir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
-    seizure_annotation_file = patient_dir.seizure_annotations_dir / 'B52K3P3G_CONSENSUS_corrected.csv'
+    seizure_annotation_file = patient_dir.szr_anns_dir / 'B52K3P3G_CONSENSUS_corrected.csv'
     preictal_windows_table(patient_dir, seizure_annotation_file)

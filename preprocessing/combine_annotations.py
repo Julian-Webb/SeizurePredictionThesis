@@ -113,10 +113,9 @@ def combine_annotation_files(paths: list[Path]):
 
 def combine_annotations(patient_dirs: Iterable[PatientDir]):
     for patient_dir in patient_dirs:
-        annotations_dir = patient_dir.seizure_annotations_original_dir
-        annotation_files = [file for file in annotations_dir.iterdir() if
+        annotation_files = [file for file in patient_dir.szr_anns_original_dir.iterdir() if
                             file.suffix == '.csv' and not 'all automatic detections' in file.name]
-        combine_annotation_files(annotation_files).to_csv(patient_dir.combined_annotations_file, index=False)
+        combine_annotation_files(annotation_files).to_csv(patient_dir.combined_anns_file, index=False)
 
 
 if __name__ == '__main__':

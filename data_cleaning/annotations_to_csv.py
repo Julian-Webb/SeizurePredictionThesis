@@ -1,6 +1,9 @@
 # See data_handling.ipynb for detailed documentation
 import logging
 import re
+from enum import Enum
+from typing import Tuple
+
 import pandas as pd
 from pathlib import Path
 
@@ -8,22 +11,46 @@ from config import PATHS
 from data_cleaning.file_correction import clean_mac_files
 from utils.paths import Dataset
 
-# the possible ways a line can start
-# todo why are seizure_start and seizure_end possible start string? these make a start and end, not a single marker
-SINGLE_MARKER_STARTS = ['Seizure-rhythmic', 'Seizure-rhythmic +', 'Seizure-tonic', 'Seizure_Start', 'Seizure_End']
-STARTS_TO_IGNORE = ['BUTTON DOUBLE PRESSED']
-USER_SEIZURE_MARKER_STR = 'User seizure marker'
-LINE_START_STRINGS = SINGLE_MARKER_STARTS + STARTS_TO_IGNORE + [USER_SEIZURE_MARKER_STR]
+# The strings that indicate that there are no seizures in a file
+NO_SEIZURES_STRINGS = ['no seizures', 'no seizure']
 
-SEIZURE_START_STRINGS = ['Seizure_Start', 'Seizure Start']
-SEIZURE_END_STRINGS = ['Seizure_End', 'Seizure End']
+# the possible ways a line can start
+LINE_STARTS_SINGLE_MARKER = ['Seizure-rhythmic', 'Seizure-rhythmic +', 'Seizure-tonic']
+LINE_STARTS_SEIZURE_STARTS = ['Seizure_Start']
+LINE_STARTS_SEIZURE_ENDS = ['Seizure_End']
+USER_SEIZURE_MARKER_STR = 'User seizure marker'
+LINE_STARTS_TO_IGNORE = ['BUTTON DOUBLE PRESSED', 'BUTTON PRESSED']
+LINE_STARTS_ALL = LINE_STARTS_SINGLE_MARKER + LINE_STARTS_TO_IGNORE + LINE_STARTS_SEIZURE_STARTS + LINE_STARTS_SEIZURE_ENDS + [
+    USER_SEIZURE_MARKER_STR]
+
+# The possible ways the end of a line indicates that it's the start/end of a seizure
+SEIZURE_START_STRINGS = ['seizure_start', 'seizure start', 'seizure-start']
+SEIZURE_END_STRINGS = ['seizure_end', 'seizure end', 'seizure-end']
+# How far we look ahead at most for an end after a seizure start. In between there should be single markers
+START_END_MAXIMUM_LOOKAHEAD = 2
+
+
+def get_seizure_lines_from_file(annotation_path: Path):
+    """Preprocess an annotation file to get just the clean lines containing seizures."""
+    with (open(annotation_path, 'r') as file):
+        # filter out empty lines and lines with only whitespace
+        lines = []
+        for line in file.readlines():
+            stripped_line = line.strip()
+            if stripped_line:
+                lines.append(stripped_line)
+
+    # assert that the file starts with the patient ID
+    assert lines[0].startswith('Patient ID') or lines[0].startswith(
+        'Patienten-ID'), "Annotation files doesn't start with 'Patient ID' or 'Patienten-ID'"
+    lines.pop(0)  # remove the first line
+    return lines
 
 
 def read_line(line: str):
     """Converts a line into the type, dates, and comment. Asserts that the dates are equal, and the type is valid.
     :returns: The type, datetime, and comment"""
     comment = ''
-    line = line.rstrip()  # remove whitespace and new line from end of string
     # sometimes, there are multiple tabs or spaces after the seizure type. We replace this with a single tab
     line = re.sub(r'\s{2,}', r'\t', line)
     values = line.split('\t')
@@ -32,10 +59,10 @@ def read_line(line: str):
         comment = values.pop()
     szr_type, datetime1, datetime2 = values
 
-    if szr_type not in LINE_START_STRINGS:
+    if szr_type not in LINE_STARTS_ALL:
         print(f'{line}')
         print(f'{szr_type=}')
-        raise ValueError(f"The following line doesn't start with {LINE_START_STRINGS}: {line}")
+        raise ValueError(f"The following line doesn't start with {LINE_STARTS_ALL}: {line}")
     if datetime1 != datetime2:
         raise ValueError(f"The dates are not the same. {datetime1=}  ,  {datetime2=}")
 
@@ -43,19 +70,6 @@ def read_line(line: str):
     comment_parts = comment.split(', ', maxsplit=1)
 
     return szr_type, datetime1, comment, comment_parts
-
-
-def get_seizure_lines_from_file(annotation_path: Path):
-    """Preprocess an annotation file to get just the clean lines containing seizures."""
-    with open(annotation_path, 'r') as file:
-        # read file and remove trailing white space and get separate lines of file
-        lines = file.read().rstrip().split('\n')
-
-    # assert that the file starts with the patient ID
-    assert lines[0].startswith('Patient ID') or lines[0].startswith(
-        'Patienten-ID'), "Annotation files doesn't start with 'Patient ID' or 'Patienten-ID'"
-    lines.pop(0)  # remove the first line
-    return lines
 
 
 def add_comment(seizure: dict, comment: str):
@@ -72,75 +86,128 @@ def process_single_marker(line):
     return {'type': szr_type, 'single_marker': datetime, 'comment': comment}
 
 
-def process_start_end(start_line: str, end_line: str):
-    """Converts successive lines with a start and end into a seizure annotation."""
-    seizure = {'comment': ''}
+def process_start_end(lines_from_start: list[str]) -> Tuple[dict, int]:
+    """Converts successive lines with a start, possible single markers, and a possible end into a seizure annotation.
+        :param lines_from_start: The file lines where the first line is the start line of the seizure.
+        :returns: The seizure annotation dict, and the number of lines that were processed.
+    """
+    seizure = {'type': None, 'start': None, 'single_markers': [], 'end': None, 'comment': ''}
 
-    # process start line
-    szr_type, datetime, comment, comment_parts = read_line(start_line)
-    assert szr_type == USER_SEIZURE_MARKER_STR and comment_parts[0] in SEIZURE_START_STRINGS, \
-        f"This line should be the start of a seizure: {start_line}"
-    seizure['type'] = szr_type
+    lines = lines_from_start  # alias
+    line = lines[0]
+
+    # make sure this is the start of a seizure
+    boundary = detect_start_end(line)
+    assert boundary == Boundary.START, f'This line should be the start of a seizure: {line}'
+
+    szr_type_start, datetime, _, comment_parts = read_line(line)
     seizure['start'] = datetime
-    if len(comment_parts) > 1:
-        add_comment(seizure, comment_parts[1])
 
-    # process end line
-    szr_type, datetime, comment, comment_parts = read_line(end_line)
-    assert szr_type == USER_SEIZURE_MARKER_STR and comment_parts[0] in SEIZURE_END_STRINGS, \
-        f"This line should be the end of a seizure: {end_line}"
-    seizure['end'] = datetime
-    if len(comment_parts) > 1:
-        add_comment(seizure, comment_parts[1])
+    # find the markers and end, if present. These values will only be added if an end is found.
+    single_markers = []
+    seizure_types = []
+    szr_end = None
+    line_idx = 1
+    # continue searching until an end is found or the maximum lookahead is reached
+    while (not szr_end) and (line_idx < len(lines)) and (line_idx - 1) < START_END_MAXIMUM_LOOKAHEAD:
+        line = lines[line_idx]
+        szr_type_i, datetime, _, comment_parts = read_line(line)
+        # check for a single marker
+        if szr_type_i in LINE_STARTS_SINGLE_MARKER:
+            # Handle the single marker and seizure type. Take into account that there may be multiple single markers.
+            single_markers.append(datetime)
+            seizure_types.append(szr_type_i)
+        # check for the end
+        elif detect_start_end(line) == Boundary.END:
+            # it's a seizure end
+            assert szr_end is None, "Seizure end found after previous seizure end."
+            szr_end = datetime
+        else:
+            raise ValueError(f"This line should be a single marker or seizure end: {line}")
+        line_idx += 1
 
-    return seizure
+    # only use the single marker values if an end was found
+    if szr_end is not None:
+        seizure['end'] = szr_end
+
+        if seizure_types:
+            if len(set(seizure_types)) > 1:
+                logging.warning(f'Multiple seizure types found for seizure: {seizure_types}')
+            # additional seizure types are ignored
+            seizure['type'] = seizure_types[0]
+
+        if single_markers:
+            seizure['single_marker'] = single_markers.pop(0)
+            # handle multiple single markers
+            if single_markers:
+                # make sure there's only one more single marker
+                assert len(single_markers) == 1, 'There are more than two single markers for this seizure.'
+                logging.warning(
+                    f"Multiple single markers found for seizure: {seizure['single_marker']} and {single_markers[0]}")
+                seizure['comment'] += f'Additional single marker: |{single_markers[0]}|'
+
+        lines_processed = line_idx
+    else:
+        seizure['type'] = szr_type_start
+        lines_processed = 1
+
+    return seizure, lines_processed
 
 
-def process_start_single_marker_end(start_line: str, single_marker_line: str, end_line: str):
-    """Converts successive lines with a start, single marker, and end into a seizure annotation."""
-    seizure = process_start_end(start_line, end_line)
+class Boundary(Enum):
+    START = 'start'
+    END = 'end'
 
-    # add single marker info
-    szr_type, datetime, comment, _ = read_line(single_marker_line)
-    seizure['single_marker'] = datetime
-    seizure['type'] = szr_type
-    add_comment(seizure, comment)
 
-    return seizure
+def detect_start_end(line: str) -> Boundary | None:
+    """Identify whether a line indicates the boundary (start or end) of a seizure.
+    :returns: The type of the boundary ('start' or 'end'), or None if it's not a boundary."""
+    szr_type, datetime, comments, comment_parts = read_line(line)
+    if szr_type == USER_SEIZURE_MARKER_STR:
+        if comment_parts[0].lower() in SEIZURE_START_STRINGS:
+            return Boundary.START
+        elif comment_parts[0].lower() in SEIZURE_END_STRINGS:
+            return Boundary.END
+        else:
+            raise ValueError(
+                f"The following line doesn't start with {USER_SEIZURE_MARKER_STR} but doesn't end with a marker for a seizure boundary: {line}")
+    elif szr_type in LINE_STARTS_SEIZURE_STARTS:
+        return Boundary.START
+    elif szr_type in LINE_STARTS_SEIZURE_ENDS:
+        return Boundary.END
+    else:
+        return None
 
 
 def annotations_txt_to_dataframe(annotation_path: Path):
-    lines = get_seizure_lines_from_file(annotation_path)
-
     # go through the lines (seizures) and store them in a dataframe
+    lines = get_seizure_lines_from_file(annotation_path)
     seizures = pd.DataFrame(columns=['type', 'start', 'single_marker', 'end', 'comment'], dtype=str)
 
     # Check if it contains no seizures
-    if lines[0].lower() == 'no seizures':
+    if not lines or lines[0].lower() in NO_SEIZURES_STRINGS:
         return seizures
 
     # convert the lines into seizure annotations
     i = 0
     while i < len(lines):
-        if lines[i].startswith(USER_SEIZURE_MARKER_STR):
-            if lines[i + 1].startswith(USER_SEIZURE_MARKER_STR):
-                seizure = process_start_end(lines[i], lines[i + 1])
-                i += 2  # The next line already gets processed
-            else:
-                # a single marker is between the start and end
-                seizure = process_start_single_marker_end(lines[i], lines[i + 1], lines[i + 2])
-                i += 3  # The next two lines already get processed
-        elif lines[i].startswith(tuple(SINGLE_MARKER_STARTS)):
-            seizure = process_single_marker(lines[i])
+        line = lines[i]
+        # single marker:
+        if line.startswith(tuple(LINE_STARTS_SINGLE_MARKER)):
+            seizure = process_single_marker(line)
             i += 1
-        elif lines[i].startswith(tuple(STARTS_TO_IGNORE)):
-            logging.info(f"Ignoring line: {lines[i]}")
+        # line to ignore
+        elif line.startswith(tuple(LINE_STARTS_TO_IGNORE)):
+            logging.info(f"Ignoring line: {line}")
             i += 1
             continue
+        # seizure boundary
+        elif detect_start_end(line):
+            seizure, n_lines_processed = process_start_end(lines[i:])
+            i += n_lines_processed
         else:
-            raise ValueError(f"Line doesn't start with a valid type: {lines[i]}")
+            raise ValueError(f"Line {i} isn't valid: {line}")
 
-        # Add seizure to DataFrame
         seizures.loc[len(seizures)] = seizure
 
     return seizures
@@ -151,15 +218,12 @@ def convert_uneeg_extended_and_for_mayo():
         logging.info(f'--- {patient_dir.name} ---')
 
         # find annotation txt files
-        anns_dir = patient_dir.seizure_annotations_dir
-        anns_original_dir = patient_dir.seizure_annotations_original_dir
-        anns_original_dir.mkdir(exist_ok=True)
-        txt_anns = [*anns_dir.glob('*.txt')]
+        txt_anns = [*patient_dir.szr_anns_original_dir.glob('*.txt')]
         for txt_annotation in txt_anns:
             seizures = annotations_txt_to_dataframe(txt_annotation)
-            save_path = anns_original_dir / f'{txt_annotation.stem}.csv'
+            save_path = patient_dir.szr_anns_original_dir / f'{txt_annotation.stem}.csv'
             seizures.to_csv(save_path, index=False)
-            txt_annotation.unlink()
+            # txt_annotation.unlink()
 
 
 def convert_competition_data():
@@ -168,8 +232,7 @@ def convert_competition_data():
         patient = patient_dir.name
         logging.info(f'--- {patient} ---')
         # make a folder for the annotations
-        anns_dir = patient_dir.seizure_annotations_dir
-        anns_dir.mkdir(exist_ok=True)
+        patient_dir.szr_anns_dir.mkdir(exist_ok=True)
 
         # Retrieve the annotations xls file from the joined annotations file
         if sheet_path.exists():
@@ -183,11 +246,11 @@ def convert_competition_data():
         seizures['start'] = sheet['onset']
         # Sort by 'start' column and get fresh numeric index
         seizures = seizures.sort_values('start').reset_index(drop=True)
-        seizures.to_csv(patient_dir.seizure_starts_file, index=True)
+        seizures.to_csv(patient_dir.szr_starts_file, index=True)
 
         # Save the start of recording and approximate day span data
         additional_info = sheet[['Day Start', 'Days Span approx.']]
-        additional_info.to_csv(anns_dir / "Time Span Info.csv", index=False)
+        additional_info.to_csv(patient_dir.szr_anns_dir / "Time Span Info.csv", index=False)
 
     # delete the original sheet
     sheet_path.unlink()
@@ -199,5 +262,6 @@ def annotations_to_csv():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     clean_mac_files(PATHS.base_dir)
     annotations_to_csv()

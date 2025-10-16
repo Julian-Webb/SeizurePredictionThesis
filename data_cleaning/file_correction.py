@@ -63,7 +63,11 @@ def move_annotation_files():
     """
     Seizure annotations are moved into the appropriate folder for all patients
     """
-    anns_dirs = [
+    # make the seizure_annotations dir for patients in for_mayo and uneeg_extended
+    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+        patient_dir.szr_anns_dir.mkdir(exist_ok=True)
+
+    old_anns_dirs = [
         Path('A4RW34Z5B/annotations'),
         Path('E15T65H3Z/annotations'),
         Path('F5TW95P3X/Annotation text files'),
@@ -72,12 +76,12 @@ def move_annotation_files():
         Path('P4Hk23M7L/Annotation text files'),
     ]
     # prepend the base path
-    anns_dirs = [PATHS.uneeg_extended_dir / folder for folder in anns_dirs]
+    old_anns_dirs = [PATHS.uneeg_extended_dir / folder for folder in old_anns_dirs]
 
     # rename the folder for uneeg_extended
-    for folder in anns_dirs:
+    for folder in old_anns_dirs:
         patient_dir = PatientDir(folder.parent)
-        new_name = patient_dir.seizure_annotations_dir
+        new_name = patient_dir.szr_anns_original_dir
         if folder != new_name:
             try:
                 folder.rename(new_name)
@@ -86,14 +90,13 @@ def move_annotation_files():
                 logging.warning(f"Could not find {folder} to rename")
 
     # For patient D63Q51K2N in uneeg_extended, there's no annotations folder, just like with the for_mayo patients
-    # For for_mayo, create an annotations folder and move the file into it.
+    # For for_mayo, create an original annotations folder and move the file into it.
     for patient_dir in [*PATHS.for_mayo_dir.iterdir(), PATHS.uneeg_extended_dir / 'D63Q51K2N']:
         patient_dir = PatientDir(patient_dir)
-        anns_dir = patient_dir.seizure_annotations_dir
-        anns_dir.mkdir(exist_ok=True)
+        patient_dir.szr_anns_original_dir.mkdir(exist_ok=True)
         for annotation in patient_dir.glob('*.txt'):
             try:
-                annotation.rename(anns_dir / annotation.name)
+                annotation.rename(patient_dir.szr_anns_original_dir / annotation.name)
             except FileNotFoundError:
                 logging.warning(f"Could not find {annotation} to move.")
 
@@ -128,12 +131,11 @@ def handle_competition_data():
 def fix_filename_typos():
     """Fix filenames containing 'Seiuzre' to 'Seizure' and remove trailing spaces."""
     for patient_dir in PATHS.patient_dirs(Dataset.uneeg_extended):
-        annotation_folder = patient_dir.seizure_annotations_dir
-        if not annotation_folder.is_dir():
+        if not patient_dir.szr_anns_original_dir.is_dir():
             continue
 
         # Look for files with the typo
-        for file_path in annotation_folder.iterdir():
+        for file_path in patient_dir.szr_anns_original_dir.iterdir():
             new_name = file_path.name.replace("Seiuzre", "Seizure").lstrip()
             if new_name != file_path.name:
                 # Create new filename with correct spelling
@@ -181,36 +183,36 @@ def line_corrections():
     # 'A4RW34Z5B_OUTPT_SUBQ_all automatic detections.txt' is missing as S somewhere
     line_correction(
         PatientDir(
-            uneeg_extended / 'A4RW34Z5B').seizure_annotations_dir / 'A4RW34Z5B_OUTPT_SUBQ_all automatic detections.txt',
+            uneeg_extended / 'A4RW34Z5B').szr_anns_original_dir / 'A4RW34Z5B_OUTPT_SUBQ_all automatic detections.txt',
         false_line_start='eizure-rhythmic\t2025-04-15 20:09:03.064\t2025-04-15 20:09:03.064\tStart V5f',
         correct_line='Seizure-rhythmic\t2025-04-15 20:09:03.064\t2025-04-15 20:09:03.064\tStart V5f\n')
 
     # 'L3GS57K2T_OUTPT_SUBQ_all automatic detections.txt' has a double space in an inconvenient place
     line_correction(
         PatientDir(
-            uneeg_extended / 'L3GS57K2T').seizure_annotations_dir / 'L3GS57K2T_OUTPT_SUBQ_all automatic detections.txt',
+            uneeg_extended / 'L3GS57K2T').szr_anns_original_dir / 'L3GS57K2T_OUTPT_SUBQ_all automatic detections.txt',
         false_line_start='Seizure-rhythmic\t2025-01-09 09:39:55.927\t2025-01-09 09:39:55.927\tEnd  V5a',
         correct_line='Seizure-rhythmic\t2025-01-09 09:39:55.927\t2025-01-09 09:39:55.927\tEnd V5a\t\n')
 
     # 'Seizure-rhythmic	2023-11-30 04:15:42.658	2023-11-30 04:15:42.658	end 5a' is actually the end of a seizure
     # This mistake may have been produced because it's the end of a seizure, as well as the end of a visit
     # This may have corrupted the annotation
-    E15T65H3Z_anns_dir = PatientDir(uneeg_extended / 'E15T65H3Z').seizure_annotations_dir
+    E15T65H3Z_anns_original_dir = PatientDir(uneeg_extended / 'E15T65H3Z').szr_anns_original_dir
     line_correction(
-        E15T65H3Z_anns_dir / 'E15T65H3Z_OUTPT_SUBQ_SeizureStartEnd.txt',
+        E15T65H3Z_anns_original_dir / 'E15T65H3Z_OUTPT_SUBQ_SeizureStartEnd.txt',
         false_line_start='Seizure-rhythmic\t2023-11-30 04:15:42.658\t2023-11-30 04:15:42.658\tend 5a',
         correct_line='User seizure marker\t2023-11-30 04:15:42.658\t2023-11-30 04:15:42.658\tSeizure End, end 5a\t\n')
 
     # Remove that same line from E15T65H3Z_OUTPT_SUBQ_CONSENSUS.txt
     line_correction(
-        E15T65H3Z_anns_dir / 'E15T65H3Z_OUTPT_SUBQ_CONSENSUS.txt',
+        E15T65H3Z_anns_original_dir / 'E15T65H3Z_OUTPT_SUBQ_CONSENSUS.txt',
         false_line_start='Seizure-rhythmic\t2023-11-30 04:15:42.658\t2023-11-30 04:15:42.658\tend 5a',
         correct_line='')
 
     # E15T65H3Z_EMU_SUBQ_CONSENSUS.txt should contain no seizures.
     # (Seizures from D63Q51K2N have been duplicated into it)
     # First read the file line by line
-    path = E15T65H3Z_anns_dir / 'E15T65H3Z_EMU_SUBQ_CONSENSUS.txt'
+    path = E15T65H3Z_anns_original_dir / 'E15T65H3Z_EMU_SUBQ_CONSENSUS.txt'
     try:
         with open(path, 'r') as f:
             lines = f.readlines()

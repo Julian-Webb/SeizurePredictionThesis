@@ -16,10 +16,10 @@ class PatientDir(type(Path())):
         self = super().__new__(cls, *args, *kwargs)
 
         ### seizure annotations
-        self.seizure_annotations_dir = self / "seizure_annotations"
-        self.seizure_annotations_original_dir = self.seizure_annotations_dir / "seizure_annotations_original"
-        self.combined_annotations_file = self.seizure_annotations_dir / "combined_annotations.csv"
-        self.seizure_starts_file = self.seizure_annotations_dir / "seizure_starts.csv"
+        self.szr_anns_dir = self / "seizure_annotations"
+        self.szr_anns_original_dir = self.szr_anns_dir / "seizure_annotations_original"
+        self.combined_anns_file = self.szr_anns_dir / "combined_annotations.csv"
+        self.szr_starts_file = self.szr_anns_dir / "seizure_starts.csv"
 
         ### edf data
         # The directory containing the original edf files for the competition dataset, before they're renamed

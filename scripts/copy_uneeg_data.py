@@ -84,7 +84,7 @@ def main():
     dst_base.mkdir(parents=True, exist_ok=True)
 
     # Parallel copying
-    with ThreadPoolExecutor(max_workers=min(12, len(items))) as executor:
+    with ThreadPoolExecutor(max_workers=min(6, len(items))) as executor:
         # Submit all copy jobs
         future_to_item = {}
         for item in items:

@@ -1,5 +1,8 @@
-# Abbreviations  
-`szr`: seizure
+# Abbreviations 
+Various abbreviations throughout the code:  
+`szr`: seizure  
+`ann`: annotation  
+`ptnt`: patient  
 
 # Pipeline Steps
 1. data_cleaning
