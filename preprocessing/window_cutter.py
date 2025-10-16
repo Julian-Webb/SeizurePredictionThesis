@@ -2,11 +2,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import Durations, Paths, Constants
+from config import Durations, Constants, PATHS
 from utils.edf_utils import time_to_index
+from utils.paths import PatientDir
 
 
-def preictal_windows_table(patient_dir: Path, seizure_annotations_file: Path) -> pd.DataFrame:
+def preictal_windows_table(patient_dir: PatientDir, seizure_annotations_file: Path) -> pd.DataFrame:
     """Create a table of the clips and segments for each preictal window.
     It contains the start and end times, whether it exists in the data, and the file name of each segment."""
     seizure_annotations = pd.read_csv(seizure_annotations_file, parse_dates=['start', 'end', 'single_marker'])
@@ -30,7 +31,7 @@ def preictal_windows_table(patient_dir: Path, seizure_annotations_file: Path) ->
         preictal_start = preictal_end - Durations.PREICTAL_INTERVAL
 
         # Find files that have any overlap with the preictal interval
-        edf_files = pd.read_csv(Paths.edf_files_sheet(patient_dir),
+        edf_files = pd.read_csv(patient_dir.edf_files_sheet,
                                 usecols=lambda x: x != 'old_file_name',  # ignore this column
                                 parse_dates=['start', 'end'])
         # the formula a_start <= b_end and b_start <= a_end determines overlap between any intervals a and b
@@ -74,12 +75,11 @@ def preictal_windows_table(patient_dir: Path, seizure_annotations_file: Path) ->
                 f'The differences between two starts indexes is not {Durations.SEGMENT_N_SAMPLES=}'
 
         segments.update(szr_segs)
-        ...
 
     return segments
 
 
 if __name__ == '__main__':
-    patient_dir = Paths.FOR_MAYO_DIR / 'B52K3P3G'
-    seizure_annotation_file = Paths.seizure_annotations_dir(patient_dir) / 'B52K3P3G_CONSENSUS_corrected.csv'
+    patient_dir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
+    seizure_annotation_file = patient_dir.seizure_annotations_dir / 'B52K3P3G_CONSENSUS_corrected.csv'
     preictal_windows_table(patient_dir, seizure_annotation_file)

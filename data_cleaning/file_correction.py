@@ -8,7 +8,8 @@ import os
 
 import pyedflib
 
-from config import Paths
+from config import PATHS
+from utils.paths import PatientDir, Dataset
 
 MAC_PATTERNS = [
     '._.DS_Store',  # Resource fork for .DS_Store
@@ -18,9 +19,10 @@ MAC_PATTERNS = [
     '.LSOverride'  # Finder custom attributes
 ]
 
-def remove_png(uneeg_extended: Path):
+
+def remove_png():
     # This folder contains a random .png -> Delete it
-    png_path = uneeg_extended / 'P4Hk23M7L' / 'P4Hk23M7L_WrongRecordingTime.png'
+    png_path = PATHS.uneeg_extended_dir / 'P4Hk23M7L' / 'P4Hk23M7L_WrongRecordingTime.png'
     try:
         png_path.unlink()
     except FileNotFoundError:
@@ -57,11 +59,11 @@ def clean_mac_files(directory: Path):
     # logging.info('===== Finished removing macOS system files =====')
 
 
-def move_annotation_files(for_mayo: Path, uneeg_extended: Path):
+def move_annotation_files():
     """
     Seizure annotations are moved into the appropriate folder for all patients
     """
-    annotations_folders = [
+    anns_dirs = [
         Path('A4RW34Z5B/annotations'),
         Path('E15T65H3Z/annotations'),
         Path('F5TW95P3X/Annotation text files'),
@@ -70,12 +72,12 @@ def move_annotation_files(for_mayo: Path, uneeg_extended: Path):
         Path('P4Hk23M7L/Annotation text files'),
     ]
     # prepend the base path
-    annotations_folders = [uneeg_extended / folder for folder in annotations_folders]
+    anns_dirs = [PATHS.uneeg_extended_dir / folder for folder in anns_dirs]
 
     # rename the folder for uneeg_extended
-    for folder in annotations_folders:
-        patient_dir = folder.parent
-        new_name = Paths.seizure_annotations_dir(patient_dir)
+    for folder in anns_dirs:
+        patient_dir = PatientDir(folder.parent)
+        new_name = patient_dir.seizure_annotations_dir
         if folder != new_name:
             try:
                 folder.rename(new_name)
@@ -85,20 +87,22 @@ def move_annotation_files(for_mayo: Path, uneeg_extended: Path):
 
     # For patient D63Q51K2N in uneeg_extended, there's no annotations folder, just like with the for_mayo patients
     # For for_mayo, create an annotations folder and move the file into it.
-    for patient_dir in [*for_mayo.iterdir(), uneeg_extended / 'D63Q51K2N']:
-        annotations_folder = Paths.seizure_annotations_dir(patient_dir)
-        annotations_folder.mkdir(exist_ok=True)
+    for patient_dir in [*PATHS.for_mayo_dir.iterdir(), PATHS.uneeg_extended_dir / 'D63Q51K2N']:
+        patient_dir = PatientDir(patient_dir)
+        anns_dir = patient_dir.seizure_annotations_dir
+        anns_dir.mkdir(exist_ok=True)
         for annotation in patient_dir.glob('*.txt'):
             try:
-                annotation.rename(annotations_folder / annotation.name)
+                annotation.rename(anns_dir / annotation.name)
             except FileNotFoundError:
                 logging.warning(f"Could not find {annotation} to move.")
 
 
-def handle_competition_data(competition_dir: Path):
+def handle_competition_data():
     """In 20250501_SUBQ_SeizurePredictionCompetition_2025final, a folder is created for each participant and their
     edf data.
     """
+    competition_dir = PATHS.competition_dir
     # Delete the TrainingData folder (it's the only folder in the base directory)
     training_dir = competition_dir / 'TrainingData'
     if training_dir.exists():
@@ -112,19 +116,19 @@ def handle_competition_data(competition_dir: Path):
     # make folders for the patients
     for i in (1, 2, 3):
         patient = f'P{i}'
-        patient_dir = competition_dir / patient
+        patient_dir = PatientDir(competition_dir / patient)
         patient_dir.mkdir(exist_ok=True)
         # move their edf data into the patient folder
         old = competition_dir / f'TrainingP{i}'
         if old.exists():
-            new = Paths.original_edf_dir(patient_dir)
+            new = patient_dir.original_edf_dir
             old.rename(new)
 
 
-def fix_filename_typos(uneeg_extended: Path):
+def fix_filename_typos():
     """Fix filenames containing 'Seiuzre' to 'Seizure' and remove trailing spaces."""
-    for patient_dir in uneeg_extended.iterdir():
-        annotation_folder = Paths.seizure_annotations_dir(patient_dir)
+    for patient_dir in PATHS.patient_dirs(Dataset.uneeg_extended):
+        annotation_folder = patient_dir.seizure_annotations_dir
         if not annotation_folder.is_dir():
             continue
 
@@ -172,39 +176,41 @@ def line_correction(annotation_path: Path, false_line_start: str, correct_line: 
         logging.warning(f"Did not find the line needing correction in {annotation_path.name} - no changes made")
 
 
-def line_corrections(uneeg_extended: Path):
+def line_corrections():
+    uneeg_extended = PATHS.uneeg_extended_dir
     # 'A4RW34Z5B_OUTPT_SUBQ_all automatic detections.txt' is missing as S somewhere
     line_correction(
-        Paths.seizure_annotations_dir(
-            uneeg_extended / 'A4RW34Z5B') / 'A4RW34Z5B_OUTPT_SUBQ_all automatic detections.txt',
+        PatientDir(
+            uneeg_extended / 'A4RW34Z5B').seizure_annotations_dir / 'A4RW34Z5B_OUTPT_SUBQ_all automatic detections.txt',
         false_line_start='eizure-rhythmic\t2025-04-15 20:09:03.064\t2025-04-15 20:09:03.064\tStart V5f',
         correct_line='Seizure-rhythmic\t2025-04-15 20:09:03.064\t2025-04-15 20:09:03.064\tStart V5f\n')
 
     # 'L3GS57K2T_OUTPT_SUBQ_all automatic detections.txt' has a double space in an inconvenient place
     line_correction(
-        Paths.seizure_annotations_dir(
-            uneeg_extended / 'L3GS57K2T') / 'L3GS57K2T_OUTPT_SUBQ_all automatic detections.txt',
+        PatientDir(
+            uneeg_extended / 'L3GS57K2T').seizure_annotations_dir / 'L3GS57K2T_OUTPT_SUBQ_all automatic detections.txt',
         false_line_start='Seizure-rhythmic\t2025-01-09 09:39:55.927\t2025-01-09 09:39:55.927\tEnd  V5a',
         correct_line='Seizure-rhythmic\t2025-01-09 09:39:55.927\t2025-01-09 09:39:55.927\tEnd V5a\t\n')
 
     # 'Seizure-rhythmic	2023-11-30 04:15:42.658	2023-11-30 04:15:42.658	end 5a' is actually the end of a seizure
     # This mistake may have been produced because it's the end of a seizure, as well as the end of a visit
     # This may have corrupted the annotation
+    E15T65H3Z_anns_dir = PatientDir(uneeg_extended / 'E15T65H3Z').seizure_annotations_dir
     line_correction(
-        Paths.seizure_annotations_dir(uneeg_extended / 'E15T65H3Z') / 'E15T65H3Z_OUTPT_SUBQ_SeizureStartEnd.txt',
+        E15T65H3Z_anns_dir / 'E15T65H3Z_OUTPT_SUBQ_SeizureStartEnd.txt',
         false_line_start='Seizure-rhythmic\t2023-11-30 04:15:42.658\t2023-11-30 04:15:42.658\tend 5a',
         correct_line='User seizure marker\t2023-11-30 04:15:42.658\t2023-11-30 04:15:42.658\tSeizure End, end 5a\t\n')
 
     # Remove that same line from E15T65H3Z_OUTPT_SUBQ_CONSENSUS.txt
     line_correction(
-        Paths.seizure_annotations_dir(uneeg_extended / 'E15T65H3Z') / 'E15T65H3Z_OUTPT_SUBQ_CONSENSUS.txt',
+        E15T65H3Z_anns_dir / 'E15T65H3Z_OUTPT_SUBQ_CONSENSUS.txt',
         false_line_start='Seizure-rhythmic\t2023-11-30 04:15:42.658\t2023-11-30 04:15:42.658\tend 5a',
         correct_line='')
 
     # E15T65H3Z_EMU_SUBQ_CONSENSUS.txt should contain no seizures.
     # (Seizures from D63Q51K2N have been duplicated into it)
     # First read the file line by line
-    path = Paths.seizure_annotations_dir(uneeg_extended / 'E15T65H3Z') / 'E15T65H3Z_EMU_SUBQ_CONSENSUS.txt'
+    path = E15T65H3Z_anns_dir / 'E15T65H3Z_EMU_SUBQ_CONSENSUS.txt'
     try:
         with open(path, 'r') as f:
             lines = f.readlines()
@@ -214,7 +220,6 @@ def line_corrections(uneeg_extended: Path):
             logging.info(f"Removed all seizures from {path.name}")
     except FileNotFoundError:
         logging.warning(f"Could not find {path} to remove seizures from")
-
 
 
 def run_fdupes(base_path: Path):
@@ -234,14 +239,14 @@ def run_fdupes(base_path: Path):
     return duplicate_groups
 
 
-def remove_duplicates(base_path: Path):
+def remove_duplicates():
     """Removes duplicated edf files used fdupes. This must be installed.
     Duplicate patterns:
     1. Many files appear to have simply been duplicated within the same folder -> these are removed
     2. Regarding patient M39K4B3C, visit 5d appears to have been copied into visit 5e -> the files are removed from V5e
     3. Patient P4Hk23M7L and A4RW34Z5B share certain files -> A4RW34Z5B's files are removed
     """
-    duplicate_groups = run_fdupes(base_path)
+    duplicate_groups = run_fdupes(PATHS.base_dir)
 
     # with open(base_path / 'duplicates.txt', "w") as f:
     #     f.writelines(duplicate_groups)
@@ -294,10 +299,10 @@ def remove_duplicates(base_path: Path):
     return removed_files
 
 
-def remove_additional_duplicates(for_mayo: Path) -> list[Path]:
+def remove_additional_duplicates() -> list[Path]:
     """Remove duplicates that were not caught by fdupes. For patient M39K4B3C, these are files that from Visit V5b that are also copied into V5d or V5e
     :return: a list of removed duplicate files."""
-    patient_dir = for_mayo / 'M39K4B3C'
+    patient_dir = PATHS.for_mayo_dir / 'M39K4B3C'
     removed_files = []
 
     # The bounds of visit 5b:
@@ -333,29 +338,29 @@ def remove_additional_duplicates(for_mayo: Path) -> list[Path]:
     return removed_files
 
 
-def file_correction(base_path: Path) -> list[Path]:
+def file_correction() -> list[Path]:
     """Perform different various unique actions to fix issues in the dataset.
     These could be performed manually, but this script acts as documentation.
     :return: A list of removed files"""
 
     # remove a random png which should not be there
-    remove_png(Paths.UNEEG_EXTENDED_DIR)
+    remove_png()
 
-    clean_mac_files(base_path)
+    clean_mac_files(PATHS.base_dir)
 
     # move annotation files to the patient's annotation folder
-    move_annotation_files(Paths.FOR_MAYO_DIR, Paths.UNEEG_EXTENDED_DIR)
+    move_annotation_files()
 
-    handle_competition_data(Paths.COMPETITION_DIR)
+    handle_competition_data()
 
-    fix_filename_typos(Paths.UNEEG_EXTENDED_DIR)
+    fix_filename_typos()
 
     # Take care of typos and lines with errors
-    line_corrections(Paths.UNEEG_EXTENDED_DIR)
+    line_corrections()
 
     logging.info('Removing duplicates...')
-    removed_duplicates = remove_duplicates(base_path)
-    removed_duplicates += remove_additional_duplicates(Paths.FOR_MAYO_DIR)
+    removed_duplicates = remove_duplicates()
+    removed_duplicates += remove_additional_duplicates()
 
     logging.info(f"Removed {len(removed_duplicates)} duplicate files")
     return removed_duplicates
@@ -363,4 +368,4 @@ def file_correction(base_path: Path) -> list[Path]:
 
 if __name__ == '__main__':
     logging.basicConfig(level='DEBUG')
-    file_correction(Paths.BASE_DIR)
+    file_correction()

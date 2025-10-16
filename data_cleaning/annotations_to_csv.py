@@ -4,8 +4,9 @@ import re
 import pandas as pd
 from pathlib import Path
 
-from config import Paths
+from config import PATHS
 from data_cleaning.file_correction import clean_mac_files
+from utils.paths import Dataset
 
 # the possible ways a line can start
 # todo why are seizure_start and seizure_end possible start string? these make a start and end, not a single marker
@@ -145,30 +146,30 @@ def annotations_txt_to_dataframe(annotation_path: Path):
     return seizures
 
 
-def convert_uneeg_extended_and_for_mayo(for_mayo: Path, uneeg_extended: Path):
-    for patient_dir in [*for_mayo.iterdir(), *uneeg_extended.iterdir()]:
-        patient = patient_dir.name
-        logging.info(f'--- {patient} ---')
+def convert_uneeg_extended_and_for_mayo():
+    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+        logging.info(f'--- {patient_dir.name} ---')
 
         # find annotation txt files
-        annotations_folder = Paths.seizure_annotations_dir(patient_dir)
-        txt_annotations = [*annotations_folder.glob('*.txt')]
-        for txt_annotation in txt_annotations:
+        anns_dir = patient_dir.seizure_annotations_dir
+        anns_original_dir = patient_dir.seizure_annotations_original_dir
+        anns_original_dir.mkdir(exist_ok=True)
+        txt_anns = [*anns_dir.glob('*.txt')]
+        for txt_annotation in txt_anns:
             seizures = annotations_txt_to_dataframe(txt_annotation)
-            save_path = annotations_folder / f'{txt_annotation.stem}.csv'
+            save_path = anns_original_dir / f'{txt_annotation.stem}.csv'
             seizures.to_csv(save_path, index=False)
             txt_annotation.unlink()
 
 
-def convert_competition_data(competition_dir: Path):
-    patient_dirs = [item for item in competition_dir.iterdir() if item.is_dir()]
-    sheet_path = competition_dir / "SeizureDatesTraining.xls"
-    for patient_dir in patient_dirs:
+def convert_competition_data():
+    sheet_path = PATHS.dataset_dirs[Dataset.competition] / "SeizureDatesTraining.xls"
+    for patient_dir in PATHS.patient_dirs(Dataset.competition):
         patient = patient_dir.name
         logging.info(f'--- {patient} ---')
         # make a folder for the annotations
-        annotations_folder = Paths.seizure_annotations_dir(patient_dir)
-        annotations_folder.mkdir(exist_ok=True)
+        anns_dir = patient_dir.seizure_annotations_dir
+        anns_dir.mkdir(exist_ok=True)
 
         # Retrieve the annotations xls file from the joined annotations file
         if sheet_path.exists():
@@ -178,23 +179,25 @@ def convert_competition_data(competition_dir: Path):
             return
 
         # save seizure onset data
-        seizures = pd.DataFrame(columns=['type', 'start', 'single_marker', 'end', 'comment'], dtype=str)
+        seizures = pd.DataFrame(columns=['start'], dtype=str)
         seizures['start'] = sheet['onset']
-        seizures.to_csv(Paths.seizure_annotations_file(patient_dir), index=False)
+        # Sort by 'start' column and get fresh numeric index
+        seizures = seizures.sort_values('start').reset_index(drop=True)
+        seizures.to_csv(patient_dir.seizure_starts_file, index=True)
 
         # Save the start of recording and approximate day span data
         additional_info = sheet[['Day Start', 'Days Span approx.']]
-        additional_info.to_csv(annotations_folder / "Time Span Info.csv", index=False)
+        additional_info.to_csv(anns_dir / "Time Span Info.csv", index=False)
 
     # delete the original sheet
     sheet_path.unlink()
 
 
-def annotations_to_csv(for_mayo_dir: Path, uneeg_extended_dir: Path, competition_dir: Path):
-    convert_uneeg_extended_and_for_mayo(for_mayo_dir, uneeg_extended_dir)
-    convert_competition_data(competition_dir)
+def annotations_to_csv():
+    convert_uneeg_extended_and_for_mayo()
+    convert_competition_data()
 
 
 if __name__ == '__main__':
-    clean_mac_files(Paths.BASE_DIR)
-    annotations_to_csv(Paths.FOR_MAYO_DIR, Paths.UNEEG_EXTENDED_DIR, Paths.COMPETITION_DIR)
+    clean_mac_files(PATHS.base_dir)
+    annotations_to_csv()

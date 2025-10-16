@@ -45,8 +45,8 @@ def get_size(path):
 def main():
     # ||||||||||||||||||||||||||||||||||||||||||||||||||||
     # src_base = Path("/data/datasets")
-    src_base = Path("/data/home/webb/UNEEG_data_original")
-    dst_base = Path("/data/home/webb/UNEEG_data")
+    src_base = Path("/data/home/webb/original_UNEEG_data")
+    dst_base = Path("/data/home/webb/UNEEG_data_unprocessed")
     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     # all items in these folders will be copied
