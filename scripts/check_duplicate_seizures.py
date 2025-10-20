@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 
@@ -25,15 +26,15 @@ PATIENT_ANNOTATION_FILES = {
 }
 
 
-def check_file_for_duplicates(annotation_path: Path, column_name: str, patient: str):
+def check_file_for_duplicates(annotation_path: Path, column_names: List[str], patient: str):
     seizures = pd.read_csv(annotation_path)
 
     # check for duplicates
-    seizures.sort_values(column_name, inplace=True)  # make sure it's sorted
-    duplicates = seizures[seizures.duplicated(column_name, keep=False)]
+    seizures.sort_values(column_names, inplace=True)  # make sure it's sorted
+    duplicates = seizures[seizures.duplicated(column_names, keep=False)]
     if duplicates.shape[0] > 0:
         print(f"Duplicates found in {patient}:")
-        print(duplicates[column_name])
+        print(duplicates[column_names])
     else:
         print(f"No duplicates found in {patient}")
 
@@ -44,21 +45,21 @@ def check_duplicate_seizures():
     for patient_dir in PATHS.patient_dirs(Dataset.for_mayo):
         check_file_for_duplicates(
             patient_dir.szr_anns_original_dir / PATIENT_ANNOTATION_FILES[patient_dir.name],
-            column_name='single_marker',
+            column_names=['single_marker', 'start'],
             patient=patient_dir.name,
         )
 
     for patient_dir in PATHS.patient_dirs(Dataset.uneeg_extended):
         check_file_for_duplicates(
             patient_dir.szr_anns_dir / PATIENT_ANNOTATION_FILES[patient_dir.name],
-            column_name='single_marker',
+            column_names=['single_marker', 'start'],
             patient=patient_dir.name,
         )
 
     for patient_dir in PATHS.patient_dirs(Dataset.competition):
         check_file_for_duplicates(
             patient_dir.szr_anns_dir / PATIENT_ANNOTATION_FILES[patient_dir.name],
-            column_name='start',
+            column_names=['start'],
             patient=patient_dir.name,
         )
 
