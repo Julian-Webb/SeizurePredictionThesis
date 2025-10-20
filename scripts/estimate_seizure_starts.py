@@ -1,0 +1,81 @@
+# Estimate Seizure Starts
+# The single marker falls somewhere within the seizure, not at the start.
+# However, the start of the seizure is needed to determine the preictal window.
+# The starts, as determined by the reviewer, usually aren't available.
+# As a workaround, I will calculate the average time between the single marker and start, in the cases where both exist.
+# Then, I will subtract that duration from the single marker to get an estimated start for seizure without an annotated
+# start.
+import logging
+from pathlib import Path
+from typing import Tuple
+
+import pandas as pd
+
+from config import PATHS, Constants
+from utils.paths import Dataset
+
+
+def _load_all_seizures(ptnt_ann_files: dict) -> pd.DataFrame:
+    """Load all seizures from for_mayo and uneeg_extended."""
+    all_seizures = pd.DataFrame()
+    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+        seizures = pd.read_csv(ptnt_ann_files[patient_dir.name], parse_dates=['start', 'single_marker', 'end'])
+        seizures['patient'] = patient_dir.name
+        logging.info(f'{patient_dir.name}: {len(seizures)} seizures')
+        all_seizures = pd.concat([all_seizures, seizures])
+    return all_seizures
+
+
+def _single_marker_start_differences(ptnt_ann_files: dict[str, Path]) -> Tuple[pd.Timedelta, pd.Timedelta, int]:
+    all_seizures = _load_all_seizures(ptnt_ann_files)
+
+    # find seizures where there's a single_marker and a start
+    # "marker and start mask"
+    ms_mask = all_seizures['single_marker'].notna() & all_seizures['start'].notna()
+    ms_seizures = all_seizures[ms_mask]
+
+    # calculate the difference between the single_marker and start
+    diff = ms_seizures['single_marker'] - ms_seizures['start']
+
+    # return the average difference and the standard deviation
+    # noinspection PyTypeChecker
+    return diff.mean(), diff.std(), len(ms_seizures)
+
+
+def estimate_seizure_starts(single_marker_to_start_shift: pd.Timedelta, ptnt_ann_files: dict):
+    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+        seizures = pd.read_csv(patient_dir.szr_anns_dir / ptnt_ann_files[patient_dir.name],
+                               parse_dates=['start', 'single_marker', 'end'])
+        # find seizures where there's no start
+        mask = seizures['start'].isna()
+
+        seizures.loc[mask, 'start'] = seizures.loc[mask, 'single_marker'] - single_marker_to_start_shift
+        # indicate where the start was estimated
+        seizures['start_is_statistically_estimated'] = mask
+
+        # save the updated dataframe
+        seizures = seizures.sort_values(by='start').reset_index(drop=True)
+        seizures.to_csv(patient_dir.szr_starts_file)
+
+        logging.info(f'{patient_dir.name} starts saved.')
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
+
+    # Create annotation file paths
+    ptnt_ann_files = {}
+    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo):
+        ptnt_ann_files[patient_dir.name] = patient_dir.szr_anns_original_dir / f'{patient_dir.name}.csv'
+    ptnt_ann_files['B52K3P3G'] = ptnt_ann_files['B52K3P3G'].parent / 'B52K3P3G_CONSENSUS_corrected.csv'
+    for patient_dir in PATHS.patient_dirs(Dataset.uneeg_extended):
+        ptnt_ann_files[patient_dir.name] = patient_dir.szr_anns_dir / 'combined_annotations.csv'
+
+    mean, std, n_ms_seizures = _single_marker_start_differences(ptnt_ann_files)
+    logging.info('Difference between single_marker and start:')
+    logging.info(f'Mean: {mean.total_seconds()} s')
+    logging.info(f'Std: {std.total_seconds()} s')
+    logging.info(f'Number of seizures with both single_marker and start: {n_ms_seizures}')
+    Constants.single_marker_to_start_shift = mean
+
+    estimate_seizure_starts(mean, ptnt_ann_files)

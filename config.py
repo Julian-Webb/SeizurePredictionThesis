@@ -1,14 +1,20 @@
 from datetime import timedelta
 
+import pandas as pd
+
 from utils.paths import Paths
 
 # Representation of the file/folder structure
-PATHS = Paths('/data/home/webb/UNEEG_data_unprocessed')
+PATHS = Paths('/data/home/webb/UNEEG_data')
 
 
 class Constants:
     # The sampling frequency of all EEG signals in the edf files
     SAMPLING_FREQUENCY_HZ = 207.0310546581987
+
+    # The shift used to go from a single marker to the estimated start
+    # (as calculated in estimate_seizure_starts)
+    single_marker_to_start_shift: pd.Timedelta = None
 
 
 def _n_samples_and_exact_length_from_approximate(length_approx: timedelta, segment_approx: timedelta,
