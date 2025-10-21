@@ -12,7 +12,7 @@ from typing import Tuple
 import pandas as pd
 
 from config import PATHS, Constants
-from utils.paths import Dataset
+from utils.paths import Dataset, PatientDir
 
 
 def _load_all_seizures(ptnt_ann_files: dict) -> pd.DataFrame:
@@ -42,26 +42,26 @@ def _single_marker_start_differences(ptnt_ann_files: dict[str, Path]) -> Tuple[p
     return diff.mean(), diff.std(), len(ms_seizures)
 
 
-def estimate_seizure_starts(single_marker_to_start_shift: pd.Timedelta, ptnt_ann_files: dict):
-    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
-        seizures = pd.read_csv(patient_dir.szr_anns_dir / ptnt_ann_files[patient_dir.name],
-                               parse_dates=['start', 'single_marker', 'end'])
-        # find seizures where there's no start
-        mask = seizures['start'].isna()
+def _estimate_seizure_starts_for_patient(single_marker_to_start_shift: pd.Timedelta, ptnt_dir: PatientDir,
+                                         ptnt_ann_file: Path):
+    seizures = pd.read_csv(ptnt_ann_file, parse_dates=['start', 'single_marker', 'end'])
+    # find seizures where there's no start
+    mask = seizures['start'].isna()
 
-        seizures.loc[mask, 'start'] = seizures.loc[mask, 'single_marker'] - single_marker_to_start_shift
-        # indicate where the start was estimated
-        seizures['start_is_statistically_estimated'] = mask
+    seizures.loc[mask, 'start'] = seizures.loc[mask, 'single_marker'] - single_marker_to_start_shift
+    # indicate where the start was estimated
+    seizures['start_is_statistically_estimated'] = mask
 
-        # save the updated dataframe
-        seizures = seizures.sort_values(by='start').reset_index(drop=True)
-        seizures.to_csv(patient_dir.szr_starts_file)
+    # save the updated dataframe
+    seizures = seizures.sort_values(by='start').reset_index(drop=True)
+    seizures.to_csv(ptnt_dir.szr_starts_file)
 
-        logging.info(f'{patient_dir.name} starts saved.')
+    logging.info(f'{ptnt_dir.name} starts saved.')
 
 
-if __name__ == '__main__':
-    logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
+def estimate_seizure_starts():
+    """Create a new file with estimated starts for seizures for each patient in for_mayo and uneeg_extended.
+    The estimates are based on the mean difference between the start and single marker, where present from reviewers."""
 
     # Create annotation file paths
     ptnt_ann_files = {}
@@ -75,7 +75,13 @@ if __name__ == '__main__':
     logging.info('Difference between single_marker and start:')
     logging.info(f'Mean: {mean.total_seconds()} s')
     logging.info(f'Std: {std.total_seconds()} s')
-    logging.info(f'Number of seizures with both single_marker and start: {n_ms_seizures}')
+    logging.info(f'#seizures with both single_marker and start: {n_ms_seizures}')
     Constants.single_marker_to_start_shift = mean
 
-    estimate_seizure_starts(mean, ptnt_ann_files)
+    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+        _estimate_seizure_starts_for_patient(mean, patient_dir, ptnt_ann_files[patient_dir.name])
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
+    estimate_seizure_starts()
