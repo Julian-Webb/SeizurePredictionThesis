@@ -54,7 +54,7 @@ def _estimate_seizure_starts_for_patient(single_marker_to_start_shift: pd.Timede
 
     # save the updated dataframe
     seizures = seizures.sort_values(by='start').reset_index(drop=True)
-    seizures.to_csv(ptnt_dir.szr_starts_file)
+    seizures.to_csv(ptnt_dir.all_szr_starts_file)
 
     logging.info(f'{ptnt_dir.name} starts saved.')
 

@@ -16,6 +16,10 @@ class Constants:
     # (as calculated in estimate_seizure_starts)
     single_marker_to_start_shift: pd.Timedelta = None
 
+    # The minimum number of valid seizures for a patient to be included in the analysis
+    MIN_VALID_SEIZURES_PER_PATIENT = 10
+
+
 
 def _n_samples_and_exact_length_from_approximate(length_approx: timedelta, segment_approx: timedelta,
                                                  segment_n_samples: int, sampling_frequency_hz: float) -> tuple[

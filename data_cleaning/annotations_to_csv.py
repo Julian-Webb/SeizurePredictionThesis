@@ -246,7 +246,7 @@ def convert_competition_data():
         seizures['start'] = sheet['onset']
         # Sort by 'start' column and get fresh numeric index
         seizures = seizures.sort_values('start').reset_index(drop=True)
-        seizures.to_csv(patient_dir.szr_starts_file, index=True)
+        seizures.to_csv(patient_dir.all_szr_starts_file, index=True)
 
         # Save the start of recording and approximate day span data
         additional_info = sheet[['Day Start', 'Days Span approx.']]

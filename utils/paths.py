@@ -19,7 +19,8 @@ class PatientDir(type(Path())):
         self.szr_anns_dir = self / "seizure_annotations"
         self.szr_anns_original_dir = self.szr_anns_dir / "seizure_annotations_original"
         self.combined_anns_file = self.szr_anns_dir / "combined_annotations.csv"
-        self.szr_starts_file = self.szr_anns_dir / "seizure_starts.csv"
+        self.all_szr_starts_file = self.szr_anns_dir / "seizure_starts_all.csv"
+        self.valid_szr_starts_file = self.szr_anns_dir / "seizure_starts_valid.csv"
 
         ### edf data
         # The directory containing the original edf files for the competition dataset, before they're renamed
@@ -39,17 +40,21 @@ class Paths(type(Path())):
         """
         self = super().__new__(cls, *args, **kwargs)
 
+        # dataset dirs
+        self.dataset_dirs = {dataset: self / dataset.value for dataset in Dataset}
+        self.for_mayo_dir = self.dataset_dirs[Dataset.for_mayo]
+        self.uneeg_extended_dir = self.dataset_dirs[Dataset.uneeg_extended]
+        self.competition_dir = self.dataset_dirs[Dataset.competition]
+
         # data cleaning logs
         self.data_cleaning_logs_dir = self / "data_cleaning_logs"
         self.problematic_edfs_dir = self.data_cleaning_logs_dir / 'problematic_edf_files'
         self.problematic_edfs_file = self.problematic_edfs_dir / 'problematic_edf_files.csv'
         self.remaining_duplicates_file = self.data_cleaning_logs_dir / 'remaining_duplicates.txt'
 
-        # dataset dirs
-        self.dataset_dirs = {dataset: self / dataset.value for dataset in Dataset}
-        self.for_mayo_dir = self.dataset_dirs[Dataset.for_mayo]
-        self.uneeg_extended_dir = self.dataset_dirs[Dataset.uneeg_extended]
-        self.competition_dir = self.dataset_dirs[Dataset.competition]
+        # preprocessing
+        self.patient_info_file = self / "patient_info.csv"
+
 
         return self
 
