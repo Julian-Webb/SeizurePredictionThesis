@@ -55,26 +55,31 @@ class Paths(type(Path())):
         # preprocessing
         self.patient_info_file = self / "patient_info.csv"
 
-
         return self
 
     def patient_dirs(self, *args: List[Dataset]) -> List[PatientDir]:
         """Generator for patient folders of specified datasets (default: all)
-        :*args: The datasets to get patient dirs for"""
+        :param args: The datasets to get patient dirs for
+        :returns: patient_dirs - a list of PatientDir objects"""
         if not args:
             datasets = list(Dataset)
         else:
             datasets = args
-        dataset_dirs = [self.dataset_dirs[dataset] for dataset in datasets]
 
         patient_dirs = []
-        for dataset_dir in dataset_dirs:
-            for patient_dir in dataset_dir.iterdir():
+        for dataset in datasets:
+            for patient_dir in self.dataset_dirs[dataset].iterdir():
                 if patient_dir.is_dir():
                     patient_dirs.append(PatientDir(patient_dir))
         return patient_dirs
 
     @property
     def base_dir(self) -> Path:
+        """:return: The base directory where the data is stored"""
         # This is just an alias
         return self
+
+
+if __name__ == '__main__':
+    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs():
+        print(ptnt_dir)

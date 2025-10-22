@@ -23,17 +23,27 @@ def _validate_patient(patient_dir: PatientDir):
     valid_szrs = szrs[valid]
     szrs['valid'] = valid
 
-    return valid_szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': n_valid, 'valid': valid_ptnt}
+    return valid_szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': n_valid, 'valid': valid_ptnt,
+                              # 'dir': str(patient_dir)
+                              }
 
 
 def valid_patients():
     """Find valid seizures for all patients. Save the valid seizures and the patient info to files."""
+    # patients are grouped by dataset
     patients = {}
+
     for patient_dir in PATHS.patient_dirs():
-        valid_szrs, szrs, patients[patient_dir.name] = _validate_patient(patient_dir)
+        valid_szrs, szrs, ptnt_info = _validate_patient(patient_dir)
         valid_szrs.to_csv(patient_dir.valid_szr_starts_file)
         szrs.to_csv(patient_dir.all_szr_starts_file)
-    patients = pd.DataFrame(patients).T
+
+        dataset = patient_dir.parent.name
+        patients[(dataset, patient_dir.name)] = ptnt_info
+
+    index = pd.MultiIndex.from_tuples(patients.keys(), names=['dataset', 'patient'])
+    patients = pd.DataFrame(patients.values(), index=index)
+    patients.sort_index(inplace=True)
     patients.to_csv(PATHS.patient_info_file)
 
 
