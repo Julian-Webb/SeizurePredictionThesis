@@ -30,6 +30,10 @@ class PatientDir(type(Path())):
         # The name of the sheet containing the edf file names and their metadata for each patient
         self.edf_files_sheet = self / 'edf_files.csv'
 
+        ### other
+        self.preictal_windows_file = self / 'preictal_windows.csv'
+        self.interictal_windows_file = self / 'interictal_windows.csv'
+
         return self
 
 
@@ -41,7 +45,7 @@ class Paths(type(Path())):
         self = super().__new__(cls, *args, **kwargs)
 
         # dataset dirs
-        self.dataset_dirs = {dataset: self / dataset.value for dataset in Dataset}
+        self.dataset_dirs = {dataset: Path(self, dataset.value) for dataset in Dataset}
         self.for_mayo_dir = self.dataset_dirs[Dataset.for_mayo]
         self.uneeg_extended_dir = self.dataset_dirs[Dataset.uneeg_extended]
         self.competition_dir = self.dataset_dirs[Dataset.competition]
@@ -54,6 +58,7 @@ class Paths(type(Path())):
 
         # preprocessing
         self.patient_info_file = self / "patient_info.csv"
+        self.invalid_patients_dir = self / "invalid_patients"
 
         return self
 

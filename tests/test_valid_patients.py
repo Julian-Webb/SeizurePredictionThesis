@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from config import Constants
-from preprocessing.valid_patients import _validate_patient
+from preprocessing.validate_patients import _validate_patient
 from utils.paths import PatientDir
 
 

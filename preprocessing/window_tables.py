@@ -1,3 +1,6 @@
+import logging
+import multiprocessing
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -7,27 +10,41 @@ from utils.edf_utils import time_to_index
 from utils.paths import PatientDir
 
 
-def preictal_windows_table(patient_dir: PatientDir, seizure_annotations_file: Path) -> pd.DataFrame:
-    """Create a table of the clips and segments for each preictal window.
+class WindowTable():
+    """Represent a window table with clips and segments"""
+    index_cols = ['seizure_start', 'clip', 'segment']
+
+    @staticmethod
+    def initialize(szr_starts: pd.Series):
+        """Initialize a window table from the seizure starts."""
+        clips_range = list(range(Durations.CLIPS_PER_PREICTAL_INTERVAL))
+        segments_range = list(range(Durations.SEGMENTS_PER_CLIP))
+        windows = pd.DataFrame(
+            columns=['start', 'end', 'exists', 'file', 'start_index'],
+            index=pd.MultiIndex.from_product([szr_starts, clips_range, segments_range],
+                                             names=WindowTable.index_cols),
+        )
+        return windows
+
+    @classmethod
+    def from_csv(cls, csv_path: Path):
+        """Load a window table from a csv file"""
+        windows = pd.read_csv(csv_path, index_col=WindowTable.index_cols,
+                              parse_dates=['seizure_start', 'start', 'end'])
+        return windows
+
+
+def preictal_windows_table(patient_dir: PatientDir) -> pd.DataFrame:
+    """Create a table of the clips and segments for each preictal window for a patient.
     It contains the start and end times, whether it exists in the data, and the file name of each segment."""
-    seizure_annotations = pd.read_csv(seizure_annotations_file, parse_dates=['start', 'end', 'single_marker'])
+    szr_starts = pd.read_csv(patient_dir.valid_szr_starts_file, usecols=['start'], parse_dates=['start']).squeeze()
 
     # Create the table
-    szr_times = seizure_annotations['single_marker']
-    clips_range = list(range(Durations.CLIPS_PER_PREICTAL_INTERVAL))
-    segments_range = list(range(Durations.SEGMENTS_PER_CLIP))
-    segments = pd.DataFrame(
-        columns=['start', 'end', 'exists', 'file', 'start_index'],
-        index=pd.MultiIndex.from_product([szr_times, clips_range, segments_range],
-                                         names=['seizure_time', 'clip', 'segment']),
-    )
+    windows = WindowTable.initialize(szr_starts)
 
-    for _, szr in seizure_annotations.iterrows():
+    for szr_start in szr_starts:
         # Determine various time points
-        # TODO there's a problem here: the single marker is used (it's at a random point during the seizure),
-        #  but it's being treated as if it was the start when calculating the preictal window.
-        szr_time = szr['single_marker']
-        preictal_end = szr_time - Durations.PREICTAL_OFFSET
+        preictal_end = szr_start - Durations.PREICTAL_OFFSET
         preictal_start = preictal_end - Durations.PREICTAL_INTERVAL
 
         # Find files that have any overlap with the preictal interval
@@ -38,7 +55,6 @@ def preictal_windows_table(patient_dir: PatientDir, seizure_annotations_file: Pa
         overlapping_interval_mask = (preictal_start <= edf_files['end']) & (edf_files['start'] <= preictal_end)
         matching_edfs = edf_files[overlapping_interval_mask]
 
-        # todo delete
         # This finds cases where there are multiple overlapping intervals with a certain time difference (for debugging)
         # if len(matching_edfs) >= 2:
         #     end_0 = matching_edfs.iloc[0]['end']
@@ -48,7 +64,7 @@ def preictal_windows_table(patient_dir: PatientDir, seizure_annotations_file: Pa
         #         ...
 
         # Select the subset of segments that corresponds to this seizure (while maintaining the entire index)
-        szr_segs = segments.loc[[szr_time]]
+        szr_segs = windows.loc[[szr_start]]
 
         szr_segs['start'] = preictal_start + szr_segs.index.get_level_values(
             1) * Durations.CLIP + szr_segs.index.get_level_values(2) * Durations.SEGMENT
@@ -74,12 +90,27 @@ def preictal_windows_table(patient_dir: PatientDir, seizure_annotations_file: Pa
             assert (index_diffs.iloc[1:] == Durations.SEGMENT_N_SAMPLES).all(), \
                 f'The differences between two starts indexes is not {Durations.SEGMENT_N_SAMPLES=}'
 
-        segments.update(szr_segs)
+        windows.update(szr_segs)
 
-    return segments
+    return windows
+
+
+def window_tables():
+    # todo add interictal windows
+    """Make the preictal window tables for all patients."""
+    ### parallel:
+    # with multiprocessing.Pool() as pool:
+    #     preictal_ptnt_windows = pool.map(preictal_windows_table, PATHS.patient_dirs())
+
+    ### serial:
+    for patient_dir in PATHS.patient_dirs():
+        st = time.time()
+        preictal_windows = preictal_windows_table(patient_dir)
+        preictal_windows.to_csv(patient_dir / 'preictal_windows.csv')
+        logging.info(f'{patient_dir.name} : {time.time() - st} seconds')
 
 
 if __name__ == '__main__':
-    patient_dir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
-    seizure_annotation_file = patient_dir.szr_anns_dir / 'B52K3P3G_CONSENSUS_corrected.csv'
-    preictal_windows_table(patient_dir, seizure_annotation_file)
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s]: %(message)s')
+    window_tables()
+
