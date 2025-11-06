@@ -3,7 +3,7 @@ from typing import List
 
 import pandas as pd
 
-from config import PATHS
+from config.paths import PATHS
 
 
 def check_file_for_duplicates(annotation_path: Path, column_names: List[str], patient: str):

@@ -8,9 +8,9 @@ from pathlib import Path
 import pandas as pd
 import pyedflib
 
-from config import PATHS
+from config.paths import PATHS
 from data_cleaning.file_correction import clean_mac_files
-from utils.paths import PatientDir
+from config.paths import PatientDir
 
 VISIT_FOLDER_PATTERN = re.compile(r"^[vV]\d")
 

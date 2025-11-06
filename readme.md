@@ -3,6 +3,9 @@ Various abbreviations throughout the code:
 `szr`: seizure  
 `ann`: annotation  
 `ptnt`: patient  
+`seg`: segment  
+`dur`: duration  
+
 
 # Pipeline Steps
 1. data_cleaning

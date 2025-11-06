@@ -5,9 +5,9 @@ from typing import Iterable
 
 import pandas as pd
 
-from config import PATHS
+from config.paths import PATHS
 from data_cleaning.file_correction import clean_mac_files
-from utils.paths import PatientDir, Dataset
+from config.paths import PatientDir, Dataset
 
 
 def combine_annotation_files(paths: list[Path]):

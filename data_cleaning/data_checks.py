@@ -3,10 +3,9 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Tuple, Dict
 
-from config import PATHS, Constants
+from config.constants import SAMPLING_FREQUENCY_HZ as sfreq
+from config.paths import PATHS, PatientDir
 import pyedflib
-
-from utils.paths import PatientDir
 
 
 def check_patient_signals(patient_dir: PatientDir) -> Tuple[Path, Dict[str, str]]:
@@ -26,9 +25,9 @@ def check_patient_signals(patient_dir: PatientDir) -> Tuple[Path, Dict[str, str]
                     continue
 
                 for signal in header['SignalHeaders']:
-                    if signal['sample_frequency'] != Constants.SAMPLING_FREQUENCY_HZ:
+                    if signal['sample_frequency'] != sfreq:
                         result["errors"].append(
-                            f"The sampling rate is not {Constants.SAMPLING_FREQUENCY_HZ} Hz in {edf_path}"
+                            f"The sampling rate is not {sfreq} Hz in {edf_path}"
                         )
                         result["status"] = "error"
             except Exception as e:

@@ -1,3 +1,5 @@
+# This file represents the directory and file structure of the project.
+
 from enum import Enum
 from pathlib import Path
 from typing import List
@@ -13,6 +15,7 @@ class Dataset(Enum):
 # Use type(Path()) to get the correct class based on the operating system
 class PatientDir(type(Path())):
     def __new__(cls, *args, **kwargs):
+        """Represents the directory and file structure of a patient"""
         self = super().__new__(cls, *args, *kwargs)
 
         ### seizure annotations
@@ -84,6 +87,11 @@ class Paths(type(Path())):
         # This is just an alias
         return self
 
+
+# Change base path here
+# PATHS = Paths('/data/home/webb/UNEEG_data')
+PATHS = Paths('/Users/julian/Developer/SeizurePredictionData')
+#              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
     for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs():

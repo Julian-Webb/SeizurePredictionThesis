@@ -2,7 +2,7 @@ import logging
 import time
 from pathlib import Path
 
-from config import PATHS
+from config.paths import PATHS
 from data_cleaning.annotations_to_csv import annotations_to_csv
 from data_cleaning.file_correction import file_correction, run_fdupes
 from data_cleaning.rename_and_move_edf_data import rename_and_move_edf_data

@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-
-from config import PATHS, Constants
-from utils.paths import Dataset, PatientDir
+import config.constants
+from config.paths import PATHS, Dataset, PatientDir
 
 
 def _load_all_seizures(ptnt_ann_files: dict) -> pd.DataFrame:
@@ -76,7 +75,7 @@ def estimate_seizure_starts():
     logging.info(f'Mean: {mean.total_seconds()} s')
     logging.info(f'Std: {std.total_seconds()} s')
     logging.info(f'#seizures with both single_marker and start: {n_ms_seizures}')
-    Constants.single_marker_to_start_shift = mean
+    config.constants.single_marker_to_start_shift = mean
 
     for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
         _estimate_seizure_starts_for_patient(mean, patient_dir, ptnt_ann_files[patient_dir.name])

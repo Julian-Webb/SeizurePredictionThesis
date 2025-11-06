@@ -7,9 +7,8 @@ from typing import Tuple
 import pandas as pd
 from pathlib import Path
 
-from config import PATHS
+from config.paths import PATHS, Dataset
 from data_cleaning.file_correction import clean_mac_files
-from utils.paths import Dataset
 
 # The strings that indicate that there are no seizures in a file
 NO_SEIZURES_STRINGS = ['no seizures', 'no seizure']

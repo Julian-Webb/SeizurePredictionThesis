@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import Constants
+from config.constants import Constants
 from preprocessing.validate_patients import _validate_patient
-from utils.paths import PatientDir
+from config.paths import PatientDir
 
 
 class TestValidPatients(unittest.TestCase):

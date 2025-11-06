@@ -8,8 +8,7 @@ import os
 
 import pyedflib
 
-from config import PATHS
-from utils.paths import PatientDir, Dataset
+from config.paths import PATHS, PatientDir, Dataset
 
 MAC_PATTERNS = [
     '._.DS_Store',  # Resource fork for .DS_Store

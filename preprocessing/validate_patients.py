@@ -6,8 +6,9 @@ from typing import Tuple
 
 import pandas as pd
 
-from config import PATHS, Durations, Constants
-from utils.paths import PatientDir
+from config.constants import MIN_VALID_SEIZURES_PER_PATIENT
+import config.intervals as intervals
+from config.paths import PATHS, PatientDir
 
 
 def _validate_patient(patient_dir: PatientDir) -> Tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -17,11 +18,11 @@ def _validate_patient(patient_dir: PatientDir) -> Tuple[pd.DataFrame, pd.DataFra
     # find the time difference of a seizure to the *previous* one
     diff = szrs['start'].diff()
 
-    valid = diff >= Durations.PREICTAL_INTERVAL
+    valid = diff >= intervals.PREICTAL.exact_dur
     valid.iloc[0] = True  # the first seizure is always valid
 
     n_valid = valid.value_counts()[True]
-    valid_ptnt = n_valid >= Constants.MIN_VALID_SEIZURES_PER_PATIENT
+    valid_ptnt = n_valid >= MIN_VALID_SEIZURES_PER_PATIENT
 
     valid_szrs = szrs[valid]
     szrs['valid'] = valid
@@ -38,7 +39,7 @@ def move_ptnt_dir(ptnt_dir: Path):
     ptnt_dir.rename(invalid_dataset_dir / ptnt_dir.name)
 
 
-def valid_patients(move_patient_dirs: bool):
+def validate_patients(move_patient_dirs: bool):
     """Find valid seizures for all patients. Save the valid seizures and the patient info to files."""
     # patients are grouped by dataset
     patients = {}
@@ -61,4 +62,4 @@ def valid_patients(move_patient_dirs: bool):
 
 
 if __name__ == '__main__':
-    valid_patients(True)
+    validate_patients(True)
