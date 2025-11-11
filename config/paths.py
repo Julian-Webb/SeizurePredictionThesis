@@ -34,8 +34,11 @@ class PatientDir(type(Path())):
         self.edf_files_sheet = self / 'edf_files.csv'
 
         ### other
+        # todo delete next two lines
         self.preictal_windows_file = self / 'preictal_windows.csv'
         self.interictal_windows_file = self / 'interictal_windows.csv'
+
+        self.segments_table = self / 'segments.csv'
 
         return self
 
