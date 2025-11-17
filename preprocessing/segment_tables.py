@@ -111,16 +111,18 @@ def plot_segs_(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize
     ax.set_xlabel('Time')
     ax.set_ylabel('Segment type')
 
-    # Plot load
-    lead = segs['lead'] == True
-    nonlead = segs['lead'] == False
-    interictal = segs['lead'].isna()
+    # Different types of segments' plotting properties
+    type_props = [
+        {'label': 'seg starts lead', 'color': 'blue', 'mask': segs['lead'] == True},
+        {'label': 'seg start non-lead', 'color': 'turquoise', 'mask': segs['lead'] == False},
+        {'label': 'seg starts interictal', 'color': 'grey', 'mask': segs['lead'].isna()},
+    ]
 
-    ax.scatter(segs.loc[lead, 'start'], y[lead], s=1, label='seg starts lead', c='blue')
-    # Plot non-lea~
-    ax.scatter(segs.loc[nonlead, 'start'], y[nonlead], s=1, label='seg starts non-lead', c='turquoise')
-    # Plot interictal
-    ax.scatter(segs.loc[interictal, 'start'], y[interictal], s=1, label='seg starts interictal', c='grey')
+    for exists in [True, False]:
+        for tp in type_props:
+            marker = '>' if exists else 'x'
+            mask = tp['mask'] & (segs['exists'] == exists)
+            ax.scatter(segs.loc[mask, 'start'], y[mask], s=7, label=tp['label'], c=tp['color'], marker=marker)
 
     # Plot seizures
     for t in szrs['start']:
@@ -141,7 +143,7 @@ def plot_segs_(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize
             ax.axvspan(edf.start, edf.end, color='green', alpha=0.2)
 
     ax.grid(axis='x', linestyle='--', alpha=0.4)
-    ax.legend()
+    ax.legend(loc='upper left')
 
     if savepath:
         fig.savefig(savepath, bbox_inches='tight')

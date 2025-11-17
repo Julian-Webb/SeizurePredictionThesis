@@ -5,10 +5,9 @@ import pandas as pd
 from pandas import Interval
 from pyedflib import highlevel
 
-from config.constants import SAMPLING_FREQUENCY_HZ
+from config.constants import SAMPLING_FREQUENCY_HZ, N_CHANNELS, CHANNELS
 from config.paths import PatientDir
 
-CHANNELS = ['EEG SQ_D-SQ_C', 'EEG SQ_P-SQ_C']
 PHYSICAL_MIN = -1374.21
 PHYSICAL_MAX = 1373.54
 DIGITAL_MIN = -2048
@@ -18,7 +17,7 @@ DIGITAL_MAX = 2047
 def generate_edf(interval: Interval, file_path: Path, ptnt_name: str):
     duration = interval.right - interval.left
     n_samples = round(duration.total_seconds() * SAMPLING_FREQUENCY_HZ)
-    signals = np.random.uniform(DIGITAL_MIN / 2, DIGITAL_MAX / 2, size=[len(CHANNELS), n_samples])
+    signals = np.random.uniform(DIGITAL_MIN / 2, DIGITAL_MAX / 2, size=[N_CHANNELS, n_samples])
 
     signal_headers = highlevel.make_signal_headers(CHANNELS,
                                                    sample_frequency=SAMPLING_FREQUENCY_HZ,
