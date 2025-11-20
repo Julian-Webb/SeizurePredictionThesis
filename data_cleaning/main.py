@@ -2,8 +2,9 @@ import logging
 import time
 from pathlib import Path
 
-from config.paths import PATHS
+from config.paths import PATHS, Dataset
 from data_cleaning.annotations_to_csv import annotations_to_csv
+from data_cleaning.combine_annotations import combine_annotations
 from data_cleaning.file_correction import file_correction, run_fdupes
 from data_cleaning.rename_and_move_edf_data import rename_and_move_edf_data
 
@@ -29,6 +30,9 @@ def data_cleaning():
 
     logging.info('========== annotations_to_csv ==========')
     annotations_to_csv()
+
+    logging.info('========== combine_annotations =============')
+    combine_annotations(PATHS.patient_dirs(Dataset.uneeg_extended))
 
     logging.info('========== rename_and_move_edf_data ==========')
     problematic_edfs = rename_and_move_edf_data(PATHS.problematic_edfs_dir)
