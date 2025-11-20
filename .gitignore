@@ -1,3 +1,5 @@
 # PyCharm specific files
-.idea/*
+.idea/workspace.xml
+.idea/misc.xml
+.idea/deployment.xml
 *.iml
