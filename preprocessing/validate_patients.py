@@ -34,7 +34,8 @@ def _find_lead_szrs(szrs: DataFrame):
     diff = szrs['start'].diff()
     lead = diff > intervals.LEAD.exact_dur
     lead.iloc[0] = True  # First szr is always lead
-    szrs['lead'] = lead
+    # todo this line gives a warning
+    szrs.loc[:, 'lead'] = lead
     return szrs
 
 
@@ -45,14 +46,14 @@ def move_ptnt_dir(ptnt_dir: Path):
     ptnt_dir.rename(invalid_dataset_dir / ptnt_dir.name)
 
 
-def validate_patients(move_patient_dirs: bool, ptnt_dirs: Iterable[PatientDir]) -> None:
+def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: bool) -> None:
     """Find valid seizures for all patients. Save the valid seizures and the patient info to files."""
     # patients are grouped by dataset
     ptnts = {}
 
     for ptnt_dir in ptnt_dirs:
         szrs = pd.read_csv(ptnt_dir.all_szr_starts_file, parse_dates=['start'], index_col=0)
-        valid_szrs, szrs, ptnt_info = _validate_patient(ptnt_dir)
+        valid_szrs, szrs, ptnt_info = _validate_patient(szrs)
         valid_szrs = _find_lead_szrs(valid_szrs)
         valid_szrs.drop(columns=['valid']).to_csv(ptnt_dir.valid_szr_starts_file)
         szrs.to_csv(ptnt_dir.all_szr_starts_file)
@@ -60,7 +61,7 @@ def validate_patients(move_patient_dirs: bool, ptnt_dirs: Iterable[PatientDir]) 
         dataset = ptnt_dir.parent.name
         ptnts[(dataset, ptnt_dir.name)] = ptnt_info
 
-        if move_patient_dirs and not ptnt_info['valid']:
+        if move_invalid_ptnt_dirs and not ptnt_info['valid']:
             move_ptnt_dir(ptnt_dir)
 
     index = pd.MultiIndex.from_tuples(ptnts.keys(), names=['dataset', 'patient'])
@@ -70,4 +71,4 @@ def validate_patients(move_patient_dirs: bool, ptnt_dirs: Iterable[PatientDir]) 
 
 
 if __name__ == '__main__':
-    validate_patients(move_patient_dirs=True, ptnt_dirs=PATHS.patient_dirs(Dataset.for_mayo))
+    validate_patients(PATHS.patient_dirs(), move_invalid_ptnt_dirs=True)

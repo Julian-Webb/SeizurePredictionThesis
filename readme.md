@@ -18,5 +18,7 @@ Various abbreviations throughout the code:
    4.rename_and_move_edf_data.py
 2. preprocessing
    1. estimate_seizure_starts.py
-   2. valid_participants
-   3. window_cutter.py
+   2. validate_patients.py
+   3. segment_tables.py
+   4. ??? splitting train test ???
+   5. extract_features.py

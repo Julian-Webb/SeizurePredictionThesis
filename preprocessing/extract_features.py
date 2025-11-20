@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List
+
 import numpy as np
 import pandas as pd
 import yasa
@@ -96,6 +98,12 @@ def extract_ptnt_features(ptnt_dir: PatientDir):
             breakpoint()
 
         edf.close()
+
+
+def extract_features(ptnt_dirs: List[PatientDir]):
+    """Extract the features for the segments of a patient."""
+    for ptnt_dir in ptnt_dirs:
+        extract_ptnt_features(ptnt_dir)
 
 
 if __name__ == '__main__':

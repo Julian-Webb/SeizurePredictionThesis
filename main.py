@@ -1,4 +1,10 @@
-import os
+from data_cleaning.main import data_cleaning
+from scripts import copy_uneeg_data
+
+def main():
+    copy_uneeg_data.main()
+    data_cleaning(ask_confirm=False)
+
 
 if __name__ == '__main__':
-    print(os.getcwd())
+    main()

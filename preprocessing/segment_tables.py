@@ -1,8 +1,9 @@
 import math
 import time
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import DataFrame, Timestamp, Timedelta
@@ -11,8 +12,6 @@ from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, HORIZON, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config.paths import PatientDir
 from utils.edf_utils import time_to_index
-
-import matplotlib.pyplot as plt
 
 
 def find_ptnt_timespan(edf_files: DataFrame) -> Tuple[Timestamp, Timestamp, Timedelta]:
@@ -150,6 +149,11 @@ def plot_segs_(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize
     if show:
         plt.show()
     plt.close(fig)
+
+
+def segment_tables(ptnt_dirs: List[PatientDir]):
+    for ptnt_dir in ptnt_dirs:
+        make_segs_table(ptnt_dir)
 
 
 if __name__ == '__main__':
