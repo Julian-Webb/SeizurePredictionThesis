@@ -46,7 +46,7 @@ def main():
     # ||||||||||||||||||||||||||||||||||||||||||||||||||||
     # src_base = Path("/data/datasets")
     src_base = Path("/data/home/webb/original_UNEEG_data")
-    dst_base = Path("/data/home/webb/UNEEG_data_1")
+    dst_base = Path("/data/home/webb/UNEEG_data")
     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
     # all items in these folders will be copied

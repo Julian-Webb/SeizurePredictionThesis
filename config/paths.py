@@ -92,8 +92,8 @@ class Paths(type(Path())):
 
 
 # Change base path here
-# PATHS = Paths('/data/home/webb/UNEEG_data')
-PATHS = Paths('/Users/julian/Developer/SeizurePredictionData')
+PATHS = Paths('/data/home/webb/UNEEG_data')
+# PATHS = Paths('/Users/julian/Developer/SeizurePredictionData')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':

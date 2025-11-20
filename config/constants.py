@@ -13,3 +13,8 @@ single_marker_to_start_shift: pd.Timedelta | None = None
 
 # The minimum number of valid seizures for a patient to be included in the analysis
 MIN_VALID_SEIZURES_PER_PATIENT = 10
+
+# How the EEG bands are defined (lower frequency, upper frequency, name)
+# todo is the lower delta and upper gamma bound correct?
+SPECTRAL_BANDS = [(0.5, 4, 'Delta'), (4, 8, 'Theta'), (8, 12, 'Alpha'), (12, 35, 'Beta'), (35, 100, 'Gamma')]
+
