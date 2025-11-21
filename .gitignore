@@ -3,3 +3,6 @@
 .idea/misc.xml
 .idea/deployment.xml
 *.iml
+
+# Other files
+/sandbox/hello_world.py
