@@ -213,7 +213,7 @@ def annotations_txt_to_dataframe(annotation_path: Path):
 
 
 def convert_uneeg_extended_and_for_mayo():
-    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+    for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
         logging.info(f'--- {patient_dir.name} ---')
 
         # find annotation txt files
@@ -227,7 +227,7 @@ def convert_uneeg_extended_and_for_mayo():
 
 def convert_competition_data():
     sheet_path = PATHS.dataset_dirs[Dataset.competition] / "SeizureDatesTraining.xls"
-    for patient_dir in PATHS.patient_dirs(Dataset.competition):
+    for patient_dir in PATHS.patient_dirs([Dataset.competition]):
         patient = patient_dir.name
         logging.info(f'--- {patient} ---')
         # make a folder for the annotations

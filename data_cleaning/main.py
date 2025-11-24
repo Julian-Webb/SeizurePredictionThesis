@@ -34,7 +34,7 @@ def data_cleaning(ask_confirm: bool = True):
 
     logging.info('========== combine_annotations =============')
     with FunctionTimer("combine_annotations"):
-        combine_annotations(PATHS.patient_dirs(Dataset.uneeg_extended))
+        combine_annotations(PATHS.patient_dirs([Dataset.uneeg_extended]))
 
     logging.info('========== rename_and_move_edf_data ==========')
     with FunctionTimer("rename_and_move_edf_data"):

@@ -63,7 +63,7 @@ def move_annotation_files():
     Seizure annotations are moved into the appropriate folder for all patients
     """
     # make the seizure_annotations dir for patients in for_mayo and uneeg_extended
-    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+    for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
         patient_dir.szr_anns_dir.mkdir(exist_ok=True)
 
     old_anns_dirs = [
@@ -129,7 +129,7 @@ def handle_competition_data():
 
 def fix_filename_typos():
     """Fix filenames containing 'Seiuzre' to 'Seizure' and remove trailing spaces."""
-    for patient_dir in PATHS.patient_dirs(Dataset.uneeg_extended):
+    for patient_dir in PATHS.patient_dirs([Dataset.uneeg_extended]):
         if not patient_dir.szr_anns_original_dir.is_dir():
             continue
 

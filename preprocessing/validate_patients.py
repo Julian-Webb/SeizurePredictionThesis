@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Tuple, Iterable
 
 import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
-from config.constants import MIN_VALID_SEIZURES_PER_PATIENT
 import config.intervals as intervals
-from config.paths import PATHS, PatientDir, Dataset
+from config.constants import MIN_VALID_SEIZURES_PER_PATIENT
+from config.paths import PATHS, PatientDir
 
 
 def _validate_patient(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
@@ -27,6 +27,7 @@ def _validate_patient(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     # noinspection PyTypeChecker
     return valid_szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': n_valid, 'valid': valid_ptnt}
 
+
 def _find_lead_szrs(szrs: DataFrame):
     """Finds the lead seizures.
     :param szrs: DataFrame containing seizure starts"""
@@ -34,16 +35,18 @@ def _find_lead_szrs(szrs: DataFrame):
     diff = szrs['start'].diff()
     lead = diff > intervals.LEAD.exact_dur
     lead.iloc[0] = True  # First szr is always lead
-    # todo this line gives a warning
-    szrs.loc[:, 'lead'] = lead
+    szrs = szrs.copy()  # ensure we're not writing to a view
+    szrs['lead'] = lead
     return szrs
 
 
 def move_ptnt_dir(ptnt_dir: Path):
     """Move a patient dir to the invalid patient dir."""
     invalid_dataset_dir = PATHS.invalid_patients_dir / ptnt_dir.parent.name
-    invalid_dataset_dir.mkdir(parents=True, exist_ok=True)
-    ptnt_dir.rename(invalid_dataset_dir / ptnt_dir.name)
+    new_ptnt_dir = invalid_dataset_dir / ptnt_dir.name
+    if ptnt_dir != new_ptnt_dir:  # Check if it was already moved because of previous code execution
+        invalid_dataset_dir.mkdir(parents=True, exist_ok=True)
+        ptnt_dir.rename(invalid_dataset_dir / ptnt_dir.name)
 
 
 def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: bool) -> None:
@@ -54,8 +57,12 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
     for ptnt_dir in ptnt_dirs:
         szrs = pd.read_csv(ptnt_dir.all_szr_starts_file, parse_dates=['start'], index_col=0)
         valid_szrs, szrs, ptnt_info = _validate_patient(szrs)
+
         valid_szrs = _find_lead_szrs(valid_szrs)
-        valid_szrs.drop(columns=['valid']).to_csv(ptnt_dir.valid_szr_starts_file)
+        if 'valid' in valid_szrs.columns:
+            valid_szrs.drop(columns=['valid'], inplace=True)
+
+        valid_szrs.to_csv(ptnt_dir.valid_szr_starts_file)
         szrs.to_csv(ptnt_dir.all_szr_starts_file)
 
         dataset = ptnt_dir.parent.name
@@ -71,4 +78,4 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
 
 
 if __name__ == '__main__':
-    validate_patients(PATHS.patient_dirs(), move_invalid_ptnt_dirs=True)
+    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=True)

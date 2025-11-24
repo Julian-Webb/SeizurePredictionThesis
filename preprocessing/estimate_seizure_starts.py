@@ -17,7 +17,7 @@ from config.paths import PATHS, Dataset, PatientDir
 def _load_all_seizures(ptnt_ann_files: dict) -> pd.DataFrame:
     """Load all seizures from for_mayo and uneeg_extended."""
     all_seizures = pd.DataFrame()
-    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+    for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
         seizures = pd.read_csv(ptnt_ann_files[patient_dir.name], parse_dates=['start', 'single_marker', 'end'])
         seizures['patient'] = patient_dir.name
         logging.info(f'{patient_dir.name}: {len(seizures)} seizures')
@@ -64,11 +64,10 @@ def estimate_seizure_starts():
 
     # Create annotation file paths
     ptnt_ann_files = {}
-    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo):
+    for patient_dir in PATHS.patient_dirs([Dataset.for_mayo]):
         ptnt_ann_files[patient_dir.name] = patient_dir.szr_anns_original_dir / f'{patient_dir.name}.csv'
-    ptnt_ann_files['B52K3P3G'] = ptnt_ann_files['B52K3P3G'].parent / 'B52K3P3G_CONSENSUS_corrected.csv'
-    for patient_dir in PATHS.patient_dirs(Dataset.uneeg_extended):
-        ptnt_ann_files[patient_dir.name] = patient_dir.szr_anns_dir / 'combined_annotations.csv'
+    for patient_dir in PATHS.patient_dirs([Dataset.uneeg_extended]):
+        ptnt_ann_files[patient_dir.name] = patient_dir.combined_anns_file
 
     mean, std, n_ms_seizures = _single_marker_start_differences(ptnt_ann_files)
     logging.info('Difference between single_marker and start:')
@@ -77,7 +76,7 @@ def estimate_seizure_starts():
     logging.info(f'#seizures with both single_marker and start: {n_ms_seizures}')
     config.constants.single_marker_to_start_shift = mean
 
-    for patient_dir in PATHS.patient_dirs(Dataset.for_mayo, Dataset.uneeg_extended):
+    for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
         _estimate_seizure_starts_for_patient(mean, patient_dir, ptnt_ann_files[patient_dir.name])
 
 

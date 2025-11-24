@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 import pandas as pd
 
@@ -10,7 +10,7 @@ from data_cleaning.file_correction import clean_mac_files
 from config.paths import PatientDir, Dataset
 
 
-def combine_annotation_files(paths: list[Path]):
+def combine_annotation_files(paths: List[Path]):
     """Combine multiple annotation files into one. Annotations may be duplicate and single markers will be combined
     with user seizure markers with a start and end."""
     # Procedure
@@ -121,4 +121,4 @@ def combine_annotations(patient_dirs: Iterable[PatientDir]):
 if __name__ == '__main__':
     logging.basicConfig(level='INFO')
     clean_mac_files(PATHS.uneeg_extended_dir)
-    combine_annotations(PATHS.patient_dirs(Dataset.uneeg_extended))
+    combine_annotations(PATHS.patient_dirs([Dataset.uneeg_extended]))

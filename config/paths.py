@@ -68,20 +68,27 @@ class Paths(type(Path())):
 
         return self
 
-    def patient_dirs(self, *args: List[Dataset]) -> List[PatientDir]:
+    def patient_dirs(self, datasets: List[Dataset] = 'all', include_invalid_ptnts: bool = False) -> List[PatientDir]:
         """Generator for patient folders of specified datasets (default: all)
-        :param args: The datasets to get patient dirs for
+        :param datasets: The datasets to get patient dirs for
+        :param include_invalid_ptnts: Whether to include invalid patient dirs
         :returns: patient_dirs - a list of PatientDir objects"""
-        if not args:
+        if datasets == 'all':
             datasets = list(Dataset)
-        else:
-            datasets = args
 
         patient_dirs = []
         for dataset in datasets:
             for patient_dir in self.dataset_dirs[dataset].iterdir():
                 if patient_dir.is_dir():
                     patient_dirs.append(PatientDir(patient_dir))
+
+        if include_invalid_ptnts:
+            for dataset in datasets:
+                dataset_path = self.invalid_patients_dir / dataset.value
+                if dataset_path.is_dir():
+                    for patient_dir in dataset_path.iterdir():
+                        patient_dirs.append(PatientDir(patient_dir))
+
         return patient_dirs
 
     @property
@@ -97,5 +104,5 @@ PATHS = Paths('/data/home/webb/UNEEG_data')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
-    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs():
+    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=True):
         print(ptnt_dir)
