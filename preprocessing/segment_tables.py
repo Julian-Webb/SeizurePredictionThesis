@@ -6,6 +6,11 @@ from concurrent.futures import as_completed, ProcessPoolExecutor
 from pathlib import Path
 from typing import Tuple, List
 
+# todo do this locally
+# from pyvirtualdisplay import Display
+# disp = Display(visible=False, size=(800, 600))
+# disp.start()
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -98,12 +103,10 @@ def make_segs_table(ptnt_dir: PatientDir):
     segs = find_existing_segs(edf_files, segs)
     valid_szrs = pd.read_csv(ptnt_dir.valid_szr_starts_file, usecols=['start', 'lead'], parse_dates=['start'])
     segs = find_seg_type(segs, valid_szrs)
-
-    segs.drop(columns=['end']).to_csv(ptnt_dir.segments_table, index=False)
     return segs
 
 
-def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=(14, 3), savepath: str = None,
+def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=(30, 8), savepath: str = None,
               show: bool = True):
     types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, HORIZON.label, POSTICTAL.label, INTER_POST.label]
     type_to_y = {t: i for i, t in enumerate(types)}
@@ -159,6 +162,23 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=
     plt.close(fig)
 
 
+def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool = False):
+    # Make segs table and save it to csv
+    logging.info(f"Processing {ptnt_dir.name}")
+    if from_preexisting_segs:
+        segs = pd.read_csv(ptnt_dir.segments_table, parse_dates=['start'], dtype={'lead': 'boolean'})
+
+    else:
+        segs = make_segs_table(ptnt_dir)
+        segs.drop(columns=['end']).to_csv(ptnt_dir.segments_table, index=False)
+
+    # Make the plot
+    szrs = pd.read_csv(ptnt_dir.valid_szr_starts_file, usecols=['start', 'lead'], parse_dates=['start'])
+    edfs = pd.read_csv(ptnt_dir.edf_files_sheet, parse_dates=['start', 'end'])
+
+    plot_segs(segs, szrs, edfs, show=False, savepath=ptnt_dir.segments_plot)
+
+
 def segment_tables(ptnt_dirs: List[PatientDir]):
     # Serial Processing:
     # for ptnt_dir in ptnt_dirs:
@@ -169,7 +189,7 @@ def segment_tables(ptnt_dirs: List[PatientDir]):
     max_workers = min(len(ptnt_dirs), multiprocessing.cpu_count())
     logging.info(f"Using {max_workers} max workers")
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(make_segs_table, pt): pt for pt in ptnt_dirs}
+        futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in ptnt_dirs}
     for fut in as_completed(futures):
         ptnt_dir = futures[fut]
         try:
@@ -180,22 +200,13 @@ def segment_tables(ptnt_dirs: List[PatientDir]):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+
     # segment_tables(PATHS.patient_dirs())
 
-    st = time.time()
-    ptnt_dir = PatientDir(Path('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1'))
-    # segs = make_segs_table(ptnt_dir)
+    # ptnt_dir = PatientDir(Path('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1'))
+    # ptnt_dir = PatientDir(Path('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D'))
 
-    segs = pd.read_csv(ptnt_dir.segments_table, parse_dates=['start'], dtype={'lead': 'boolean'})
-    szrs = pd.read_csv(ptnt_dir.valid_szr_starts_file, usecols=['start', 'lead'], parse_dates=['start'])
-    edfs = pd.read_csv(ptnt_dir.edf_files_sheet, parse_dates=['start', 'end'])
-    # segs = find_seg_type(segs, szrs)
-    # segs.to_csv(ptnt_dir.segments_table)
-
-    plot_segs(segs, szrs,
-              edfs,
-              figsize=(14, 7),
-              # savepath=ptnt_dir / 'segs.png',
-              show=True)
-
-    print("Elapsed time: ", time.time() - st)
+    # Just make plots
+    for ptnt_dir in PATHS.patient_dirs():
+        make_segs_table_and_plot(ptnt_dir, True)
