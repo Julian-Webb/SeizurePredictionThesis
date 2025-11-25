@@ -33,12 +33,9 @@ class PatientDir(type(Path())):
         # The name of the sheet containing the edf file names and their metadata for each patient
         self.edf_files_sheet = self / 'edf_files.csv'
 
-        ### other
-        # todo delete next two lines
-        self.preictal_windows_file = self / 'preictal_windows.csv'
-        self.interictal_windows_file = self / 'interictal_windows.csv'
-
+        ### Preprocessing
         self.segments_table = self / 'segments.csv'
+        self.segments_plot = self / 'segments_plot.png'
 
         return self
 
@@ -67,35 +64,35 @@ class Paths(type(Path())):
         self.patient_info_exact_pkl = self.patient_info_dir / "patient_info_exact.pkl"
         self.patient_info_exact_csv = self.patient_info_dir / "patient_info_exact.csv"
         self.patient_info_readable_csv = self.patient_info_dir / "patient_info_readable.csv"
-        self.invalid_patients_dir = self.patient_info_dir / "invalid_patients"
 
+        self.invalid_patients_dir = self / "invalid_patients"
         return self
 
-
-    def patient_dirs(self, datasets: Optional[List[Dataset]] = None, include_invalid_ptnts: bool = False) -> List[PatientDir]:
+    def patient_dirs(self, datasets: Optional[List[Dataset]] = None, include_invalid_ptnts: bool = False) -> List[
+        PatientDir]:
         """
         Return a list of patient directories of the given datasets
         :param datasets: The datasets to get patient dirs for (default: all)
         :param include_invalid_ptnts: Whether to include invalid patient dirs
-        :returns: patient_dirs - a list of PatientDir objects
+        :returns: ptnt_dirs - a list of PatientDir objects
         """
         if datasets is None:
             datasets = list(Dataset)
 
-        patient_dirs = []
-        for dataset in datasets:
-            for patient_dir in self.dataset_dirs[dataset].iterdir():
-                if patient_dir.is_dir():
-                    patient_dirs.append(PatientDir(patient_dir))
-
+        base_dirs = [self.base_dir]
         if include_invalid_ptnts:
-            for dataset in datasets:
-                dataset_path = self.invalid_patients_dir / dataset.value
-                if dataset_path.is_dir():
-                    for patient_dir in dataset_path.iterdir():
-                        patient_dirs.append(PatientDir(patient_dir))
+            base_dirs.append(self.invalid_patients_dir)
 
-        return patient_dirs
+        ptnt_dirs = []
+        for base_dir in base_dirs:
+            for dataset in datasets:
+                dataset_path = base_dir / dataset.value
+                if dataset_path.is_dir():
+                    for ptnt_dir in dataset_path.iterdir():
+                        if ptnt_dir.is_dir():
+                            ptnt_dirs.append(PatientDir(ptnt_dir))
+
+        return ptnt_dirs
 
     @property
     def base_dir(self) -> Path:
@@ -110,5 +107,5 @@ PATHS = Paths('/data/home/webb/UNEEG_data')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
-    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=False):
+    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=True):
         print(ptnt_dir)
