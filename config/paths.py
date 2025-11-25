@@ -2,7 +2,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 
 class Dataset(Enum):
@@ -63,17 +63,23 @@ class Paths(type(Path())):
         self.remaining_duplicates_file = self.data_cleaning_logs_dir / 'remaining_duplicates.txt'
 
         # preprocessing
-        self.patient_info_file = self / "patient_info.csv"
-        self.invalid_patients_dir = self / "invalid_patients"
+        self.patient_info_dir = self / "patient_info"
+        self.patient_info_exact_pkl = self.patient_info_dir / "patient_info_exact.pkl"
+        self.patient_info_exact_csv = self.patient_info_dir / "patient_info_exact.csv"
+        self.patient_info_readable_csv = self.patient_info_dir / "patient_info_readable.csv"
+        self.invalid_patients_dir = self.patient_info_dir / "invalid_patients"
 
         return self
 
-    def patient_dirs(self, datasets: List[Dataset] = 'all', include_invalid_ptnts: bool = False) -> List[PatientDir]:
-        """Generator for patient folders of specified datasets (default: all)
-        :param datasets: The datasets to get patient dirs for
+
+    def patient_dirs(self, datasets: Optional[List[Dataset]] = None, include_invalid_ptnts: bool = False) -> List[PatientDir]:
+        """
+        Return a list of patient directories of the given datasets
+        :param datasets: The datasets to get patient dirs for (default: all)
         :param include_invalid_ptnts: Whether to include invalid patient dirs
-        :returns: patient_dirs - a list of PatientDir objects"""
-        if datasets == 'all':
+        :returns: patient_dirs - a list of PatientDir objects
+        """
+        if datasets is None:
             datasets = list(Dataset)
 
         patient_dirs = []
@@ -104,5 +110,5 @@ PATHS = Paths('/data/home/webb/UNEEG_data')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
-    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=True):
+    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=False):
         print(ptnt_dir)

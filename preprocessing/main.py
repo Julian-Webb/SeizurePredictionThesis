@@ -15,17 +15,17 @@ def preprocessing(ask_confirm: bool = True):
         input(f"Preprocessing for {PATHS.base_dir}. Press enter to continue.")
 
     with FunctionTimer('Total Preprocessing'):
-        logging.info(f"Estimating seizure starts")
+        logging.info(f"===== Estimating seizure starts =====")
         with FunctionTimer('estimate_seizure_starts'):
             estimate_seizure_starts()
 
-        logging.info("Validating Patients and moving invalid patient dirs")
+        logging.info("===== Validating Patients and moving invalid patient dirs =====")
         with FunctionTimer('validate_patients'):
             validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=True)
 
-        logging.info("Creating segment tables")
+        logging.info("===== Creating segment tables =====")
         with FunctionTimer('segment_tables'):
-            segment_tables(PATHS.patient_dirs())
+            segment_tables(PATHS.patient_dirs(include_invalid_ptnts=False))
 
         # logging.info("Splitting data into train and test")
 
@@ -34,5 +34,5 @@ def preprocessing(ask_confirm: bool = True):
         #     extract_features(PATHS.patient_dirs())
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     preprocessing()

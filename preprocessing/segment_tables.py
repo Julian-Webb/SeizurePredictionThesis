@@ -1,5 +1,8 @@
+import logging
 import math
+import multiprocessing
 import time
+from concurrent.futures import as_completed, ProcessPoolExecutor
 from pathlib import Path
 from typing import Tuple, List
 
@@ -10,15 +13,20 @@ from pandas import DataFrame, Timestamp, Timedelta
 
 from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, HORIZON, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
-from config.paths import PatientDir
+from config.paths import PatientDir, PATHS
 from utils.edf_utils import time_to_index
 
 
-def find_ptnt_timespan(edf_files: DataFrame) -> Tuple[Timestamp, Timestamp, Timedelta]:
-    first_start = edf_files.iloc[0]['start']
-    last_end = edf_files.iloc[-1]['end']
-    timespan = last_end - first_start
-    return first_start, last_end, timespan
+def load_ptnt_timespan_info(ptnt_dir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
+    """
+    :return: start of the recordings, end of the recordings, timespan
+    """
+    ptnts_info = pd.read_pickle(PATHS.patient_info_exact_pkl)
+    dataset = ptnt_dir.parent.name
+    ptnt = ptnt_dir.name
+    ptnt_info = ptnts_info.loc[dataset, ptnt]
+    # noinspection PyTypeChecker
+    return ptnt_info['recordings_start'], ptnt_info['recordings_end'], ptnt_info['timespan']
 
 
 # noinspection PyUnresolvedReferences
@@ -77,7 +85,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
 
 def make_segs_table(ptnt_dir: PatientDir):
     edf_files = pd.read_csv(ptnt_dir.edf_files_sheet, parse_dates=['start', 'end'])
-    first_start, last_end, timespan = find_ptnt_timespan(edf_files)
+    first_start, last_end, timespan = load_ptnt_timespan_info(ptnt_dir)
 
     # We floor here because we only want full segments
     n_segs = math.floor(timespan / SEGMENT.exact_dur)
@@ -95,8 +103,8 @@ def make_segs_table(ptnt_dir: PatientDir):
     return segs
 
 
-def plot_segs_(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=(14, 3), savepath: str = None,
-               show: bool = True):
+def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=(14, 3), savepath: str = None,
+              show: bool = True):
     types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, HORIZON.label, POSTICTAL.label, INTER_POST.label]
     type_to_y = {t: i for i, t in enumerate(types)}
 
@@ -152,11 +160,28 @@ def plot_segs_(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize
 
 
 def segment_tables(ptnt_dirs: List[PatientDir]):
-    for ptnt_dir in ptnt_dirs:
-        make_segs_table(ptnt_dir)
+    # Serial Processing:
+    # for ptnt_dir in ptnt_dirs:
+    #     logging.info(f'Seg table for : {ptnt_dir.name}')
+    #     make_segs_table(ptnt_dir)
+
+    # Parallel Processing:
+    max_workers = min(len(ptnt_dirs), multiprocessing.cpu_count())
+    logging.info(f"Using {max_workers} max workers")
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(make_segs_table, pt): pt for pt in ptnt_dirs}
+    for fut in as_completed(futures):
+        ptnt_dir = futures[fut]
+        try:
+            fut.result()
+            logging.info(f"Finished seg table for : {ptnt_dir.name}")
+        except:
+            logging.info(f"Failed seg table for : {ptnt_dir.name}")
 
 
 if __name__ == '__main__':
+    # segment_tables(PATHS.patient_dirs())
+
     st = time.time()
     ptnt_dir = PatientDir(Path('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1'))
     # segs = make_segs_table(ptnt_dir)
@@ -167,10 +192,10 @@ if __name__ == '__main__':
     # segs = find_seg_type(segs, szrs)
     # segs.to_csv(ptnt_dir.segments_table)
 
-    plot_segs_(segs, szrs,
-               edfs,
-               figsize=(14, 7),
-               # savepath=ptnt_dir / 'segs.png',
-               show=True)
+    plot_segs(segs, szrs,
+              edfs,
+              figsize=(14, 7),
+              # savepath=ptnt_dir / 'segs.png',
+              show=True)
 
     print("Elapsed time: ", time.time() - st)

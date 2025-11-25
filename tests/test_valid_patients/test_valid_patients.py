@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT
-from preprocessing.validate_patients import _validate_patient
+from preprocessing.validate_patients import validate_patient
 
 
 class TestValidPatients(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestValidPatients(unittest.TestCase):
         szr_starts_path = Path(__file__).parent / 'data' / 'seizure_starts.csv'
         szrs_corr = pd.read_csv(szr_starts_path, parse_dates=['start'], index_col=0)
 
-        valid_szrs_comp, szrs_comp, patient_info = _validate_patient(szrs_corr)
+        valid_szrs_comp, szrs_comp, patient_info = validate_patient(szrs_corr)
 
         # load the expected results
         valid_szrs_corr = szrs_corr[szrs_corr['should_be_valid']]
