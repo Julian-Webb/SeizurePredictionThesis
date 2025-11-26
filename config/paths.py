@@ -19,23 +19,23 @@ class PatientDir(type(Path())):
         self = super().__new__(cls, *args, *kwargs)
 
         ### seizure annotations
-        self.szr_anns_dir = self / "seizure_annotations"
-        self.szr_anns_original_dir = self.szr_anns_dir / "seizure_annotations_original"
-        self.combined_anns_file = self.szr_anns_dir / "combined_annotations.csv"
-        self.all_szr_starts_file = self.szr_anns_dir / "seizure_starts_all.csv"
-        self.valid_szr_starts_file = self.szr_anns_dir / "seizure_starts_valid.csv"
+        self.szr_anns_dir = Path(self, "seizure_annotations")
+        self.szr_anns_original_dir = Path(self.szr_anns_dir, "seizure_annotations_original")
+        self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations.csv")
+        self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all.csv")
+        self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid.csv")
 
         ### edf data
         # The directory containing the original edf files for the competition dataset, before they're renamed
-        self.original_edf_dir = self / 'original_edf_data'
+        self.original_edf_dir = Path(self, 'original_edf_data')
         # The directory containing the edf files
-        self.edf_dir = self / 'edf_data'
+        self.edf_dir = Path(self, 'edf_data')
         # The name of the sheet containing the edf file names and their metadata for each patient
-        self.edf_files_sheet = self / 'edf_files.csv'
+        self.edf_files_sheet = Path(self, 'edf_files.csv')
 
         ### Preprocessing
-        self.segments_table = self / 'segments.csv'
-        self.segments_plot = self / 'segments_plot.png'
+        self.segments_table = Path(self, 'segments.csv')
+        self.segments_plot = Path(self, 'segments_plot.png')
 
         return self
 
@@ -54,18 +54,18 @@ class Paths(type(Path())):
         self.competition_dir = self.dataset_dirs[Dataset.competition]
 
         # data cleaning logs
-        self.data_cleaning_logs_dir = self / "data_cleaning_logs"
-        self.problematic_edfs_dir = self.data_cleaning_logs_dir / 'problematic_edf_files'
-        self.problematic_edfs_file = self.problematic_edfs_dir / 'problematic_edf_files.csv'
-        self.remaining_duplicates_file = self.data_cleaning_logs_dir / 'remaining_duplicates.txt'
+        self.data_cleaning_logs_dir = Path(self, "data_cleaning_logs")
+        self.problematic_edfs_dir = Path(self.data_cleaning_logs_dir, 'problematic_edf_files')
+        self.problematic_edfs_file = Path(self.problematic_edfs_dir / 'problematic_edf_files.csv')
+        self.remaining_duplicates_file = Path(self.data_cleaning_logs_dir / 'remaining_duplicates.txt')
 
         # preprocessing
-        self.patient_info_dir = self / "patient_info"
-        self.patient_info_exact_pkl = self.patient_info_dir / "patient_info_exact.pkl"
-        self.patient_info_exact_csv = self.patient_info_dir / "patient_info_exact.csv"
-        self.patient_info_readable_csv = self.patient_info_dir / "patient_info_readable.csv"
+        self.patient_info_dir = Path(self, "patient_info")
+        self.patient_info_exact_pkl = Path(self.patient_info_dir, "patient_info_exact.pkl")
+        self.patient_info_exact_csv = Path(self.patient_info_dir, "patient_info_exact.csv")
+        self.patient_info_readable_csv = Path(self.patient_info_dir, "patient_info_readable.csv")
 
-        self.invalid_patients_dir = self / "invalid_patients"
+        self.invalid_patients_dir = Path(self, "invalid_patients")
         return self
 
     def patient_dirs(self, datasets: Optional[List[Dataset]] = None, include_invalid_ptnts: bool = False) -> List[
