@@ -5,11 +5,11 @@ import pandas as pd
 from pandas import DataFrame
 
 import config.intervals as intervals
-from config.constants import MIN_VALID_SEIZURES_PER_PATIENT
+from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
 from config.paths import PATHS, PatientDir
 
 
-def validate_patient(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
+def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     """:return: valid_szrs, szrs, ptnt_szr_info"""
     # find the time difference of a seizure to the *previous* one
     diff = szrs['start'].diff()
@@ -19,13 +19,14 @@ def validate_patient(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     valid.iloc[0] = True  # the first seizure is always valid
 
     n_valid = valid.value_counts()[True]
-    valid_ptnt = n_valid >= MIN_VALID_SEIZURES_PER_PATIENT
+    enough_valid_szrs = n_valid >= MIN_VALID_SEIZURES_PER_PATIENT
 
     valid_szrs = szrs[valid]
     szrs['valid'] = valid
 
     # noinspection PyTypeChecker
-    return valid_szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': n_valid, 'valid': valid_ptnt}
+    return valid_szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': n_valid,
+                              'enough_valid_seizures': enough_valid_szrs}
 
 
 def find_lead_szrs(szrs: DataFrame):
@@ -55,6 +56,7 @@ def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
     duration_recorded = edfs['duration_hours'].sum()
     duration_not_recorded = timespan - duration_recorded
     ratio_recorded = duration_recorded / timespan
+    valid_ratio_recorded = ratio_recorded >= MIN_RATIO_RECORDED_TO_BE_VALID
 
     exact_info = {'recordings_start': first_start,
                   'recordings_end': last_end,
@@ -62,6 +64,7 @@ def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
                   'duration_recorded': duration_recorded,
                   'duration_not_recorded': duration_not_recorded,
                   'ratio_recorded': ratio_recorded,
+                  'valid_ratio_recorded': valid_ratio_recorded,
                   }
 
     readable_info = {'recordings_start': first_start.strftime('%Y-%m-%d'),
@@ -70,6 +73,7 @@ def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
                      'duration_recorded': f"{duration_recorded.days} days",
                      'duration_not_recorded': f"{duration_not_recorded.days} days",
                      'ratio_recorded': f"{round(ratio_recorded * 100)} %",
+                     'valid_ratio_recorded': valid_ratio_recorded,
                      }
 
     return {'exact': exact_info, 'readable': readable_info}
@@ -91,23 +95,24 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
 
     for ptnt_dir in ptnt_dirs:
         szrs = pd.read_csv(ptnt_dir.all_szr_starts_file, parse_dates=['start'], index_col=0)
-        valid_szrs, szrs, ptnt_szr_info = validate_patient(szrs)
-
+        valid_szrs, szrs, ptnt_szr_info = ptnt_valid_szrs(szrs)
         valid_szrs = find_lead_szrs(valid_szrs)
+
         if 'valid' in valid_szrs.columns:
             valid_szrs.drop(columns=['valid'], inplace=True)
-
         valid_szrs.to_csv(ptnt_dir.valid_szr_starts_file)
         szrs.to_csv(ptnt_dir.all_szr_starts_file)
 
-        time_info = ptnt_timespan_info(ptnt_dir)
-        dataset = ptnt_dir.parent.name
+        ptnt_time_info = ptnt_timespan_info(ptnt_dir)
+
+        ptnt_valid = ptnt_szr_info['enough_valid_seizures'] and ptnt_time_info['exact']['valid_ratio_recorded']
 
         # Add the exact and readable patient info into the patient info dict
+        dataset = ptnt_dir.parent.name
         for k in ptnt_infos.keys():
-            ptnt_infos[k][(dataset, ptnt_dir.name)] = {**ptnt_szr_info, **time_info[k]}
+            ptnt_infos[k][(dataset, ptnt_dir.name)] = {'valid': ptnt_valid, **ptnt_szr_info, **ptnt_time_info[k]}
 
-        if move_invalid_ptnt_dirs and not ptnt_szr_info['valid']:
+        if move_invalid_ptnt_dirs and not ptnt_valid:
             move_ptnt_dir(ptnt_dir)
 
     # Save patient infos
@@ -122,7 +127,6 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
         elif k == 'exact':
             ptnt_info.to_csv(PATHS.patient_info_exact_csv)
             ptnt_info.to_pickle(PATHS.patient_info_exact_pkl)
-
 
 
 if __name__ == '__main__':
