@@ -1,15 +1,8 @@
 import logging
 import math
 import multiprocessing
-import time
 from concurrent.futures import as_completed, ProcessPoolExecutor
-from pathlib import Path
 from typing import Tuple, List
-
-# todo do this locally
-# from pyvirtualdisplay import Display
-# disp = Display(visible=False, size=(800, 600))
-# disp.start()
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +13,12 @@ from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, HORIZON, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config.paths import PatientDir, PATHS
 from utils.edf_utils import time_to_index
+
+
+# todo do this locally
+# from pyvirtualdisplay import Display
+# disp = Display(visible=False, size=(800, 600))
+# disp.start()
 
 
 def load_ptnt_timespan_info(ptnt_dir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
@@ -106,7 +105,8 @@ def make_segs_table(ptnt_dir: PatientDir):
     return segs
 
 
-def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=(30, 8), savepath: str = None,
+def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: str = None, figsize=(30, 8),
+              savepath: str = None,
               show: bool = True):
     types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, HORIZON.label, POSTICTAL.label, INTER_POST.label]
     type_to_y = {t: i for i, t in enumerate(types)}
@@ -120,6 +120,11 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, figsize=
     ax.set_yticklabels(types)
     ax.set_xlabel('Time')
     ax.set_ylabel('Segment type')
+
+    # If title provided, place it below the x-axis and reserve space
+    if title:
+        ax.set_title(title, y=-0.12)  # y in axes fraction; negative moves it below
+        fig.subplots_adjust(bottom=0.18)  # make room at bottom so title is not clipped
 
     # Different types of segments' plotting properties
     type_props = [
@@ -176,7 +181,7 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
     szrs = pd.read_csv(ptnt_dir.valid_szr_starts_file, usecols=['start', 'lead'], parse_dates=['start'])
     edfs = pd.read_csv(ptnt_dir.edf_files_sheet, parse_dates=['start', 'end'])
 
-    plot_segs(segs, szrs, edfs, show=False, savepath=ptnt_dir.segments_plot)
+    plot_segs(segs, szrs, edfs, ptnt_dir.name, show=False, savepath=ptnt_dir.segments_plot)
 
 
 def segment_tables(ptnt_dirs: List[PatientDir]):
