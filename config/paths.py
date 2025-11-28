@@ -36,6 +36,7 @@ class PatientDir(type(Path())):
         ### Preprocessing
         self.segments_table = Path(self, 'segments.csv')
         self.segments_plot = Path(self, 'segments_plot.png')
+        self.train_test_split = Path(self, 'train_test_split.csv')
 
         return self
 
