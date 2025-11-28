@@ -81,7 +81,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
             # Find segs in this interval
             in_iv_mask = (iv_start <= segs['start']) & (segs['start'] < iv_end)
             segs.loc[in_iv_mask, 'type'] = iv.label
-            segs.loc[in_iv_mask, 'lead'] = szr['lead']
+            segs.loc[in_iv_mask, 'lead_szr'] = szr['lead']
             iv_start = iv_end
     segs['type'] = segs['type'].fillna(INTERICTAL.label)
     return segs
@@ -94,7 +94,7 @@ def make_segs_table(ptnt_dir: PatientDir):
     # We floor here because we only want full segments
     n_segs = math.floor(timespan / SEGMENT.exact_dur)
 
-    segs = DataFrame(columns=['start', 'type', 'lead_szr', 'exists', 'file', 'start_index'], index=np.arange(n_segs))
+    segs = DataFrame(columns=['start', 'end', 'type', 'lead_szr', 'exists', 'file', 'start_index'], index=np.arange(n_segs))
 
     # The start is shifted by the duration of a segment per segment
     segs['start'] = first_start + segs.index * SEGMENT.exact_dur
@@ -128,9 +128,9 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: s
 
     # Different types of segments' plotting properties
     type_props = [
-        {'label': 'seg starts lead', 'color': 'blue', 'mask': segs['lead'] == True},
-        {'label': 'seg start non-lead', 'color': 'turquoise', 'mask': segs['lead'] == False},
-        {'label': 'seg starts interictal', 'color': 'grey', 'mask': segs['lead'].isna()},
+        {'label': 'seg starts lead', 'color': 'blue', 'mask': segs['lead_szr'] == True},
+        {'label': 'seg start non-lead', 'color': 'turquoise', 'mask': segs['lead_szr'] == False},
+        {'label': 'seg starts interictal', 'color': 'grey', 'mask': segs['lead_szr'].isna()},
     ]
 
     for exists in [True, False]:
@@ -209,9 +209,11 @@ if __name__ == '__main__':
 
     # segment_tables(PATHS.patient_dirs())
 
-    # ptnt_dir = PatientDir(Path('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1'))
-    # ptnt_dir = PatientDir(Path('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D'))
+    # ptnt_dir = PatientDir('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1')
+    # ptnt_dir = PatientDir('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D')
+    # ptnt_dir = PatientDir('/data/home/webb/UNEEG_data/20250217_UNEEG_Extended/F5TW95P3X')
+    # make_segs_table_and_plot(ptnt_dir, False)
 
     # Just make plots
-    for ptnt_dir in PATHS.patient_dirs():
-        make_segs_table_and_plot(ptnt_dir, True)
+    # for ptnt_dir in PATHS.patient_dirs():
+    #     make_segs_table_and_plot(ptnt_dir, True)
