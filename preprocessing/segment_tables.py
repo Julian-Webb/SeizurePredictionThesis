@@ -195,19 +195,19 @@ def segment_tables(ptnt_dirs: List[PatientDir]):
     logging.info(f"Using {max_workers} max workers")
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in ptnt_dirs}
-    for fut in as_completed(futures):
-        ptnt_dir = futures[fut]
-        try:
-            fut.result()
-            logging.info(f"Finished seg table for : {ptnt_dir.name}")
-        except:
-            logging.info(f"Failed seg table for : {ptnt_dir.name}")
+        for fut in as_completed(futures):
+            ptnt_dir = futures[fut]
+            try:
+                fut.result()
+                logging.info(f"Finished seg table for : {ptnt_dir.name}")
+            except:
+                logging.info(f"Failed seg table for : {ptnt_dir.name}")
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
-    # segment_tables(PATHS.patient_dirs())
+    segment_tables(PATHS.patient_dirs())
 
     # ptnt_dir = PatientDir('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1')
     # ptnt_dir = PatientDir('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D')
