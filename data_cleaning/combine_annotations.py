@@ -18,7 +18,7 @@ def combine_annotation_files(paths: List[Path]):
     # 2. Select rows with a start, marker, and end
     # 3. Add rows with just a start and end (if not duplicated)
     # 4. Add rows with just a marker (if not duplicated)
-    #    * Add the marker to between a start and end, if it's within the interval
+    #    * Add the marker between a start and end, if it's within the interval
     #    * Add the marker as a new row if it's not within any interval
     # 5. Sort by datetime and save
 
