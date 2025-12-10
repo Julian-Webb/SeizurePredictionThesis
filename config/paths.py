@@ -16,7 +16,9 @@ class Dataset(Enum):
 class PatientDir(type(Path())):
     def __new__(cls, *args, **kwargs):
         """Represents the directory and file structure of a patient"""
+        dataset_arg = kwargs.pop('dataset', None)
         self = super().__new__(cls, *args, *kwargs)
+        self.dataset = dataset_arg
 
         ### seizure annotations
         self.szr_anns_dir = Path(self, "seizure_annotations")
@@ -91,7 +93,7 @@ class Paths(type(Path())):
                 if dataset_path.is_dir():
                     for ptnt_dir in dataset_path.iterdir():
                         if ptnt_dir.is_dir():
-                            ptnt_dirs.append(PatientDir(ptnt_dir))
+                            ptnt_dirs.append(PatientDir(ptnt_dir, dataset=dataset))
 
         return ptnt_dirs
 

@@ -7,6 +7,8 @@ from typing import Tuple
 import pandas as pd
 from pathlib import Path
 
+from pandas import DataFrame
+
 from config.paths import PATHS, Dataset
 from data_cleaning.file_correction import clean_mac_files
 
@@ -181,7 +183,7 @@ def detect_start_end(line: str) -> Boundary | None:
 def annotations_txt_to_dataframe(annotation_path: Path):
     # go through the lines (seizures) and store them in a dataframe
     lines = get_seizure_lines_from_file(annotation_path)
-    seizures = pd.DataFrame(columns=['type', 'start', 'single_marker', 'end', 'comment'], dtype=str)
+    seizures = DataFrame(columns=['type', 'start', 'single_marker', 'end', 'comment'], dtype=str)
 
     # Check if it contains no seizures
     if not lines or lines[0].lower() in NO_SEIZURES_STRINGS:
@@ -212,50 +214,73 @@ def annotations_txt_to_dataframe(annotation_path: Path):
     return seizures
 
 
-def convert_uneeg_extended_and_for_mayo():
+def _localize_annotations_dataframe(anns: DataFrame, is_competition_ptnt: bool, datetime_cols) -> DataFrame:
+    """
+    Localizes the annotations Timestamps.
+    :return: The localized annotations
+    """
+    tz = 'Europe/London' if is_competition_ptnt else 'Europe/Berlin'
+
+    for col in datetime_cols:
+        anns[col] = pd.to_datetime(anns[col])
+        if anns[col].notna().any():  # Check if there are any values in column
+            # NOTE: ambiguous could be changed to 'infer' if necessary
+            anns[col] = anns[col].dt.tz_localize(tz, ambiguous='raise')
+
+    return anns
+
+
+def _save_annotations(anns: DataFrame, path: Path):
+    anns.to_csv(path.with_suffix('.csv'), index=False)
+    anns.to_pickle(path.with_suffix('.pkl'))
+
+
+def convert_uneeg_extended_and_for_mayo(delete_txt_anns: bool = False):
     for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
         logging.info(f'--- {patient_dir.name} ---')
 
         # find annotation txt files
         txt_anns = [*patient_dir.szr_anns_original_dir.glob('*.txt')]
         for txt_annotation in txt_anns:
-            seizures = annotations_txt_to_dataframe(txt_annotation)
-            save_path = patient_dir.szr_anns_original_dir / f'{txt_annotation.stem}.csv'
-            seizures.to_csv(save_path, index=False)
-            # txt_annotation.unlink()
+            anns_df = annotations_txt_to_dataframe(txt_annotation)
+            anns_df = _localize_annotations_dataframe(anns_df, is_competition_ptnt=False,
+                                                      datetime_cols=['start', 'single_marker', 'end'])
+            _save_annotations(anns_df, txt_annotation)
+
+            if delete_txt_anns:
+                txt_annotation.unlink()
 
 
 def convert_competition_data():
     sheet_path = PATHS.dataset_dirs[Dataset.competition] / "SeizureDatesTraining.xls"
-    for patient_dir in PATHS.patient_dirs([Dataset.competition]):
-        patient = patient_dir.name
-        logging.info(f'--- {patient} ---')
+    for ptnt_dir in PATHS.patient_dirs([Dataset.competition]):
+        ptnt = ptnt_dir.name
+        logging.info(f'--- {ptnt} ---')
         # make a folder for the annotations
-        patient_dir.szr_anns_dir.mkdir(exist_ok=True)
+        ptnt_dir.szr_anns_dir.mkdir(exist_ok=True)
 
         # Retrieve the annotations xls file from the joined annotations file
         if sheet_path.exists():
-            sheet = pd.read_excel(sheet_path, sheet_name=patient)
+            sheet = pd.read_excel(sheet_path, sheet_name=ptnt)
         else:
             logging.warning(f"{sheet_path} not found — could not split sheets")
             return
 
-        # save seizure onset data
-        seizures = pd.DataFrame(columns=['start'], dtype=str)
-        seizures['start'] = sheet['onset']
-        # Sort by 'start' column and get fresh numeric index
-        seizures = seizures.sort_values('start').reset_index(drop=True)
-        seizures.to_csv(patient_dir.all_szr_starts_file, index=True)
+        anns_df = DataFrame()
+        anns_df['start'] = pd.to_datetime(sheet['onset'])
+        anns_df = _localize_annotations_dataframe(anns_df, is_competition_ptnt=True, datetime_cols=['start'])
 
-        # Save the start of recording and approximate day span data
-        additional_info = sheet[['Day Start', 'Days Span approx.']]
-        additional_info.to_csv(patient_dir.szr_anns_dir / "Time Span Info.csv", index=False)
+        assert anns_df['start'].is_monotonic_increasing, f"Seizures are not in order for patient {ptnt}"
+        # Sort by 'start' column and get fresh numeric index
+        # anns_df = anns_df.sort_values('start').reset_index(drop=True)
+
+        _save_annotations(anns_df, ptnt_dir.all_szr_starts_file)
 
     # delete the original sheet
     sheet_path.unlink()
 
 
-def annotations_to_csv():
+def convert_txt_annotations():
     convert_uneeg_extended_and_for_mayo()
     convert_competition_data()
 
@@ -263,4 +288,4 @@ def annotations_to_csv():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     clean_mac_files(PATHS.base_dir)
-    annotations_to_csv()
+    convert_txt_annotations()

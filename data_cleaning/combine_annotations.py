@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterable, List
 
 import pandas as pd
+from pandas import NaT
 
 from config.paths import PATHS
 from data_cleaning.file_correction import clean_mac_files
@@ -23,28 +24,29 @@ def combine_annotation_files(paths: List[Path]):
     # 5. Sort by datetime and save
 
     # get seizure dataframes from all files
-    szr_dfs = [pd.read_csv(file_path).fillna('') for file_path in paths]
+    szr_dfs = [pd.read_pickle(file_path) for file_path in paths]
     szr_dfs = pd.concat(szr_dfs, ignore_index=True)
 
+    # NOTE: NaT = Not a Time
     # rows with start, marker, and end
     start_marker_end_rows = szr_dfs[(
-            (szr_dfs['start'] != '') &
-            (szr_dfs['single_marker'] != '') &
-            (szr_dfs['end'] != '')
+            (szr_dfs['start'] != NaT) &
+            (szr_dfs['single_marker'] != NaT) &
+            (szr_dfs['end'] != NaT)
     )]
 
     # rows with just start and end
     start_end_rows = szr_dfs[(
-            (szr_dfs['start'] != '') &
-            (szr_dfs['single_marker'] == '') &
-            (szr_dfs['end'] != '')
+            (szr_dfs['start'] != NaT) &
+            (szr_dfs['single_marker'] == NaT) &
+            (szr_dfs['end'] != NaT)
     )]
 
     # rows with just a marker
     marker_rows = szr_dfs[(
-            (szr_dfs['start'] == '') &
-            (szr_dfs['single_marker'] != '') &
-            (szr_dfs['end'] == '')
+            (szr_dfs['start'] == NaT) &
+            (szr_dfs['single_marker'] != NaT) &
+            (szr_dfs['end'] == NaT)
     )]
 
     seizures = start_marker_end_rows.copy(deep=True)
@@ -82,10 +84,10 @@ def combine_annotation_files(paths: List[Path]):
             # If it's within an interval, we check if there's already a single_marker.
             idx = match_indices[0]
             existing_marker = seizures.loc[idx, 'single_marker']
-            if existing_marker == '':
+            if existing_marker == NaT:
                 # If there's none, we add the marker
                 seizures.loc[idx, 'single_marker'] = row['single_marker']
-            elif existing_marker != '':
+            elif existing_marker != NaT:
                 # If there is one, we assert it's the same
                 assert existing_marker == row[
                     'single_marker'], f"Different markers: {existing_marker} and {row['single_marker']}"
@@ -97,7 +99,7 @@ def combine_annotation_files(paths: List[Path]):
     seizures = pd.concat([seizures, marker_rows.loc[rows_to_add]])
 
     # --- sort by datetime
-    has_single_marker = seizures['single_marker'] != ''
+    has_single_marker = seizures['single_marker'] != NaT
     # Select the single marker if there is one
     seizures.loc[has_single_marker, 'sort_time'] = seizures.loc[has_single_marker, 'single_marker']
     # Select the start otherwise
@@ -112,10 +114,12 @@ def combine_annotation_files(paths: List[Path]):
 
 
 def combine_annotations(patient_dirs: Iterable[PatientDir]):
-    for patient_dir in patient_dirs:
-        annotation_files = [file for file in patient_dir.szr_anns_original_dir.iterdir() if
-                            file.suffix == '.csv' and not 'all automatic detections' in file.name]
-        combine_annotation_files(annotation_files).to_csv(patient_dir.combined_anns_file, index=False)
+    for ptnt_dir in patient_dirs:
+        ann_files = [file for file in ptnt_dir.szr_anns_original_dir.iterdir() if
+                            file.suffix == '.pkl' and not 'all automatic detections' in file.name]
+        combined = combine_annotation_files(ann_files)
+        combined.to_csv(ptnt_dir.combined_anns_file.with_suffix('.csv'), index=False)
+        combined.to_pickle(ptnt_dir.combined_anns_file.with_suffix('.pkl'))
 
 
 if __name__ == '__main__':

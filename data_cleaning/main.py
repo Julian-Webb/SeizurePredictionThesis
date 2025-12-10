@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from config.paths import PATHS, Dataset
-from data_cleaning.annotations_to_csv import annotations_to_csv
+from data_cleaning.convert_txt_annotations import convert_txt_annotations
 from data_cleaning.combine_annotations import combine_annotations
 from data_cleaning.file_correction import file_correction, run_fdupes
 from data_cleaning.rename_and_move_edf_data import rename_and_move_edf_data
@@ -30,7 +30,7 @@ def data_cleaning(ask_confirm: bool = True):
 
     logging.info('========== annotations_to_csv ==========')
     with FunctionTimer("annotations_to_csv"):
-        annotations_to_csv()
+        convert_txt_annotations()
 
     logging.info('========== combine_annotations =============')
     with FunctionTimer("combine_annotations"):
@@ -38,10 +38,10 @@ def data_cleaning(ask_confirm: bool = True):
 
     logging.info('========== rename_and_move_edf_data ==========')
     with FunctionTimer("rename_and_move_edf_data"):
-        problematic_edfs = rename_and_move_edf_data(PATHS.problematic_edfs_dir)
+        problematic_edfs = rename_and_move_edf_data(PATHS.patient_dirs())
     if not problematic_edfs.empty:
-        PATHS.problematic_edfs_dir.mkdir(exist_ok=True)
-        problematic_edfs.to_csv(PATHS.problematic_edfs_file, index=False)
+        PATHS.problematic_edfs_dir.mkdir(exist_ok=True, parents=True)
+        problematic_edfs.to_csv(PATHS.problematic_edfs_file.with_suffix('.csv'), index=False)
 
     with FunctionTimer("run_fdupes"):
         duplicate_groups = run_fdupes(PATHS.base_dir)
