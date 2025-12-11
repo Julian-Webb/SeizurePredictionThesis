@@ -273,7 +273,7 @@ def convert_competition_data():
         save_annotations(anns_df, ptnt_dir.all_szr_starts_file)
 
     # delete the original sheet
-    sheet_path.unlink()
+    sheet_path.unlink(missing_ok=True)
 
 
 def convert_txt_annotations():

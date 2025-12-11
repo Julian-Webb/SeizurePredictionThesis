@@ -63,8 +63,8 @@ def move_annotation_files():
     Seizure annotations are moved into the appropriate folder for all patients
     """
     # make the seizure_annotations dir for patients in for_mayo and uneeg_extended
-    for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
-        patient_dir.szr_anns_dir.mkdir(exist_ok=True)
+    for ptnt_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
+        ptnt_dir.szr_anns_dir.mkdir(exist_ok=True)
 
     old_anns_dirs = [
         Path('A4RW34Z5B/annotations'),
@@ -79,8 +79,8 @@ def move_annotation_files():
 
     # rename the folder for uneeg_extended
     for folder in old_anns_dirs:
-        patient_dir = PatientDir(folder.parent)
-        new_name = patient_dir.szr_anns_original_dir
+        ptnt_dir = PatientDir(folder.parent)
+        new_name = ptnt_dir.szr_anns_original_dir
         if folder != new_name:
             try:
                 folder.rename(new_name)
@@ -90,12 +90,15 @@ def move_annotation_files():
 
     # For patient D63Q51K2N in uneeg_extended, there's no annotations folder, just like with the for_mayo patients
     # For for_mayo, create an original annotations folder and move the file into it.
-    for patient_dir in [*PATHS.for_mayo_dir.iterdir(), PATHS.uneeg_extended_dir / 'D63Q51K2N']:
-        patient_dir = PatientDir(patient_dir)
-        patient_dir.szr_anns_original_dir.mkdir(exist_ok=True)
-        for annotation in patient_dir.glob('*.txt'):
+    d63 = PATHS.uneeg_extended_dir / 'D63Q51K2N'
+    no_ann_ptnt_dirs = PATHS.patient_dirs([Dataset.for_mayo]) + ([d63] if d63.exists() else [])
+
+    for ptnt_dir in no_ann_ptnt_dirs:
+        ptnt_dir = PatientDir(ptnt_dir)
+        ptnt_dir.szr_anns_original_dir.mkdir(exist_ok=True)
+        for annotation in ptnt_dir.glob('*.txt'):
             try:
-                annotation.rename(patient_dir.szr_anns_original_dir / annotation.name)
+                annotation.rename(ptnt_dir.szr_anns_original_dir / annotation.name)
             except FileNotFoundError:
                 logging.warning(f"Could not find {annotation} to move.")
 
@@ -117,12 +120,12 @@ def handle_competition_data():
 
     # make folders for the patients
     for i in (1, 2, 3):
-        patient = f'P{i}'
-        patient_dir = PatientDir(competition_dir / patient)
-        patient_dir.mkdir(exist_ok=True)
-        # move their edf data into the patient folder
         old = competition_dir / f'TrainingP{i}'
         if old.exists():
+            patient = f'P{i}'
+            patient_dir = PatientDir(competition_dir / patient)
+            patient_dir.mkdir(exist_ok=True)
+            # move their edf data into the patient folder
             new = patient_dir.original_edf_dir
             old.rename(new)
 
@@ -300,10 +303,15 @@ def remove_duplicates():
     return removed_files
 
 
-def remove_additional_duplicates() -> list[Path]:
+# noinspection PyPep8Naming
+def remove_additional_duplicates_for_M39K4B3C() -> list[Path]:
     """Remove duplicates that were not caught by fdupes. For patient M39K4B3C, these are files that from Visit V5b that are also copied into V5d or V5e
     :return: a list of removed duplicate files."""
-    patient_dir = PATHS.for_mayo_dir / 'M39K4B3C'
+    ptnt_dir = PATHS.for_mayo_dir / 'M39K4B3C'
+    if not ptnt_dir.exists():
+        logging.error(f"M39K4B3C directory doesn't exist: {ptnt_dir}")
+        return []
+
     removed_files = []
 
     # The bounds of visit 5b:
@@ -311,9 +319,9 @@ def remove_additional_duplicates() -> list[Path]:
     v5a_end = datetime.strptime('2021-06-15 11:00:00.015300', time_format)
     v5c_start = datetime.strptime('2021-07-15 10:39:44.0', time_format)
 
-    v5b_file_names = [edf_path.name for edf_path in (patient_dir / 'V5b').iterdir()]
-    v5d_files = patient_dir.glob('V5d/*.edf')
-    v5e_files = patient_dir.glob('V5e/*.edf')
+    v5b_file_names = [edf_path.name for edf_path in (ptnt_dir / 'V5b').iterdir()]
+    v5d_files = ptnt_dir.glob('V5d/*.edf')
+    v5e_files = ptnt_dir.glob('V5e/*.edf')
     potential_duplicates = itertools.chain(v5d_files, v5e_files)
 
     # loop through all potential duplicates and see if they are duplicates
@@ -361,7 +369,7 @@ def file_correction() -> list[Path]:
 
     logging.info('Removing duplicates...')
     removed_duplicates = remove_duplicates()
-    removed_duplicates += remove_additional_duplicates()
+    removed_duplicates += remove_additional_duplicates_for_M39K4B3C()
 
     logging.info(f"Removed {len(removed_duplicates)} duplicate files")
     return removed_duplicates
