@@ -23,9 +23,9 @@ class PatientDir(type(Path())):
         ### seizure annotations
         self.szr_anns_dir = Path(self, "seizure_annotations")
         self.szr_anns_original_dir = Path(self.szr_anns_dir, "seizure_annotations_original")
-        self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations.csv")
-        self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all.csv")
-        self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid.csv")
+        self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations")
+        self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all")
+        self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid")
 
         ### edf data
         # The directory containing the original edf files for the competition dataset, before they're renamed
@@ -33,12 +33,12 @@ class PatientDir(type(Path())):
         # The directory containing the edf files
         self.edf_dir = Path(self, 'edf_data')
         # The name of the sheet containing the edf file names and their metadata for each patient
-        self.edf_files_sheet = Path(self, 'edf_files.csv')
+        self.edf_files_sheet = Path(self, 'edf_files')
 
         ### Preprocessing
-        self.segments_table = Path(self, 'segments.csv')
+        self.segments_table = Path(self, 'segments')
         self.segments_plot = Path(self, 'segments_plot.png')
-        self.train_test_split = Path(self, 'train_test_split.csv')
+        self.train_test_split = Path(self, 'train_test_split')
 
         return self
 
@@ -64,9 +64,8 @@ class Paths(type(Path())):
 
         # preprocessing
         self.patient_info_dir = Path(self, "patient_info")
-        self.patient_info_exact_pkl = Path(self.patient_info_dir, "patient_info_exact.pkl")
-        self.patient_info_exact_csv = Path(self.patient_info_dir, "patient_info_exact.csv")
-        self.patient_info_readable_csv = Path(self.patient_info_dir, "patient_info_readable.csv")
+        self.patient_info_exact = Path(self.patient_info_dir, "patient_info_exact")
+        self.patient_info_readable = Path(self.patient_info_dir, "patient_info_readable")
 
         self.invalid_patients_dir = Path(self, "invalid_patients")
         return self

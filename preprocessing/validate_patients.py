@@ -7,6 +7,7 @@ from pandas import DataFrame
 import config.intervals as intervals
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
 from config.paths import PATHS, PatientDir
+from utils.annotations import save_annotations
 
 
 def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
@@ -47,8 +48,7 @@ def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
     :param ptnt_dir:
     :return: exact information, human-readable information
     """
-    edfs = pd.read_csv(ptnt_dir.edf_files_sheet, parse_dates=['start', 'end'],
-                       converters={'duration_hours': pd.to_timedelta})
+    edfs = pd.read_pickle(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
     first_start = edfs.iloc[0]['start']
     last_end = edfs.iloc[-1]['end']
     timespan = last_end - first_start
@@ -94,14 +94,14 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
     ptnt_infos = {'exact': {}, 'readable': {}}
 
     for ptnt_dir in ptnt_dirs:
-        szrs = pd.read_csv(ptnt_dir.all_szr_starts_file, parse_dates=['start'], index_col=0)
+        szrs = pd.read_pickle(ptnt_dir.all_szr_starts_file.with_suffix('.pkl'))
         valid_szrs, szrs, ptnt_szr_info = ptnt_valid_szrs(szrs)
         valid_szrs = find_lead_szrs(valid_szrs)
 
         if 'valid' in valid_szrs.columns:
             valid_szrs.drop(columns=['valid'], inplace=True)
-        valid_szrs.to_csv(ptnt_dir.valid_szr_starts_file)
-        szrs.to_csv(ptnt_dir.all_szr_starts_file)
+        save_annotations(valid_szrs, ptnt_dir.valid_szr_starts_file)
+        save_annotations(szrs, ptnt_dir.all_szr_starts_file)
 
         ptnt_time_info = ptnt_timespan_info(ptnt_dir)
 
@@ -123,10 +123,10 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
         ptnt_info = DataFrame(ptnt_info.values(), index=index)
         ptnt_info.sort_values(by=['valid', 'dataset', 'patient'], inplace=True, ascending=[False, True, True])
         if k == 'readable':
-            ptnt_info.to_csv(PATHS.patient_info_readable_csv)
+            ptnt_info.to_csv(PATHS.patient_info_readable.with_suffix('.csv'))
         elif k == 'exact':
-            ptnt_info.to_csv(PATHS.patient_info_exact_csv)
-            ptnt_info.to_pickle(PATHS.patient_info_exact_pkl)
+            ptnt_info.to_csv(PATHS.patient_info_exact.with_suffix('.pkl'))
+            ptnt_info.to_pickle(PATHS.patient_info_exact.with_suffix('.pkl'))
 
 
 if __name__ == '__main__':

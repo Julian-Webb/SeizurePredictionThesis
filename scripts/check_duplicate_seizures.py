@@ -6,8 +6,8 @@ import pandas as pd
 from config.paths import PATHS
 
 
-def check_file_for_duplicates(annotation_path: Path, column_names: List[str], patient: str):
-    seizures = pd.read_csv(annotation_path)
+def check_file_for_duplicates(ann_path_pkl: Path, column_names: List[str], patient: str):
+    seizures = pd.read_pickle(ann_path_pkl)
 
     # check for duplicates
     seizures.sort_values(column_names, inplace=True)  # make sure it's sorted
@@ -23,7 +23,8 @@ def check_file_for_duplicates(annotation_path: Path, column_names: List[str], pa
 def check_duplicate_seizures():
     """Check seizure annotation files for duplicate seizures."""
     for patient_dir in PATHS.patient_dirs():
-        check_file_for_duplicates(patient_dir.valid_szr_starts_file, column_names=['start'], patient=patient_dir.name)
+        check_file_for_duplicates(patient_dir.valid_szr_starts_file.with_suffix('.pkl'), column_names=['start'],
+                                  patient=patient_dir.name)
 
 
 if __name__ == '__main__':

@@ -79,7 +79,7 @@ class Features:
 
 def extract_ptnt_features(ptnt_dir: PatientDir):
     """Extract the features for all existing segments of a patient."""
-    segs = pd.read_csv(ptnt_dir.segments_table)
+    segs = pd.read_pickle(ptnt_dir.segments_table.with_suffix('.pkl'))
     segs = segs[segs['exists']]
 
     # Iterate through the existing segments based on their file

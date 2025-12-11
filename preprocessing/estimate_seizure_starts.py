@@ -12,13 +12,14 @@ from typing import Tuple
 import pandas as pd
 import config.constants
 from config.paths import PATHS, Dataset, PatientDir
+from utils.annotations import save_annotations
 
 
 def _load_all_seizures(ptnt_ann_files: dict[Path, Path]) -> pd.DataFrame:
     """Load all seizures from for_mayo and uneeg_extended."""
     all_seizures = pd.DataFrame()
     for ptnt_dir, ann_file in ptnt_ann_files.items():
-        seizures = pd.read_csv(ann_file, parse_dates=['start', 'single_marker', 'end'])
+        seizures = pd.read_pickle(ann_file)
         seizures['patient'] = ptnt_dir.name
         logging.debug(f'{ptnt_dir.name}: {seizures.shape[0]} seizures.')
         all_seizures = pd.concat([all_seizures, seizures])
@@ -43,7 +44,7 @@ def _single_marker_start_differences(ptnt_ann_files: dict[Path, Path]) -> Tuple[
 
 def _estimate_seizure_starts_for_patient(single_marker_to_start_shift: pd.Timedelta, ptnt_dir: PatientDir,
                                          ptnt_ann_file: Path):
-    seizures = pd.read_csv(ptnt_ann_file, parse_dates=['start', 'single_marker', 'end'])
+    seizures = pd.read_pickle(ptnt_ann_file)
     # find seizures where there's no start
     mask = seizures['start'].isna()
 
@@ -53,7 +54,7 @@ def _estimate_seizure_starts_for_patient(single_marker_to_start_shift: pd.Timede
 
     # save the updated dataframe
     seizures = seizures.sort_values(by='start').reset_index(drop=True)
-    seizures.to_csv(ptnt_dir.all_szr_starts_file)
+    save_annotations(seizures, ptnt_dir.all_szr_starts_file)
 
     logging.debug(f'{ptnt_dir.name} starts saved.')
 
@@ -62,12 +63,12 @@ def estimate_seizure_starts():
     """Create a new file with estimated starts for seizures for each patient in for_mayo and uneeg_extended.
     The estimates are based on the mean difference between the start and single marker, where present from reviewers."""
 
-    # Create annotation file paths
+    # Create file paths for existing annotations
     ptnt_ann_files = {}
     for ptnt_dir in PATHS.patient_dirs([Dataset.for_mayo], include_invalid_ptnts=True):
-        ptnt_ann_files[ptnt_dir] = ptnt_dir.szr_anns_original_dir / f'{ptnt_dir.name}.csv'
+        ptnt_ann_files[ptnt_dir] = ptnt_dir.szr_anns_original_dir / f'{ptnt_dir.name}.pkl'
     for ptnt_dir in PATHS.patient_dirs([Dataset.uneeg_extended], include_invalid_ptnts=True):
-        ptnt_ann_files[ptnt_dir] = ptnt_dir.combined_anns_file
+        ptnt_ann_files[ptnt_dir] = ptnt_dir.combined_anns_file.with_suffix('.pkl')
 
     mean, std, n_ms_seizures = _single_marker_start_differences(ptnt_ann_files)
     logging.info('Difference between single_marker and start:')

@@ -33,16 +33,17 @@ def _compute_ptnt_split(recordings_start: Timestamp, timespan: Timedelta, seg_st
 def find_ptnt_split(ptnt_dir: PatientDir, all_ptnts_info: DataFrame):
     dataset = ptnt_dir.parent.name
     ptnt_info = all_ptnts_info.loc[(dataset, ptnt_dir.name)]
-    segs = pd.read_csv(ptnt_dir.segments_table, usecols=['start'], parse_dates=['start'])
+    segs = pd.read_pickle(ptnt_dir.segments_table.with_suffix('.pkl'))
 
     # noinspection PyTypeChecker
     train_end = _compute_ptnt_split(ptnt_info['recordings_start'], ptnt_info['timespan'], segs['start'])
     train_end = Series(train_end, name='train_end')
-    train_end.to_csv(ptnt_dir.train_test_split)
+    train_end.to_csv(ptnt_dir.train_test_split.with_suffix('.csv'))
+    train_end.to_pickle(ptnt_dir.train_test_split.with_suffix('.pkl'))
 
 
 def find_ptnt_splits(ptnt_dirs: List[PatientDir]):
-    all_ptnts_info = pd.read_pickle(PATHS.patient_info_exact_pkl)
+    all_ptnts_info = pd.read_pickle(PATHS.patient_info_exact.with_suffix('.pkl'))
 
     # Serial Processing
     # for ptnt_dir in ptnt_dirs:

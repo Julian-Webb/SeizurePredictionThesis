@@ -11,6 +11,7 @@ from pandas import DataFrame
 
 from config.paths import PATHS, Dataset
 from data_cleaning.file_correction import clean_mac_files
+from utils.annotations import save_annotations
 
 # The strings that indicate that there are no seizures in a file
 NO_SEIZURES_STRINGS = ['no seizures', 'no seizure']
@@ -230,11 +231,6 @@ def _localize_annotations_dataframe(anns: DataFrame, is_competition_ptnt: bool, 
     return anns
 
 
-def _save_annotations(anns: DataFrame, path: Path):
-    anns.to_csv(path.with_suffix('.csv'), index=False)
-    anns.to_pickle(path.with_suffix('.pkl'))
-
-
 def convert_uneeg_extended_and_for_mayo(delete_txt_anns: bool = False):
     for patient_dir in PATHS.patient_dirs([Dataset.for_mayo, Dataset.uneeg_extended]):
         logging.info(f'--- {patient_dir.name} ---')
@@ -245,7 +241,7 @@ def convert_uneeg_extended_and_for_mayo(delete_txt_anns: bool = False):
             anns_df = annotations_txt_to_dataframe(txt_annotation)
             anns_df = _localize_annotations_dataframe(anns_df, is_competition_ptnt=False,
                                                       datetime_cols=['start', 'single_marker', 'end'])
-            _save_annotations(anns_df, txt_annotation)
+            save_annotations(anns_df, txt_annotation)
 
             if delete_txt_anns:
                 txt_annotation.unlink()
@@ -274,7 +270,7 @@ def convert_competition_data():
         # Sort by 'start' column and get fresh numeric index
         # anns_df = anns_df.sort_values('start').reset_index(drop=True)
 
-        _save_annotations(anns_df, ptnt_dir.all_szr_starts_file)
+        save_annotations(anns_df, ptnt_dir.all_szr_starts_file)
 
     # delete the original sheet
     sheet_path.unlink()
