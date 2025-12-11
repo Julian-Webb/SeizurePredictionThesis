@@ -7,7 +7,7 @@ from pandas import DataFrame
 import config.intervals as intervals
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
 from config.paths import PATHS, PatientDir
-from utils.annotations import save_annotations
+from utils.io import save_annotations, pickle_path
 
 
 def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
@@ -48,7 +48,7 @@ def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
     :param ptnt_dir:
     :return: exact information, human-readable information
     """
-    edfs = pd.read_pickle(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
+    edfs = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
     first_start = edfs.iloc[0]['start']
     last_end = edfs.iloc[-1]['end']
     timespan = last_end - first_start
@@ -94,7 +94,7 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
     ptnt_infos = {'exact': {}, 'readable': {}}
 
     for ptnt_dir in ptnt_dirs:
-        szrs = pd.read_pickle(ptnt_dir.all_szr_starts_file.with_suffix('.pkl'))
+        szrs = pd.read_pickle(pickle_path(ptnt_dir.all_szr_starts_file))
         valid_szrs, szrs, ptnt_szr_info = ptnt_valid_szrs(szrs)
         valid_szrs = find_lead_szrs(valid_szrs)
 
@@ -125,8 +125,8 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
         if k == 'readable':
             ptnt_info.to_csv(PATHS.patient_info_readable.with_suffix('.csv'))
         elif k == 'exact':
-            ptnt_info.to_csv(PATHS.patient_info_exact.with_suffix('.pkl'))
-            ptnt_info.to_pickle(PATHS.patient_info_exact.with_suffix('.pkl'))
+            ptnt_info.to_csv(PATHS.patient_info_exact.with_suffix('.csv'))
+            ptnt_info.to_pickle(pickle_path(PATHS.patient_info_exact))
 
 
 if __name__ == '__main__':

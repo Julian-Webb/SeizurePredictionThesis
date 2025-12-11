@@ -14,6 +14,8 @@ from config.paths import PatientDir
 
 from statsmodels.tsa import stattools
 
+from utils.io import pickle_path
+
 
 def autocorrelation_function_width(sig: np.ndarray) -> int:
     """Computes the ACFW (autocorrelation function width) for a signal.
@@ -79,7 +81,7 @@ class Features:
 
 def extract_ptnt_features(ptnt_dir: PatientDir):
     """Extract the features for all existing segments of a patient."""
-    segs = pd.read_pickle(ptnt_dir.segments_table.with_suffix('.pkl'))
+    segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
     segs = segs[segs['exists']]
 
     # Iterate through the existing segments based on their file

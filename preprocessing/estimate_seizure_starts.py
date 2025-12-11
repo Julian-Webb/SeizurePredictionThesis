@@ -12,7 +12,7 @@ from typing import Tuple
 import pandas as pd
 import config.constants
 from config.paths import PATHS, Dataset, PatientDir
-from utils.annotations import save_annotations
+from utils.io import save_annotations, pickle_path
 
 
 def _load_all_seizures(ptnt_ann_files: dict[Path, Path]) -> pd.DataFrame:
@@ -66,9 +66,9 @@ def estimate_seizure_starts():
     # Create file paths for existing annotations
     ptnt_ann_files = {}
     for ptnt_dir in PATHS.patient_dirs([Dataset.for_mayo], include_invalid_ptnts=True):
-        ptnt_ann_files[ptnt_dir] = ptnt_dir.szr_anns_original_dir / f'{ptnt_dir.name}.pkl'
+        ptnt_ann_files[ptnt_dir] = pickle_path(ptnt_dir.szr_anns_original_dir / ptnt_dir.name)
     for ptnt_dir in PATHS.patient_dirs([Dataset.uneeg_extended], include_invalid_ptnts=True):
-        ptnt_ann_files[ptnt_dir] = ptnt_dir.combined_anns_file.with_suffix('.pkl')
+        ptnt_ann_files[ptnt_dir] = pickle_path(ptnt_dir.combined_anns_file)
 
     mean, std, n_ms_seizures = _single_marker_start_differences(ptnt_ann_files)
     logging.info('Difference between single_marker and start:')

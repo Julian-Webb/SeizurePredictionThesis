@@ -9,6 +9,7 @@ from pandas import NaT
 from config.paths import PATHS
 from data_cleaning.file_correction import clean_mac_files
 from config.paths import PatientDir, Dataset
+from utils.io import pickle_path
 
 
 def combine_annotation_files(paths: List[Path]):
@@ -119,7 +120,7 @@ def combine_annotations(patient_dirs: Iterable[PatientDir]):
                             file.suffix == '.pkl' and not 'all automatic detections' in file.name]
         combined = combine_annotation_files(ann_files)
         combined.to_csv(ptnt_dir.combined_anns_file.with_suffix('.csv'), index=False)
-        combined.to_pickle(ptnt_dir.combined_anns_file.with_suffix('.pkl'))
+        combined.to_pickle(pickle_path(ptnt_dir.combined_anns_file))
 
 
 if __name__ == '__main__':

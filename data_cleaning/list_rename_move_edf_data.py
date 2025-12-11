@@ -13,6 +13,7 @@ from pytz import AmbiguousTimeError
 from config.paths import PATHS
 from config.paths import PatientDir
 from data_cleaning.file_correction import clean_mac_files
+from utils.io import pickle_path
 
 VISIT_FOLDER_PATTERN = re.compile(r"^[vV]\d")
 
@@ -199,7 +200,7 @@ def process_ptnt(ptnt_dir: PatientDir):
     edfs = edfs[['old_file_name', 'file_name', 'start', 'end', 'duration', 'visit']]
     edfs.to_csv(ptnt_dir.edf_files_sheet.with_suffix('.csv'), index=False)
     # noinspection PyCallingNonCallable
-    edfs.to_pkl(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
+    edfs.to_pickle(pickle_path(ptnt_dir.edf_files_sheet))
     return problematic_edfs
 
 

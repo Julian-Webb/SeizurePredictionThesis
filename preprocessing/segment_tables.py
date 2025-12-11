@@ -13,6 +13,7 @@ from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, HORIZON, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config.paths import PatientDir, PATHS
 from utils.edf_utils import time_to_index
+from utils.io import pickle_path
 
 
 # todo do this locally
@@ -25,7 +26,7 @@ def load_ptnt_timespan_info(ptnt_dir: PatientDir) -> Tuple[Timestamp, Timestamp,
     """
     :return: start of the recordings, end of the recordings, timespan
     """
-    ptnts_info = pd.read_pickle(PATHS.patient_info_exact.with_suffix('.pkl'))
+    ptnts_info = pd.read_pickle(pickle_path(PATHS.patient_info_exact))
     dataset = ptnt_dir.parent.name
     ptnt = ptnt_dir.name
     ptnt_info = ptnts_info.loc[dataset, ptnt]
@@ -88,7 +89,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
 
 
 def make_segs_table(ptnt_dir: PatientDir):
-    edf_files = pd.read_pickle(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
+    edf_files = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
     first_start, last_end, timespan = load_ptnt_timespan_info(ptnt_dir)
 
     # We floor here because we only want full segments
@@ -101,7 +102,7 @@ def make_segs_table(ptnt_dir: PatientDir):
     segs['start'] = first_start + segs.index * SEGMENT.exact_dur
     segs['end'] = segs['start'] + SEGMENT.exact_dur
     segs = find_existing_segs(edf_files, segs)
-    valid_szrs = pd.read_pickle(ptnt_dir.valid_szr_starts_file.with_suffix('.pkl'))
+    valid_szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))
     segs = find_seg_type(segs, valid_szrs)
     return segs
 
@@ -172,17 +173,17 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
     # Make segs table and save it to csv
     logging.info(f"Processing {ptnt_dir.name}")
     if from_preexisting_segs:
-        segs = pd.read_pickle(ptnt_dir.segments_table.with_suffix('.pkl'))
+        segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
 
     else:
         segs = make_segs_table(ptnt_dir)
         segs_ = segs.drop(columns=['end'])
         segs_.to_csv(ptnt_dir.segments_table.with_suffix('.csv'), index=False)
-        segs_.to_pickle(ptnt_dir.segments_table.with_suffix('.pkl'))
+        segs_.to_pickle(pickle_path(ptnt_dir.segments_table))
 
     # Make the plot
-    szrs = pd.read_pickle(ptnt_dir.valid_szr_starts_file.with_suffix('.pkl'))
-    edfs = pd.read_pickle(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
+    szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))
+    edfs = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
 
     plot_segs(segs, szrs, edfs, ptnt_dir.name, show=False, savepath=ptnt_dir.segments_plot)
 

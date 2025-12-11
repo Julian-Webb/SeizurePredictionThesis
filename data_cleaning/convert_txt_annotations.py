@@ -11,7 +11,7 @@ from pandas import DataFrame
 
 from config.paths import PATHS, Dataset
 from data_cleaning.file_correction import clean_mac_files
-from utils.annotations import save_annotations
+from utils.io import save_annotations
 
 # The strings that indicate that there are no seizures in a file
 NO_SEIZURES_STRINGS = ['no seizures', 'no seizure']
