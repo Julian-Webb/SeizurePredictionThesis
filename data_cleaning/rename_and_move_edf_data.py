@@ -21,7 +21,7 @@ def name_file(patient_id: str, start: Timestamp):
     datetime = start.strftime('%Y-%m-%d_%H-%M-%S')
     offset = start.strftime('%z')
     offset = f"{offset[:3]}-{offset[3:]}"
-    return f"{patient_id}_{datetime}_{offset}.edf"
+    return f"{patient_id}_{datetime}{offset}.edf"
 
 
 def _handle_problematic_edf_file(patient: str, visit: str, edf_path: Path, problematic_edfs_folder: Path = None):
@@ -198,6 +198,7 @@ def process_ptnt(ptnt_dir: PatientDir):
     # change column order and drop old_file_path
     edfs = edfs[['old_file_name', 'file_name', 'start', 'end', 'duration_hours', 'visit']]
     edfs.to_csv(ptnt_dir.edf_files_sheet.with_suffix('.csv'), index=False)
+    # noinspection PyCallingNonCallable
     edfs.to_pkl(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
     return problematic_edfs
 
