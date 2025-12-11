@@ -5,7 +5,7 @@ from config.paths import PATHS, Dataset
 from data_cleaning.convert_txt_annotations import convert_txt_annotations
 from data_cleaning.combine_annotations import combine_annotations
 from data_cleaning.file_correction import file_correction, run_fdupes
-from data_cleaning.rename_and_move_edf_data import rename_and_move_edf_data
+from data_cleaning.list_rename_move_edf_data import list_rename_move_edf_data
 from utils.utils import FunctionTimer
 
 
@@ -38,7 +38,7 @@ def data_cleaning(ask_confirm: bool = True):
 
     logging.info('========== rename_and_move_edf_data ==========')
     with FunctionTimer("rename_and_move_edf_data"):
-        problematic_edfs = rename_and_move_edf_data(PATHS.patient_dirs())
+        problematic_edfs = list_rename_move_edf_data(PATHS.patient_dirs())
     if not problematic_edfs.empty:
         PATHS.problematic_edfs_dir.mkdir(exist_ok=True, parents=True)
         problematic_edfs.to_csv(PATHS.problematic_edfs_file.with_suffix('.csv'), index=False)

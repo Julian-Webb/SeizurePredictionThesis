@@ -53,7 +53,7 @@ def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
     last_end = edfs.iloc[-1]['end']
     timespan = last_end - first_start
 
-    duration_recorded = edfs['duration_hours'].sum()
+    duration_recorded = edfs['duration'].sum()
     duration_not_recorded = timespan - duration_recorded
     ratio_recorded = duration_recorded / timespan
     valid_ratio_recorded = ratio_recorded >= MIN_RATIO_RECORDED_TO_BE_VALID

@@ -140,7 +140,7 @@ def list_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool) -> Tuple[Dat
                 continue
 
             edfs.append({
-                "old_file_name": edf_path.name, "start": start, "end": end, "duration_hours": str(duration),
+                "old_file_name": edf_path.name, "start": start, "end": end, "duration": duration,
                 "visit": visit,
                 # This should get dropped before saving:
                 "old_file_path": edf_path
@@ -196,14 +196,14 @@ def process_ptnt(ptnt_dir: PatientDir):
     edfs, problematic_edfs = list_edf_files(ptnt_dir, is_competition_ptnt)
     move_edf_files(ptnt_dir, is_competition_ptnt, edfs, problematic_edfs)
     # change column order and drop old_file_path
-    edfs = edfs[['old_file_name', 'file_name', 'start', 'end', 'duration_hours', 'visit']]
+    edfs = edfs[['old_file_name', 'file_name', 'start', 'end', 'duration', 'visit']]
     edfs.to_csv(ptnt_dir.edf_files_sheet.with_suffix('.csv'), index=False)
     # noinspection PyCallingNonCallable
     edfs.to_pkl(ptnt_dir.edf_files_sheet.with_suffix('.pkl'))
     return problematic_edfs
 
 
-def rename_and_move_edf_data(ptnt_dirs: list[PatientDir]):
+def list_rename_move_edf_data(ptnt_dirs: list[PatientDir]):
     """
     Make an EDF file list and move files for all specified patients. Timestamps get localized.
     :return: A list of all problematic edf files
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     clean_mac_files(PATHS.base_dir)
     # -------------------------------
-    all_problematic_edfs = rename_and_move_edf_data(PATHS.patient_dirs())
+    all_problematic_edfs = list_rename_move_edf_data(PATHS.patient_dirs())
 
     # Load already existing Problematic EDFs and join them
     # if PATHS.problematic_edfs_file.exists():
