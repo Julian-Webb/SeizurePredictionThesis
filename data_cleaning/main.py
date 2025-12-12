@@ -1,11 +1,12 @@
 import logging
 from pathlib import Path
 
-from config.paths import PATHS, Dataset
+from config.paths import PATHS, Dataset, PatientDir
 from data_cleaning.convert_txt_annotations import convert_txt_annotations
 from data_cleaning.combine_annotations import combine_annotations
 from data_cleaning.file_correction import file_correction, run_fdupes
 from data_cleaning.list_rename_move_edf_data import list_rename_move_edf_data
+from scripts.remove_P4Hk23M7L_files_from_2000 import remove_P4Hk23M7L_files_from_2000
 from utils.utils import FunctionTimer
 
 
@@ -42,6 +43,10 @@ def data_cleaning(ask_confirm: bool = True):
     if not problematic_edfs.empty:
         PATHS.problematic_edfs_dir.mkdir(exist_ok=True, parents=True)
         problematic_edfs.to_csv(PATHS.problematic_edfs_file.with_suffix('.csv'), index=False)
+
+    # todo remove this later
+    with FunctionTimer("======== remove_P4Hk23M7L_files_from_2000 ======="):
+        remove_P4Hk23M7L_files_from_2000(PatientDir(PATHS.uneeg_extended_dir / 'P4Hk23M7L'))
 
     with FunctionTimer("run_fdupes"):
         duplicate_groups = run_fdupes(PATHS.base_dir)
