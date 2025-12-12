@@ -2,16 +2,16 @@
 import logging
 import re
 from enum import Enum
+from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-from pathlib import Path
-
 from pandas import DataFrame
 
 from config.paths import PATHS, Dataset
 from data_cleaning.file_correction import clean_mac_files
 from utils.io import save_annotations
+from utils.timezone import PatientTimezone
 
 # The strings that indicate that there are no seizures in a file
 NO_SEIZURES_STRINGS = ['no seizures', 'no seizure']
@@ -181,6 +181,24 @@ def detect_start_end(line: str) -> Boundary | None:
         return None
 
 
+def _localize_annotations_dataframe(anns: DataFrame, is_competition_ptnt: bool, datetime_cols: list[str]) -> DataFrame:
+    """
+    Localizes the annotations Timestamps. Everything is converted to the patient's main timezone.
+    :return: The localized annotations
+    """
+    tz = PatientTimezone.from_competition(is_competition_ptnt)
+
+    for col in datetime_cols:
+        c = pd.to_datetime(anns[col])
+        if c.notna().any():  # Check if there are any values in column
+            # NOTE: ambiguous could be changed to 'infer' if necessary
+            c = c.dt.tz_localize(tz.location, ambiguous='raise')
+            c = c.dt.tz_convert(tz.main_timezone) # Convert to main timezone
+            c = c.dt.tz_localize(None) # Don't save timezone information
+        anns[col] = c
+    return anns
+
+
 def annotations_txt_to_dataframe(annotation_path: Path):
     # go through the lines (seizures) and store them in a dataframe
     lines = get_seizure_lines_from_file(annotation_path)
@@ -213,22 +231,6 @@ def annotations_txt_to_dataframe(annotation_path: Path):
         seizures.loc[len(seizures)] = seizure
 
     return seizures
-
-
-def _localize_annotations_dataframe(anns: DataFrame, is_competition_ptnt: bool, datetime_cols) -> DataFrame:
-    """
-    Localizes the annotations Timestamps.
-    :return: The localized annotations
-    """
-    tz = 'Europe/London' if is_competition_ptnt else 'Europe/Berlin'
-
-    for col in datetime_cols:
-        anns[col] = pd.to_datetime(anns[col])
-        if anns[col].notna().any():  # Check if there are any values in column
-            # NOTE: ambiguous could be changed to 'infer' if necessary
-            anns[col] = anns[col].dt.tz_localize(tz, ambiguous='raise')
-
-    return anns
 
 
 def convert_uneeg_extended_and_for_mayo(delete_txt_anns: bool = False):

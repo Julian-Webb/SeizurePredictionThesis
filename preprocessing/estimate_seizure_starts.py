@@ -17,12 +17,13 @@ from utils.io import save_annotations, pickle_path
 
 def _load_all_seizures(ptnt_ann_files: dict[Path, Path]) -> pd.DataFrame:
     """Load all seizures from for_mayo and uneeg_extended."""
-    all_seizures = pd.DataFrame()
+    all_seizures = []
     for ptnt_dir, ann_file in ptnt_ann_files.items():
         seizures = pd.read_pickle(ann_file)
         seizures['patient'] = ptnt_dir.name
         logging.debug(f'{ptnt_dir.name}: {seizures.shape[0]} seizures.')
-        all_seizures = pd.concat([all_seizures, seizures])
+        all_seizures.append(seizures)
+    all_seizures = pd.concat(all_seizures)
     return all_seizures
 
 
@@ -44,13 +45,23 @@ def _single_marker_start_differences(ptnt_ann_files: dict[Path, Path]) -> Tuple[
 
 def _estimate_seizure_starts_for_patient(single_marker_to_start_shift: pd.Timedelta, ptnt_dir: PatientDir,
                                          ptnt_ann_file: Path):
-    seizures = pd.read_pickle(ptnt_ann_file)
+    seizures =  pd.read_pickle(ptnt_ann_file)
     # find seizures where there's no start
-    mask = seizures['start'].isna()
+    no_start = seizures['start'].isna()
 
-    seizures.loc[mask, 'start'] = seizures.loc[mask, 'single_marker'] - single_marker_to_start_shift
+    # if single_marker is timezone-aware, make sure start has the same tz so assignment won't raise a warning
+    sm_tz = seizures['single_marker'].dt.tz
+    if sm_tz is not None:
+        # if start is tz-naive, localize it
+        if seizures['start'].dt.tz is None:
+            seizures['start'] = seizures['start'].dt.tz_localize(sm_tz)
+        # else:
+        #     # if tz - aware, convert to match
+        #     seizures['start'] = seizures['start'].dt.tz_convert(sm_tz)
+
+    seizures.loc[no_start, 'start'] = seizures.loc[no_start, 'single_marker'] - single_marker_to_start_shift
     # indicate where the start was estimated
-    seizures['start_is_statistically_estimated'] = mask
+    seizures['start_is_statistically_estimated'] = no_start
 
     # save the updated dataframe
     seizures = seizures.sort_values(by='start').reset_index(drop=True)

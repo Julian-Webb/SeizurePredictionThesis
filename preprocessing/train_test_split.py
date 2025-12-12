@@ -59,4 +59,3 @@ def find_ptnt_splits(ptnt_dirs: List[PatientDir]):
 if __name__ == '__main__':
     st = time.time()
     find_ptnt_splits(PATHS.patient_dirs())
-    print(time.time() - st)

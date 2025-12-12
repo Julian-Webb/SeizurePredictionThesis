@@ -18,6 +18,8 @@ class PatientDir(type(Path())):
         """Represents the directory and file structure of a patient"""
         dataset_arg = kwargs.pop('dataset', None)
         self = super().__new__(cls, *args, *kwargs)
+
+        ### Info
         self.dataset = dataset_arg
 
         ### seizure annotations
@@ -110,4 +112,5 @@ PATHS = Paths('/data/home/webb/UNEEG_data')
 
 if __name__ == '__main__':
     for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=True):
-        print(ptnt_dir)
+        print(ptnt_dir, ptnt_dir.dataset)
+
