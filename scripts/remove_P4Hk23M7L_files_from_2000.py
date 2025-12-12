@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 
 from config.paths import PatientDir, PATHS
@@ -10,6 +12,10 @@ def remove_P4Hk23M7L_files_from_2000(ptnt_dir: PatientDir):
     This is meant to be called after data_cleaning
     He doesn't have annotations in the 2000s, so only the edf files must be removed from the list and the directory
     """
+    if not ptnt_dir.exists():
+        logging.error(f"PatientDir doesn't exist: {ptnt_dir}")
+        return
+
     edfs = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
     # noinspection PyTypeChecker
     mask = edfs['start'] < pd.Timestamp('2001-01-01')

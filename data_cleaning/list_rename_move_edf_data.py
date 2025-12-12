@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import multiprocessing
 import re
@@ -14,6 +15,7 @@ from config.paths import PatientDir
 from data_cleaning.file_correction import clean_mac_files
 from utils.io import pickle_path
 from utils.timezone import PatientTimezone
+from utils.utils import timeit
 
 VISIT_FOLDER_PATTERN = re.compile(r"^[vV]\d")
 
@@ -110,6 +112,7 @@ def _filter_duplicate_edfs_and_sort(edfs: list, problematic_edfs: list, patient:
     return edfs, problematic_edfs
 
 
+@timeit
 def list_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool) -> Tuple[DataFrame, DataFrame]:
     """
     Make a list of all edf files in a patient dir
@@ -120,15 +123,13 @@ def list_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool) -> Tuple[Dat
 
     original_edf_dirs = _get_original_edf_dirs(ptnt_dir, is_competition_ptnt)
 
-    # loop through all original edf dirs and list files
+    # Collect (edf_path, visit) tuples first
     for ori_edf_dir in original_edf_dirs:
-        if is_competition_ptnt:
-            visit = ''
-        else:
-            # remove the leading "v" or "V" from the visit folder name
-            visit = ori_edf_dir.name[1:]
+        # remove the leading "v" or "V" from the visit folder name
+        visit = '' if is_competition_ptnt else ori_edf_dir.name[1:]
 
         for edf_path in ori_edf_dir.iterdir():
+
             logging.debug(f"Processing {edf_path}")
             # read edf info
             try:
@@ -152,6 +153,7 @@ def list_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool) -> Tuple[Dat
     return edfs, problematic_edfs
 
 
+@timeit
 # noinspection PyUnresolvedReferences
 def move_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool, edfs: DataFrame, problematic_edfs: DataFrame):
     """
@@ -163,23 +165,20 @@ def move_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool, edfs: DataFr
     if not edfs.empty:
         edfs['file_name'] = edfs['start'].apply(lambda s: name_file(ptnt_dir.name, s))
 
-    for edf in edfs.itertuples():
-        new_edf_path = ptnt_dir.edf_dir / edf.file_name
-        if not new_edf_path.exists():
-            edf.old_file_path.rename(new_edf_path)
-        else:
-            # logging.error(f"File {new_edf_path} already exists")
-            raise ValueError(f"File {new_edf_path} already exists")
+    edfs['new_file_path'] = ptnt_dir.edf_dir / edfs['file_name']
+    edfs.apply(lambda edf: edf.old_file_path.rename(edf.new_file_path), axis=1)
+    edfs.drop(columns=['new_file_path'], inplace=True)
 
     # Handle Problematic EDFs
-    for edf in problematic_edfs.itertuples():
-        # Get the part of the path containing dataset, patient, etc.
-        relative_path = edf.old_file_path.relative_to(PATHS.base_dir)
-        new_path = PATHS.problematic_edfs_dir / relative_path
-        new_path.parent.mkdir(parents=True, exist_ok=True)
-        edf.old_file_path.rename(new_path)
+    # Get the part of the path containing dataset, patient, etc.
+    if not problematic_edfs.empty:
+        pe = problematic_edfs[['old_file_path']].copy()
+        pe['relative_path'] = pe['old_file_path'].apply(lambda p: p.relative_to(PATHS.base_dir))
+        pe['new_file_path'] = PATHS.problematic_edfs_dir / pe['relative_path']
+        # Make parent folders
+        pe['new_file_path'].apply(lambda p: p.parent.mkdir(parents=True, exist_ok=True))
+        pe.apply(lambda edf: edf.old_file_path.rename(edf.new_file_path), axis=1)
 
-    # delete visit folder or original edf directory
     for orig_edf_dir in _get_original_edf_dirs(ptnt_dir, is_competition_ptnt):
         try:
             orig_edf_dir.rmdir()
@@ -187,6 +186,7 @@ def move_edf_files(ptnt_dir: PatientDir, is_competition_ptnt: bool, edfs: DataFr
             logging.error(f"Error removing {orig_edf_dir}: {e}")
 
 
+@timeit
 def list_rename_move_edf_data_for_ptnt(ptnt_dir: PatientDir):
     """
     Make the EDF list and move files for a patient.
@@ -233,7 +233,8 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     clean_mac_files(PATHS.base_dir)
     # -------------------------------
-    all_problematic_edfs = list_rename_move_edf_data(PATHS.patient_dirs())
+    ptnt_dirs = PATHS.patient_dirs()
+    all_problematic_edfs = list_rename_move_edf_data(ptnt_dirs)
 
     # Load already existing Problematic EDFs and join them
     # if PATHS.problematic_edfs_file.exists():

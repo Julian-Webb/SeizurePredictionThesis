@@ -37,8 +37,8 @@ def data_cleaning(ask_confirm: bool = True):
     with FunctionTimer("combine_annotations"):
         combine_annotations(PATHS.patient_dirs([Dataset.uneeg_extended]))
 
-    logging.info('========== rename_and_move_edf_data ==========')
-    with FunctionTimer("rename_and_move_edf_data"):
+    logging.info('========== list_rename_move_edf_data ==========')
+    with FunctionTimer("list_rename_move_edf_data"):
         problematic_edfs = list_rename_move_edf_data(PATHS.patient_dirs())
     if not problematic_edfs.empty:
         PATHS.problematic_edfs_dir.mkdir(exist_ok=True, parents=True)

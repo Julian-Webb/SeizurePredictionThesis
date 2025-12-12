@@ -1,5 +1,6 @@
 import logging
 import time
+from functools import wraps
 
 
 def safe_float_to_int(num: float) -> int:
@@ -23,17 +24,13 @@ class FunctionTimer:
         logging.info(f"[TIMING] {self.label}: {self.elapsed:.3f}s")
 
 
-def timeit(label: str = None):
-    def decorator(fn):
-        def wrapper(*args, **kwargs):
-            lbl = label or fn.__name__
-            start = time.perf_counter()
-            result = fn(*args, **kwargs)
-            elapsed = time.perf_counter() - start
-            logging.info(f"[TIMING] {lbl}: {elapsed:.3f}s")
-            return result
+def timeit(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        start = time.perf_counter()
+        result = f(*args, **kw)
+        elapsed = time.perf_counter() - start
+        logging.info(f"[TIMING] {f.__name__}: {elapsed:.3f}s")
+        return result
 
-        return wrapper
-
-    return decorator
-
+    return wrap
