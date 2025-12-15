@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import multiprocessing
 import re
@@ -6,7 +5,6 @@ from pathlib import Path
 from typing import Tuple
 
 import pandas as pd
-import pyedflib
 from pandas import Timestamp, Timedelta, DataFrame
 from pyedflib import EdfReader
 
@@ -50,11 +48,12 @@ def _get_original_edf_dirs(patient_dir: PatientDir, is_competition_ptnt: bool):
     return ori_edf_dirs
 
 
-def timezone_from_edf_header(header: dict) -> str:
-    # This returns the format "UTC+02h" for 2 hour offset
-    tz = header['annotations'][0][2].removeprefix('LOCAL TIME = ')
-    # Modifications to make it work with pandas Timestamp init
-    tz = tz.removesuffix('h') + ':00'
+def timezone_from_edf_annotation(annotation: list) -> str:
+    # Read the right annotation and convert from bytes to str (decode)
+    tz = annotation[0][2].decode()
+    # It now has the format "LOCAL TIME = UTC+02h" for 2 hour offset.
+    # To make it work with pandas.Timestamp, we want 'UTC+02:00'.
+    tz = tz.removeprefix('LOCAL TIME = ').removesuffix('h') + ':00'
     return tz
 
 
@@ -66,26 +65,21 @@ def read_edf_time_info(edf_path: Path, is_competition_ptnt: bool) -> Tuple[Times
     :param is_competition_ptnt: whether this patient is in the competition dataset
     :return: start, end, duration
     """
+    # Read raw info
+    with EdfReader(str(edf_path)) as edf:
+        start = edf.getStartdatetime()
+        duration = edf.getFileDuration()
+        annotation = edf.read_annotation()
+
+    # Convert info
     tz_info = PatientTimezone.from_competition(is_competition_ptnt)
-    if is_competition_ptnt:
-        # Patients from the competition were based in this timezone. Their edf annotations don't include a timezone.
-        tz_location = tz_info.location
-    else:
-        header = pyedflib.highlevel.read_edf_header(str(edf_path))
-        tz_location = timezone_from_edf_header(header)
-
-    edf = EdfReader(str(edf_path))
-    start = edf.getStartdatetime()
-    duration = Timedelta(seconds=edf.getFileDuration())
-    edf.close()
-
-    # Make the start timezone-aware
+    # Competition patient's EDF headers don't contain a timezone
+    tz_location = tz_info.location if is_competition_ptnt else timezone_from_edf_annotation(annotation)
+    # To make the start timezone-aware, convert to patient's main timezone and remove explicit timezone info
     start = Timestamp(start, tz=tz_location)
-    # convert to patient's main timezone and remove explicit timezone info
     start = start.tz_convert(tz_info.main_timezone).tz_localize(None)
-
+    duration = Timedelta(seconds=duration)
     end = start + duration
-
     # noinspection PyTypeChecker
     return start, end, duration
 
@@ -233,12 +227,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     clean_mac_files(PATHS.base_dir)
     # -------------------------------
-    ptnt_dirs = PATHS.patient_dirs()
-    all_problematic_edfs = list_rename_move_edf_data(ptnt_dirs)
+    pds = PATHS.patient_dirs()
+    all_prob_edfs = list_rename_move_edf_data(pds)
 
     # Load already existing Problematic EDFs and join them
     # if PATHS.problematic_edfs_file.exists():
     #     prev_problem_edfs = pd.read_csv(PATHS.problematic_edfs_file)
     #     all_problematic_edfs = pd.concat([prev_problem_edfs, all_problematic_edfs], ignore_index=True)
 
-    all_problematic_edfs.to_csv(PATHS.problematic_edfs_file, index=False)
+    all_prob_edfs.to_csv(PATHS.problematic_edfs_file, index=False)

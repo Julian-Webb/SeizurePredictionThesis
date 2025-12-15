@@ -9,6 +9,10 @@ Various abbreviations throughout the code:
 `chn`: channel  
 `acfw`: autocorrelation function width  
 
+# General Notes
+* There are two EEG channels in the data: the distal (D) and proximal (P).  
+
+
 
 # Pipeline Steps
 1. data_cleaning
