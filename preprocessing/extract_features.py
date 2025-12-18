@@ -60,7 +60,7 @@ def bandpowers_batch(segmented_sigs: ndarray, sfreq: float, bands: dict):
                        noverlap=win_n_idx // 2,  # 50% overlap
                        window='hann',  # tapering
                        detrend='constant',  # Removes the mean which changes due to EEG drift
-                       # scaling='spectrum', # <- todo what about scaling?
+                       scaling='density', # Power normalized by the width of the frequency bin (Power / Hz)
                        )
     freq_resolution = freqs[1] - freqs[0]
 
