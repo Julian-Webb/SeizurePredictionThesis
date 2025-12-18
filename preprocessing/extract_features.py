@@ -1,23 +1,24 @@
-from dataclasses import dataclass
+import logging
+import time
 from pathlib import Path
 from typing import List
 
 import numpy as np
 import pandas as pd
-import yasa
+from numpy import ndarray
+from pandas import DataFrame
 from pyedflib import EdfReader
-from itertools import groupby
-
-from config.constants import CHANNELS, N_CHANNELS, SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
-from config.intervals import SEGMENT
-from config.paths import PatientDir
-
+from scipy.integrate import simpson
+from scipy.signal import welch
 from statsmodels.tsa import stattools
 
-from utils.io import pickle_path
+from config.constants import N_CHANNELS, SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
+from config.intervals import SEGMENT
+from config.paths import PatientDir, PATHS
+from utils.io import pickle_path, save_dataframe_multiformat
 
 
-def autocorrelation_function_width(sig: np.ndarray) -> int:
+def autocorrelation_function_width(sig: ndarray) -> int:
     """Computes the ACFW (autocorrelation function width) for a signal.
     The ACFW is the lag at which the autocorrelation is half its maximum value.
     :param sig: signal to compute ACFW for
@@ -25,8 +26,7 @@ def autocorrelation_function_width(sig: np.ndarray) -> int:
     """
     # compute autocorrelation for all lags
     autocorr = stattools.acf(sig, nlags=len(sig), fft=True)
-    # todo delete this after testing
-    assert autocorr.max() == 1, "Autocorrelation max isn't 1"
+    # assert autocorr.max() == 1, "Autocorrelation max isn't 1"
 
     # Find the lag (index) where the ACF is closest to its half-max (=0.5)
     # The half-max is 0.5 because the maximum autocorrelation is 1
@@ -37,77 +37,160 @@ def autocorrelation_function_width(sig: np.ndarray) -> int:
     return lag
 
 
-@dataclass
-class Features:
-    """Represents the features for a segment"""
-    variances: np.ndarray  # of the two channels
-    acfws: list  # autocorrelation function width
-    corrcoef: float  # scalar correlation between the channels
-    bandpowers: pd.DataFrame  # bandpowers for each band and channel
+def bandpowers_batch(segmented_sigs: ndarray, sfreq: float, bands: dict):
+    """
+    Compute the average, absolute bandpower for the signal of each segment and channel for the specified bands.
+    :param segmented_sigs: array with shape [#segments, #channels, #samples per segment]
+    :param sfreq: sampling frequency.
+    :param bands: frequency bands in ascending order of frequency
+    :return:
+    """
+    # Compute the window length for welch
+    lowest_band_freq = list(bands.values())[0][0]
+    win_sec = 2 / lowest_band_freq
+    # How many samples (indices) per Welch window
+    win_n_idx = win_sec * sfreq
 
-    @classmethod
-    def from_signals(cls, sigs: np.ndarray) -> 'Features':
-        """Compute the features for a single segment.
-        :param sigs: A dict with channel names as keys and a numpy array as values."""
-        variances = np.var(sigs, axis=1)
-        acfws = [autocorrelation_function_width(sig) for sig in sigs]
+    # Compute Welch power spectrum density (psd) for all segments
+    freqs, psd = welch(segmented_sigs, sfreq,
+                       axis=-1,  # compute per segment
+                       nperseg=win_n_idx,
+                       noverlap=win_n_idx // 2,  # 50% overlap
+                       window='hann',  # tapering
+                       detrend='constant',  # Removes the mean which changes due to EEG drift
+                       # scaling='spectrum', # <- todo what about scaling?
+                       )
+    freq_resolution = freqs[1] - freqs[0]
 
-        # Correlation of signals
-        corrcoef = np.corrcoef(sigs[0], sigs[1])[0, 1]
+    # Compute spectral band powers
+    n_segs, n_chn, _ = segmented_sigs.shape
+    bandpowers = np.empty((n_segs, n_chn, len(bands)))
+    for b_i, (low, high) in enumerate(bands.values()):
+        band_mask = (low <= freqs) & (freqs <= high)
+        # Integral approximation of the spectrum using Simpson's rule
+        bandpowers[:, :, b_i] = simpson(psd[:, :, band_mask], dx=freq_resolution, axis=-1)
+    return bandpowers
 
-        # Band Power Spectrum
-        # It says the length of the sliding window should be at least two times the inverse of the lowest frequency of interest
-        win_sec = 2 / SPECTRAL_BANDS[0][0]
-        # todo is this doing the right thing? (Also should the window be 'hamming', etc.)?
-        bandpowers = yasa.bandpower(sigs, SAMPLING_FREQUENCY_HZ, CHANNELS, win_sec=win_sec, bands=SPECTRAL_BANDS)
-        bandpowers.drop(['TotalAbsPow', 'FreqRes', 'Relative'], axis='columns', inplace=True)
-        return cls(variances, acfws, corrcoef, bandpowers)
 
-    def to_series(self) -> pd.Series:
-        bandpowers = {}
-        for i, ch in enumerate(self.bandpowers.index):
-            for band in self.bandpowers.columns:
-                bandpowers[f'ch{i}_{band}'] = self.bandpowers.loc[ch, band]
+class FeaturesBatch:
+    """
+    Represents the features for multiple segments.
+    Features per segment:
+    ---------------------
+    Scalar correlation between the channels
+    corrcoefs: ndarray. shape = (#segs, 1)
 
+    Autocorrelation function width of each channel
+    acfws: ndarray. shape = (#segs, #chn)
+
+    Variances of the channels
+    variances: ndarray. shape = (#seg, #chn)
+
+    Bandpowers for each band and channel:
+    bandpowers: ndarray. shape = (#segs, #chn, #bands)
+    """
+    ORDERED_FEATURE_NAMES = (
+        'corrcoefs',
+        'acfw_D', 'acfw_P',
+        'var_D', 'var_P',
+        'Delta_D', 'Theta_D', 'Alpha_D', 'Beta_D', 'Gamma_D',
+        'Delta_P', 'Theta_P', 'Alpha_P', 'Beta_P', 'Gamma_P',
+    )
+
+    def __init__(self, file_path: Path, file_segs: DataFrame):
+        """
+        Extract features for all segments in an EDF file as a batch-operation.
+        """
+        n_segs = file_segs.shape[0]
+        # Read signals and segment them
+        # Segmented signals with shape [#segments, #channels, #samples per seg]
+        ss = _load_segmented_sigs(file_path,
+                                  first_idx=file_segs.iloc[0]['start_index'],
+                                  n_segs=n_segs)
+        # Compute Features
+        self.corrcoefs = np.expand_dims(
+            [np.corrcoef(ss[seg, 0, :], ss[seg, 1, :])[0, 1] for seg in range(n_segs)],
+            axis=1)
+        self.acfws = np.apply_along_axis(autocorrelation_function_width, axis=-1, arr=ss)
+        self.variances = ss.var(axis=-1)
+        self.bandpowers = bandpowers_batch(ss, SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS)
+
+    def to_array(self) -> ndarray:
+        """
+        Returns the features as a 2D array of shape (n_segs, n_features).
+        n_features = 15.
+        The order of features per segment is:
+        0: correlation coefficient
+        1-2: autocorrelation function width per channel
+        3-4: variances per channel
+        5-9: bandpowers of first channel
+        10-14: bandpowers of second channel
+        """
+        # Flatten the 3rd dimension of bandpowers
+        n_segs = self.bandpowers.shape[0]
+        bps_flat = self.bandpowers.reshape(n_segs, -1)
+        return np.hstack([
+            self.corrcoefs,
+            self.acfws,
+            self.variances,
+            bps_flat
+        ])
+
+    def to_series(self, seg_idx: int) -> pd.Series:
         return pd.Series(
-            {'var0': self.variances[0], 'var1': self.variances[1], 'acfw0': self.acfws[0], 'acfw1': self.acfws[1],
-             'corrcoef': self.corrcoef, **bandpowers}, name='values'
+            self.to_array()[seg_idx],
+            index=self.ORDERED_FEATURE_NAMES
         )
 
-    def to_list(self) -> list:
-        """Returns the features in a fixed order as a 1D list which can be used as input to a neural network."""
-        return [*self.variances, *self.acfws, self.corrcoef, *self.bandpowers.to_numpy().flatten()]
+
+def _load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> ndarray:
+    """
+    Read signals and segment them.
+    :return:
+    """
+    total_samples = n_segs * SEGMENT.n_samples
+    segmented_sigs = np.empty((n_segs, N_CHANNELS, SEGMENT.n_samples))
+
+    with EdfReader(str(file_path)) as edf:
+        for chn in range(N_CHANNELS):
+            s = edf.readSignal(chn, first_idx, total_samples)
+            segmented_sigs[:, chn, :] = s.reshape((n_segs, SEGMENT.n_samples))
+
+    return segmented_sigs
 
 
 def extract_ptnt_features(ptnt_dir: PatientDir):
-    """Extract the features for all existing segments of a patient."""
+    logging.info(f"Extracting features for {ptnt_dir.name}")
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
-    segs = segs[segs['exists']]
 
     # Iterate through the existing segments based on their file
-    for file_path, segs_group in groupby(segs.iterrows(), key=lambda row: row[1]['file']):
-        # todo could potentially make it faster if I extract all segs from the same file and reshape
-        edf = EdfReader(str(ptnt_dir.edf_dir / file_path))
+    # Note: There are typically around 500 - 2000 EDFs per patient
+    file_names = segs['file'].dropna().unique()
+    for file_name in file_names:
+        st = time.perf_counter()
+        # Compute Features
+        file_mask = segs['file'] == file_name
+        file_path = ptnt_dir.edf_dir / file_name
+        features = FeaturesBatch(file_path, segs[file_mask])
+        # Update segs
+        segs.loc[file_mask, FeaturesBatch.ORDERED_FEATURE_NAMES] = features.to_array()
+        logging.debug(f"Features extracted in {time.perf_counter() - st:.3f} sec for : {file_name}")
 
-        for _, seg in segs_group:
-            # todo make sure that channel 0 and 1 are always the same channel
-            sigs = np.zeros((N_CHANNELS, SEGMENT.n_samples))
-            for i in range(N_CHANNELS):
-                sigs[i] = edf.readSignal(chn=i, start=seg['start_index'], n=SEGMENT.n_samples, digital=False)
-            features = Features.from_signals(sigs)
-            ser = features.to_series()
-            lst = features.to_list()
-            breakpoint()
-
-        edf.close()
+    save_dataframe_multiformat(segs, ptnt_dir.segments_table)
 
 
 def extract_features(ptnt_dirs: List[PatientDir]):
     """Extract the features for the segments of a patient."""
+    # todo parallelize
+    st = time.perf_counter()
     for ptnt_dir in ptnt_dirs:
         extract_ptnt_features(ptnt_dir)
+    logging.info(f"[TIMING] Extracted features in {time.perf_counter() - st:.3f} sec")
 
 
 if __name__ == '__main__':
-    ptnt_dir = PatientDir(Path('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1'))
-    extract_ptnt_features(ptnt_dir)
+    logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(message)s', force=True)
+
+    pdir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
+
+    extract_features([pdir])

@@ -7,7 +7,7 @@ from pandas import Series, Timestamp, Timedelta, DataFrame
 
 from config.constants import RATIO_OF_TIMESPAN_FOR_TRAINING
 from config.paths import PATHS, PatientDir
-from utils.io import pickle_path
+from utils.io import pickle_path, save_dataframe_multiformat
 
 
 def _compute_ptnt_split(recordings_start: Timestamp, timespan: Timedelta, seg_starts: Series) -> dict:
@@ -39,8 +39,7 @@ def find_ptnt_split(ptnt_dir: PatientDir, all_ptnts_info: DataFrame):
     # noinspection PyTypeChecker
     train_end = _compute_ptnt_split(ptnt_info['recordings_start'], ptnt_info['timespan'], segs['start'])
     train_end = Series(train_end, name='train_end')
-    train_end.to_csv(ptnt_dir.train_test_split.with_suffix('.csv'))
-    train_end.to_pickle(pickle_path(ptnt_dir.train_test_split))
+    save_dataframe_multiformat(train_end, ptnt_dir.train_test_split)
 
 
 def find_ptnt_splits(ptnt_dirs: List[PatientDir]):

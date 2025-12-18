@@ -7,7 +7,7 @@ from pandas import DataFrame
 import config.intervals as intervals
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
 from config.paths import PATHS, PatientDir
-from utils.io import save_annotations, pickle_path
+from utils.io import save_dataframe_multiformat, pickle_path
 
 
 def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
@@ -100,8 +100,8 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
 
         if 'valid' in valid_szrs.columns:
             valid_szrs.drop(columns=['valid'], inplace=True)
-        save_annotations(valid_szrs, ptnt_dir.valid_szr_starts_file)
-        save_annotations(szrs, ptnt_dir.all_szr_starts_file)
+        save_dataframe_multiformat(valid_szrs, ptnt_dir.valid_szr_starts_file)
+        save_dataframe_multiformat(szrs, ptnt_dir.all_szr_starts_file)
 
         ptnt_time_info = ptnt_timespan_info(ptnt_dir)
 
@@ -125,8 +125,7 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
         if k == 'readable':
             ptnt_info.to_csv(PATHS.patient_info_readable.with_suffix('.csv'))
         elif k == 'exact':
-            ptnt_info.to_csv(PATHS.patient_info_exact.with_suffix('.csv'))
-            ptnt_info.to_pickle(pickle_path(PATHS.patient_info_exact))
+            save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact)
 
 
 if __name__ == '__main__':

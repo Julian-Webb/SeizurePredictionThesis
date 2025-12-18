@@ -1,9 +1,11 @@
+from collections import OrderedDict
+
 import pandas as pd
 
 # The sampling frequency of all EEG signals in the edf files
 SAMPLING_FREQUENCY_HZ = 207.0310546581987
 
-# The EEG channels
+# The EEG channels in their *universal order*. D: distal, P: proximal
 CHANNELS = ['EEG SQ_D-SQ_C', 'EEG SQ_P-SQ_C']
 N_CHANNELS = len(CHANNELS)
 
@@ -20,8 +22,7 @@ MIN_RATIO_RECORDED_TO_BE_VALID = 0.4
 # How much of the data's entire timespan should be allocated to training the models
 RATIO_OF_TIMESPAN_FOR_TRAINING = 0.6
 
-
 # How the EEG bands are defined (lower frequency, upper frequency, name)
+# Note: dicts maintain insertion order in Python
 # todo is the lower delta and upper gamma bound correct?
-SPECTRAL_BANDS = [(0.5, 4, 'Delta'), (4, 8, 'Theta'), (8, 12, 'Alpha'), (12, 35, 'Beta'), (35, 100, 'Gamma')]
-
+SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': (12, 35), 'Gamma': (35, 100)}

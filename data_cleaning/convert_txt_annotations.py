@@ -10,7 +10,7 @@ from pandas import DataFrame
 
 from config.paths import PATHS, Dataset
 from data_cleaning.file_correction import clean_mac_files
-from utils.io import save_annotations
+from utils.io import save_dataframe_multiformat
 from utils.timezone import PatientTimezone
 
 # The strings that indicate that there are no seizures in a file
@@ -243,7 +243,7 @@ def convert_uneeg_extended_and_for_mayo(delete_txt_anns: bool = False):
             anns_df = annotations_txt_to_dataframe(txt_annotation)
             anns_df = _localize_annotations_dataframe(anns_df, is_competition_ptnt=False,
                                                       datetime_cols=['start', 'single_marker', 'end'])
-            save_annotations(anns_df, txt_annotation)
+            save_dataframe_multiformat(anns_df, txt_annotation)
 
             if delete_txt_anns:
                 txt_annotation.unlink()
@@ -272,7 +272,7 @@ def convert_competition_data():
         # Sort by 'start' column and get fresh numeric index
         # anns_df = anns_df.sort_values('start').reset_index(drop=True)
 
-        save_annotations(anns_df, ptnt_dir.all_szr_starts_file)
+        save_dataframe_multiformat(anns_df, ptnt_dir.all_szr_starts_file)
 
     # delete the original sheet
     sheet_path.unlink(missing_ok=True)

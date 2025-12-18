@@ -2,10 +2,16 @@
   <dictionary name="project">
     <words>
       <w>acfw</w>
+      <w>acfws</w>
+      <w>corrcoef</w>
+      <w>corrcoefs</w>
       <w>edfs</w>
+      <w>freqs</w>
+      <w>hann</w>
       <w>ptnt</w>
       <w>ptnts</w>
       <w>segs</w>
+      <w>sfreq</w>
       <w>startdate</w>
       <w>szrs</w>
       <w>uneeg</w>

@@ -12,7 +12,7 @@ from typing import Tuple
 import pandas as pd
 import config.constants
 from config.paths import PATHS, Dataset, PatientDir
-from utils.io import save_annotations, pickle_path
+from utils.io import save_dataframe_multiformat, pickle_path
 
 
 def _load_all_seizures(ptnt_ann_files: dict[Path, Path]) -> pd.DataFrame:
@@ -65,7 +65,7 @@ def _estimate_seizure_starts_for_patient(single_marker_to_start_shift: pd.Timede
 
     # save the updated dataframe
     seizures = seizures.sort_values(by='start').reset_index(drop=True)
-    save_annotations(seizures, ptnt_dir.all_szr_starts_file)
+    save_dataframe_multiformat(seizures, ptnt_dir.all_szr_starts_file)
 
     logging.debug(f'{ptnt_dir.name} starts saved.')
 

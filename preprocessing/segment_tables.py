@@ -13,7 +13,7 @@ from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, HORIZON, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config.paths import PatientDir, PATHS
 from utils.edf_utils import time_to_index
-from utils.io import pickle_path
+from utils.io import pickle_path, save_dataframe_multiformat
 
 
 # todo do this locally
@@ -177,9 +177,7 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
 
     else:
         segs = make_segs_table(ptnt_dir)
-        segs_ = segs.drop(columns=['end'])
-        segs_.to_csv(ptnt_dir.segments_table.with_suffix('.csv'), index=False)
-        segs_.to_pickle(pickle_path(ptnt_dir.segments_table))
+        save_dataframe_multiformat(segs.drop(columns=['end']), ptnt_dir.segments_table)
 
     # Make the plot
     szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))

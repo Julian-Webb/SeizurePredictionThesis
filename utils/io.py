@@ -1,14 +1,13 @@
 from pathlib import Path
+from typing import Union
 
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 
-def save_annotations(anns: DataFrame, path: Path):
-    """
-    Save seizure annotations to a CSV and pickle file
-    """
-    anns.to_csv(path.with_suffix('.csv'), index=False)
-    anns.to_pickle(pickle_path(path))
+def save_dataframe_multiformat(df: Union[DataFrame, Series], path: Path, csv_index: bool = False):
+    """Save a pd.DataFrame in multiple formats (csv, pickle)."""
+    df.to_csv(path.with_suffix('.csv'), index=csv_index)
+    df.to_pickle(pickle_path(path))
 
 
 def pickle_path(path: Path):
