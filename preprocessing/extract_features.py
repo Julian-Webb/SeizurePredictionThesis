@@ -1,5 +1,7 @@
 import logging
 import time
+# noinspection PyUnusedImports
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List
 
@@ -72,7 +74,7 @@ def bandpowers_batch(segmented_sigs: ndarray, sfreq: float, bands: dict):
     return bandpowers
 
 
-class FeaturesBatch:
+class FeaturesForFile:
     """
     Represents the features for multiple segments.
     Features per segment:
@@ -101,6 +103,8 @@ class FeaturesBatch:
         """
         Extract features for all segments in an EDF file as a batch-operation.
         """
+        st = time.perf_counter()
+
         n_segs = file_segs.shape[0]
         # Read signals and segment them
         # Segmented signals with shape [#segments, #channels, #samples per seg]
@@ -114,6 +118,13 @@ class FeaturesBatch:
         self.acfws = np.apply_along_axis(autocorrelation_function_width, axis=-1, arr=ss)
         self.variances = ss.var(axis=-1)
         self.bandpowers = bandpowers_batch(ss, SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS)
+
+        logging.debug(f"Features extracted in {time.perf_counter() - st:.3f} sec for : {file_path.name}")
+
+    @classmethod
+    def init_to_array(cls, file_path: Path, file_segs: DataFrame):
+        """Initialize and directly return the features as an array"""
+        return cls(file_path, file_segs).to_array()
 
     def to_array(self) -> ndarray:
         """
@@ -136,7 +147,7 @@ class FeaturesBatch:
             bps_flat
         ])
 
-    def to_series(self, seg_idx: int) -> pd.Series:
+    def to_series_for_seg(self, seg_idx: int) -> pd.Series:
         return pd.Series(
             self.to_array()[seg_idx],
             index=self.ORDERED_FEATURE_NAMES
@@ -161,36 +172,62 @@ def _load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> ndarra
 
 def extract_ptnt_features(ptnt_dir: PatientDir):
     logging.info(f"Extracting features for {ptnt_dir.name}")
+    start_time = time.perf_counter()
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
 
     # Iterate through the existing segments based on their file
     # Note: There are typically around 500-2000 EDFs per patient
     file_names = segs['file'].dropna().unique()
+
+    # --- Serial Processing --------------------------------------------------------------------------------------------
     for file_name in file_names:
-        st = time.perf_counter()
         # Compute Features
         file_mask = segs['file'] == file_name
         file_path = ptnt_dir.edf_dir / file_name
-        features = FeaturesBatch(file_path, segs[file_mask])
+        features = FeaturesForFile(file_path, segs[file_mask])
         # Update segs
-        segs.loc[file_mask, FeaturesBatch.ORDERED_FEATURE_NAMES] = features.to_array()
-        logging.debug(f"Features extracted in {time.perf_counter() - st:.3f} sec for : {file_name}")
+        segs.loc[file_mask, FeaturesForFile.ORDERED_FEATURE_NAMES] = features.to_array()
+    # ------------------------------------------------------------------------------------------------------------------
+
+    # --- Parallel Processing (doesn't work well) ----------------------------------------------------------------------
+    # File paths and masks for segs
+    # paths = {file_name: ptnt_dir.edf_dir / file_name for file_name in file_names}
+    # masks = {file_name: segs['file'] == file_name for file_name in file_names}
+    # with ThreadPoolExecutor() as exe:
+    #     features_futures = {exe.submit(FeaturesForFile.init_to_array, paths[file], segs[masks[file]]): file
+    #                         for file in file_names}
+    #     # Update segs
+    #     for future in as_completed(features_futures):
+    #         file_name = features_futures[future]
+    #         features = future.result()
+    #         segs.loc[masks[file_name], FeaturesForFile.ORDERED_FEATURE_NAMES] = features
+    # ------------------------------------------------------------------------------------------------------------------
 
     save_dataframe_multiformat(segs, ptnt_dir.segments_table)
+    logging.info(f"Features extracted for {ptnt_dir.name} in {time.perf_counter() - start_time:.3f} sec.")
 
 
 def extract_features(ptnt_dirs: List[PatientDir]):
     """Extract the features for the segments of a patient."""
-    # todo parallelize
     st = time.perf_counter()
-    for ptnt_dir in ptnt_dirs:
-        extract_ptnt_features(ptnt_dir)
+
+    # --- Serial Processing --------------------------------------------------------------------------------------------
+    # for ptnt_dir in ptnt_dirs:
+    #     extract_ptnt_features(ptnt_dir)
+    # ------------------------------------------------------------------------------------------------------------------
+
+    # --- Parallel Processing ------------------------------------------------------------------------------------------
+    with ProcessPoolExecutor() as exe:
+        exe.map(extract_ptnt_features, ptnt_dirs)
+    # ------------------------------------------------------------------------------------------------------------------
+
     logging.info(f"[TIMING] Extracted features in {time.perf_counter() - st:.3f} sec")
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(message)s', force=True)
 
-    pdir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
+    # pdir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
+    # extract_features([pdir])
 
-    extract_features([pdir])
+    extract_features(PATHS.patient_dirs())
