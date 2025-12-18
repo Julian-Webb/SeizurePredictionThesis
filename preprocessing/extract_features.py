@@ -28,11 +28,11 @@ def autocorrelation_function_width(sig: ndarray) -> int:
     autocorr = stattools.acf(sig, nlags=len(sig), fft=True)
     # assert autocorr.max() == 1, "Autocorrelation max isn't 1"
 
-    # Find the lag (index) where the ACF is closest to its half-max (=0.5)
-    # The half-max is 0.5 because the maximum autocorrelation is 1
-    # Subtracting 0.5 makes the values close to 0.5 become close to 0
-    # Taking the absolute values makes values close to 0 be the minimal elements
-    # Then, the argmin is taken to find the value closest to 0 (the half-max index/lag)
+    # Find the lag (index) where the ACF is closest to its half-max (=0.5).
+    # The half-max is 0.5 because the maximum autocorrelation is 1.
+    # Subtracting 0.5 makes the values close to 0.5 become close to 0.
+    # Taking the absolute values makes values close to 0 be the minimal elements.
+    # Then, the argmin is taken to find the value closest to 0 (the half-max index/lag).
     lag = np.abs(autocorr - 0.5).argmin()
     return lag
 
@@ -45,7 +45,7 @@ def bandpowers_batch(segmented_sigs: ndarray, sfreq: float, bands: dict):
     :param bands: frequency bands in ascending order of frequency
     :return:
     """
-    # Compute the window length for welch
+    # Compute the window length for Welch
     lowest_band_freq = list(bands.values())[0][0]
     win_sec = 2 / lowest_band_freq
     # How many samples (indices) per Welch window
@@ -164,7 +164,7 @@ def extract_ptnt_features(ptnt_dir: PatientDir):
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
 
     # Iterate through the existing segments based on their file
-    # Note: There are typically around 500 - 2000 EDFs per patient
+    # Note: There are typically around 500-2000 EDFs per patient
     file_names = segs['file'].dropna().unique()
     for file_name in file_names:
         st = time.perf_counter()
