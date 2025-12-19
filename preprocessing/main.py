@@ -3,9 +3,9 @@ import logging
 from config.paths import PATHS
 from preprocessing.estimate_seizure_starts import estimate_seizure_starts
 from preprocessing.segment_tables import segment_tables
-from preprocessing.train_test_split import find_ptnt_splits
+from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
-from preprocessing.extract_features import extract_features
+from feature_extraction.extract_features import extract_features
 from utils.utils import FunctionTimer
 
 
