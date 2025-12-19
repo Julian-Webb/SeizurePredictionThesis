@@ -1,7 +1,7 @@
 import logging
 import time
 # noinspection PyUnusedImports
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
@@ -9,14 +9,13 @@ from typing import List
 import numpy as np
 import pandas as pd
 from numpy import ndarray
-from pyedflib import EdfReader
 from scipy.integrate import simpson
 from scipy.signal import welch
 from statsmodels.tsa import stattools
 
-from config.constants import N_CHANNELS, SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
-from config.intervals import SEGMENT
+from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
 from config.paths import PatientDir, PATHS
+from utils.edf_utils import load_segmented_sigs
 from utils.io import pickle_path, save_dataframe_multiformat
 
 # How many files to process per file batch
@@ -111,7 +110,7 @@ class FeaturesForFile:
 
         # Read signals and segment them
         # Segmented signals with shape [#segments, #channels, #samples per seg]
-        ss = _load_segmented_sigs(file_path, first_idx, n_segs)
+        ss = load_segmented_sigs(file_path, first_idx, n_segs)
         # Compute Features
         self.corrcoefs = np.expand_dims(
             [np.corrcoef(ss[seg, 0, :], ss[seg, 1, :])[0, 1] for seg in range(n_segs)],
@@ -153,22 +152,6 @@ class FeaturesForFile:
             self.to_array()[seg_idx],
             index=self.ORDERED_FEATURE_NAMES
         )
-
-
-def _load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> ndarray:
-    """
-    Read signals and segment them.
-    :return:
-    """
-    total_samples = n_segs * SEGMENT.n_samples
-    segmented_sigs = np.empty((n_segs, N_CHANNELS, SEGMENT.n_samples))
-
-    with EdfReader(str(file_path)) as edf:
-        for chn in range(N_CHANNELS):
-            s = edf.readSignal(chn, first_idx, total_samples)
-            segmented_sigs[:, chn, :] = s.reshape((n_segs, SEGMENT.n_samples))
-
-    return segmented_sigs
 
 
 @dataclass
