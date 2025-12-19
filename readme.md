@@ -19,11 +19,12 @@ Various abbreviations throughout the code:
    1. file_correction
    2. convert_txt_annotations
    3. combine_annotations
-   4. rename_and_move_edf_data
+   4. list_rename_move_edf_data
+   5. remove_P4Hk23M7L_files_from_2000
 2. preprocessing
-   1. timezone_adjustment
-   2. estimate_seizure_starts
-   3. validate_patients
-   4. segment_tables
-   5. train_test_split
-   6. extract_features
+   1. estimate_seizure_starts
+   2. validate_patients
+   3. segment_tables
+   4. train_test_split
+3. feature_extraction
+   1. extract_features

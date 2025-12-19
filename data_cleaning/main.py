@@ -6,7 +6,7 @@ from data_cleaning.convert_txt_annotations import convert_txt_annotations
 from data_cleaning.combine_annotations import combine_annotations
 from data_cleaning.file_correction import file_correction, run_fdupes
 from data_cleaning.list_rename_move_edf_data import list_rename_move_edf_data
-from scripts.remove_P4Hk23M7L_files_from_2000 import remove_P4Hk23M7L_files_from_2000
+from data_cleaning.remove_P4Hk23M7L_files_from_2000 import remove_P4Hk23M7L_files_from_2000
 from utils.utils import FunctionTimer
 
 
