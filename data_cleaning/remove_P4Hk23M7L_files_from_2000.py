@@ -30,7 +30,7 @@ def remove_P4Hk23M7L_files_from_2000(ptnt_dir: PatientDir):
     bad_edfs.apply(lambda row: row.old_file_path.rename(row.new_file_path), axis=1)
 
     # Update EDF lists
-    bad_edfs.to_csv(PATHS.problematic_edfs_dir / 'P4Hk23M7L_files_from_2000', index=False)
+    bad_edfs.to_csv(PATHS.problematic_edfs_dir / 'P4Hk23M7L_files_from_2000.csv', index=False)
 
     edfs = edfs[~mask]
     edfs.to_pickle(pickle_path(ptnt_dir.edf_files_sheet))
