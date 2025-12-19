@@ -76,7 +76,7 @@ def bandpowers_vectorized(segmented_sigs: ndarray, sfreq: float, bands: dict):
     return bandpowers
 
 
-class FeaturesForFile:
+class Features:
     """
     Represents the features for multiple segments.
     Features per segment:
@@ -169,7 +169,7 @@ def extract_file_batch_features(files_infos: List[FileInfo]):
     for f in files_infos:
         file_name = f.file_path.name
         # Compute Features
-        file_features[file_name] = FeaturesForFile.init_to_array(f.file_path, f.first_idx, f.n_segs)
+        file_features[file_name] = Features.init_to_array(f.file_path, f.first_idx, f.n_segs)
 
     logging.info(f"Batch features extracted in {time.perf_counter() - st:.3f} sec for : {len(files_infos)} files")
     return file_features
@@ -224,7 +224,7 @@ def extract_ptnt_features(ptnt_dir: PatientDir):
         for future in as_completed(futures):
             batch_res = future.result()
             for file_name, features_arr in batch_res.items():
-                segs.loc[file_masks[file_name], FeaturesForFile.ORDERED_FEATURE_NAMES] = features_arr
+                segs.loc[file_masks[file_name], Features.ORDERED_FEATURE_NAMES] = features_arr
     # ------------------------------------------------------------------------------------------------------------------
 
     save_dataframe_multiformat(segs, ptnt_dir.segments_table)

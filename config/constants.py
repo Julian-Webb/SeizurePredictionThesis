@@ -26,3 +26,7 @@ RATIO_OF_TIMESPAN_FOR_TRAINING = 0.6
 # Note: dicts maintain insertion order in Python
 # todo is the lower delta and upper gamma bound correct?
 SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': (12, 35), 'Gamma': (35, 100)}
+
+# In the data, there are much more interictal that preictal segments (about 100 to 1)
+# During training, we want to subsample the interictal segments to reach a ratio that works well for training.
+MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO = 20
