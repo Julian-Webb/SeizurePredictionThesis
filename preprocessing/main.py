@@ -2,10 +2,10 @@ import logging
 
 from config.paths import PATHS
 from preprocessing.estimate_seizure_starts import estimate_seizure_starts
-# from preprocessing.extract_features import extract_features
 from preprocessing.segment_tables import segment_tables
 from preprocessing.train_test_split import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
+from preprocessing.extract_features import extract_features
 from utils.utils import FunctionTimer
 
 
@@ -32,9 +32,9 @@ def preprocessing(ask_confirm: bool = True):
         with FunctionTimer('split_train_test'):
             find_ptnt_splits(PATHS.patient_dirs())
 
-        # logging.info("Extracting features")
-        # with FunctionTimer('extract_features'):
-        #     extract_features(PATHS.patient_dirs())
+        logging.info("Extracting features")
+        with FunctionTimer('extract_features'):
+            extract_features(PATHS.patient_dirs())
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
