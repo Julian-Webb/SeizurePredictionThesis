@@ -100,6 +100,7 @@ class Features:
         'Delta_D', 'Theta_D', 'Alpha_D', 'Beta_D', 'Gamma_D',
         'Delta_P', 'Theta_P', 'Alpha_P', 'Beta_P', 'Gamma_P',
     )
+    N_FEATURES = len(ORDERED_FEATURE_NAMES)
 
     def __init__(self, file_path: Path, first_idx: int, n_segs: int):
         """

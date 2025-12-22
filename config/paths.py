@@ -42,6 +42,11 @@ class PatientDir(type(Path())):
         self.segments_plot = Path(self, 'segments_plot.png')
         self.train_test_split = Path(self, 'train_test_split')
 
+        ### ML models
+        self.models_dir = Path(self, 'models')
+        self.ensemble_model = Path(self.models_dir, 'ensemble.keras')
+        self.cnn_model = Path(self.models_dir, 'CNN.keras')
+
         return self
 
 
