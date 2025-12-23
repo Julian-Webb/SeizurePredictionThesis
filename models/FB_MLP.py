@@ -91,7 +91,7 @@ def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
 
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
     split = pd.read_pickle(pickle_path(ptnt_dir.train_test_split))
-    x_train, y_train, x_test, y_test = load_features_and_labels(segs, split, Features.ORDERED_FEATURE_NAMES)
+    x_train, y_train, x_test, y_test = load_features_and_labels(segs, split, Features.ORDERED_NAMES)
     # Create ensemble
     ensemble = create_ensemble(x_train, y_train)
 
