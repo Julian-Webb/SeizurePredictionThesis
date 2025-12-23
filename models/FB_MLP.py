@@ -64,12 +64,19 @@ def create_ensemble(x_train: np.ndarray, y_train: np.ndarray,
 
     models = []
     for i in range(ensemble_size):
+        logging.info(f'Creating FB-MLP_{i:02}')
+        start = time.perf_counter()
+
         model = create_mlp(Features.N_FEATURES, f"FB-MLP_{i:02}")
         # Train individual model
-        model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, class_weight=class_weights)
+        model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, class_weight=class_weights,
+                  # verbose=0,
+                  )
         # Make all models share the same input layer
         y = model(input_layer)
         models.append(y)
+
+        logging.info(f'Finished individual model {i:02} in {time.perf_counter() - start:.3f} sec.')
 
     # The ensemble output averages the outputs of the individual models
     output_layer = layers.average(models, name='ensemble_average')
@@ -79,29 +86,30 @@ def create_ensemble(x_train: np.ndarray, y_train: np.ndarray,
 
 def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
     # Load Data
+    logging.info(f'Creating ensemble for {ptnt_dir.name}')
+    start = time.perf_counter()
+
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
     split = pd.read_pickle(pickle_path(ptnt_dir.train_test_split))
     x_train, y_train, x_test, y_test = load_features_and_labels(segs, split, Features.ORDERED_FEATURE_NAMES)
     # Create ensemble
     ensemble = create_ensemble(x_train, y_train)
+
+    logging.info(f'Finished ensemble creation for {ptnt_dir.name} in {time.perf_counter() - start:.3f} sec.')
     return ensemble
 
 
 def create_ensemble_models(ptnt_dirs: list[PatientDir]):
     for ptnt_dir in ptnt_dirs:
-        start = time.perf_counter()
-        logging.info(f'Creating ensemble for {ptnt_dir.name}')
-
         ensemble = create_ptnt_mlp_ensemble(ptnt_dir)
         # Save
         ptnt_dir.models_dir.mkdir(exist_ok=True, parents=True)
         ensemble.save(ptnt_dir.ensemble_model)
 
-        logging.info(f'Finished ensemble creation for {ptnt_dir.name} in {time.perf_counter() - start:.3f} sec.')
-
 
 if __name__ == '__main__':
-    logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
+    log_path = PATHS / 'mlp_creation_log.txt'
+    logging.basicConfig(filename=log_path, level='INFO', format='[%(levelname)s] %(message)s')
     st = time.perf_counter()
     create_ensemble_models(PATHS.patient_dirs())
     logging.info(f'Finished ensemble creation in {time.perf_counter() - st:.3f} sec')
