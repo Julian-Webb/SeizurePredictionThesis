@@ -91,7 +91,7 @@ def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
 
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
     split = pd.read_pickle(pickle_path(ptnt_dir.train_test_split))
-    x_train, y_train, x_test, y_test = load_features_and_labels(segs, split, Features.ORDERED_FEATURE_NAMES)
+    x_train, y_train, x_test, y_test = load_features_and_labels(segs, split, Features.ORDERED_NAMES)
     # Create ensemble
     ensemble = create_ensemble(x_train, y_train)
 
@@ -112,4 +112,6 @@ if __name__ == '__main__':
     logging.basicConfig(filename=log_path, level='INFO', format='[%(levelname)s] %(message)s')
     st = time.perf_counter()
     create_ensemble_models(PATHS.patient_dirs())
-    logging.info(f'Finished ensemble creation in {time.perf_counter() - st:.3f} sec')
+
+    elapsed_time = time.time() - st
+    logging.info(f'Finished ensemble creation in {elapsed_time / 3600:.2f} hours')

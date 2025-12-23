@@ -93,14 +93,14 @@ class Features:
     Bandpowers for each band and channel:
     bandpowers: ndarray. shape = (#segs, #chn, #bands)
     """
-    ORDERED_FEATURE_NAMES = (
-        'corrcoefs',
+    ORDERED_NAMES = (
+        'corrcoef',
         'acfw_D', 'acfw_P',
         'var_D', 'var_P',
         'Delta_D', 'Theta_D', 'Alpha_D', 'Beta_D', 'Gamma_D',
         'Delta_P', 'Theta_P', 'Alpha_P', 'Beta_P', 'Gamma_P',
     )
-    N_FEATURES = len(ORDERED_FEATURE_NAMES)
+    N_FEATURES = len(ORDERED_NAMES)
 
     def __init__(self, file_path: Path, first_idx: int, n_segs: int):
         """
@@ -151,7 +151,7 @@ class Features:
     def to_series_for_seg(self, seg_idx: int) -> pd.Series:
         return pd.Series(
             self.to_array()[seg_idx],
-            index=self.ORDERED_FEATURE_NAMES
+            index=self.ORDERED_NAMES
         )
 
 
@@ -176,75 +176,59 @@ def extract_file_batch_features(files_infos: List[FileInfo]):
     return file_features
 
 
-def extract_ptnt_features(ptnt_dir: PatientDir):
+def extract_ptnt_features(ptnt_dir: PatientDir, serial_processing: bool = False):
     logging.info(f"Extracting features for {ptnt_dir.name}")
     start_time = time.perf_counter()
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
 
     # Iterate through the existing segments based on their file
     # Note: There are typically around 500-2000 EDFs per patient
-    file_names = segs['file'].dropna().unique()
 
-    # --- Serial Processing --------------------------------------------------------------------------------------------
-    # for file_name in file_names:
-    #     # Auxiliary variables
-    #     file_mask = segs['file'] == file_name
-    #     file_segs = segs[file_mask]
-    #     n_segs = file_segs.shape[0]
-    #     first_idx = file_segs.iloc[0]['start_index']
-    #     file_path = ptnt_dir.edf_dir / file_name
-    #     # Compute Features and update segs
-    #     segs.loc[file_mask, FeaturesForFile.ORDERED_FEATURE_NAMES] = \
-    #         FeaturesForFile.init_to_array(file_path, first_idx, n_segs)
-    # ------------------------------------------------------------------------------------------------------------------
+    if serial_processing:
+        for file_name, file_segs in segs.groupby('file', sort=False, dropna=True):
+            file_path = ptnt_dir.edf_dir / file_name
+            first_idx = file_segs.iloc[0]['start_index']
+            n_segs = file_segs.shape[0]
+            segs.loc[file_segs.index, Features.ORDERED_NAMES] = Features.init_to_array(file_path, first_idx, n_segs)
 
-    # --- Parallel Processing v2 ---------------------------------------------------------------------------------------
-    # Make file info dict
-    files_infos = {}
-    file_masks = {}
-    for file_name in file_names:
-        file_path = ptnt_dir.edf_dir / file_name
-        file_mask = segs['file'] == file_name
-        file_segs = segs[file_mask]
-        first_idx = file_segs.iloc[0]['start_index']
-        n_segs = file_segs.shape[0]
+    else:
+        # Retrieve file infos
+        files_infos = []
+        file_indices = {}
+        for file_name, file_segs in segs.groupby('file', sort=False, dropna=True):
+            file_path = ptnt_dir.edf_dir / file_name
+            first_idx = file_segs.iloc[0]['start_index']
+            n_segs = file_segs.shape[0]
+            files_infos.append(FileInfo(file_path, first_idx, n_segs))
+            file_indices[file_name] = file_segs.index
 
-        files_infos[file_name] = FileInfo(file_path, first_idx, n_segs)
-        file_masks[file_name] = file_mask
+        # Make batches
+        batches = [files_infos[i: i + FILE_BATCH_SIZE] for i in range(0, len(files_infos), FILE_BATCH_SIZE)]
+        logging.info(f"Created {len(batches)} batches for patient {ptnt_dir.name}")
 
-    # Make batches
-    files_infos_list = [files_infos[name] for name in file_names]
-    batches = [files_infos_list[i: i + FILE_BATCH_SIZE] for i in range(0, len(files_infos_list), FILE_BATCH_SIZE)]
-    logging.info(f"Created {len(batches)} batches for patient {ptnt_dir.name}")
+        # Compute Features in batches in parallel
+        with ProcessPoolExecutor() as exe:
+            futures = [exe.submit(extract_file_batch_features, batch) for batch in batches]
 
-    # Compute Features in batches in parallel
-    with ProcessPoolExecutor() as exe:
-        futures = [exe.submit(extract_file_batch_features, batch) for batch in batches]
-
-        # Update segs
-        for future in as_completed(futures):
-            batch_res = future.result()
-            for file_name, features_arr in batch_res.items():
-                segs.loc[file_masks[file_name], Features.ORDERED_FEATURE_NAMES] = features_arr
-    # ------------------------------------------------------------------------------------------------------------------
+            # Update segs
+            for future in as_completed(futures):
+                batch_res = future.result()
+                for file_name, features_arr in batch_res.items():
+                    segs.loc[file_indices[file_name], Features.ORDERED_NAMES] = features_arr
 
     save_dataframe_multiformat(segs, ptnt_dir.segments_table)
     logging.info(f"Features extracted for {ptnt_dir.name} in {time.perf_counter() - start_time:.3f} sec.")
 
 
-def extract_features(ptnt_dirs: List[PatientDir]):
+def extract_features(ptnt_dirs: List[PatientDir], serial_processing: bool = False):
     """Extract the features for the segments of a patient."""
     st = time.perf_counter()
-
-    # --- Serial Processing --------------------------------------------------------------------------------------------
-    # for ptnt_dir in ptnt_dirs:
-    #     extract_ptnt_features(ptnt_dir)
-    # ------------------------------------------------------------------------------------------------------------------
-
-    # --- Parallel Processing ------------------------------------------------------------------------------------------
-    with ProcessPoolExecutor() as exe:
-        exe.map(extract_ptnt_features, ptnt_dirs)
-    # ------------------------------------------------------------------------------------------------------------------
+    if serial_processing:
+        for ptnt_dir in ptnt_dirs:
+            extract_ptnt_features(ptnt_dir, serial_processing)
+    else:
+        with ProcessPoolExecutor() as exe:
+            exe.map(extract_ptnt_features, ptnt_dirs)
 
     logging.info(f"[TIMING] Extracted features in {time.perf_counter() - st:.3f} sec")
 
@@ -252,7 +236,7 @@ def extract_features(ptnt_dirs: List[PatientDir]):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
 
-    # pdir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
-    # extract_features([pdir])
+    pdir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
+    extract_features([pdir], serial_processing=False)
 
-    extract_features(PATHS.patient_dirs())
+    # extract_features(PATHS.patient_dirs())
