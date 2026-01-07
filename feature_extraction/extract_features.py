@@ -93,13 +93,13 @@ class Features:
     Bandpowers for each band and channel:
     bandpowers: ndarray. shape = (#segs, #chn, #bands)
     """
-    ORDERED_FEATURE_NAMES = (
-        'corrcoefs',
+    ORDERED_FEATURE_NAMES = [
+        'corrcoef',
         'acfw_D', 'acfw_P',
         'var_D', 'var_P',
         'Delta_D', 'Theta_D', 'Alpha_D', 'Beta_D', 'Gamma_D',
         'Delta_P', 'Theta_P', 'Alpha_P', 'Beta_P', 'Gamma_P',
-    )
+    ]
     N_FEATURES = len(ORDERED_FEATURE_NAMES)
 
     def __init__(self, file_path: Path, first_idx: int, n_segs: int):

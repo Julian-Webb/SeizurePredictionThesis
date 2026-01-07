@@ -4,6 +4,7 @@ Various abbreviations throughout the code:
 `ann`: annotation  
 `ptnt`: patient  
 `seg`: segment  
+`esegs`: existing segments
 `dur`: duration  
 `sig`: signal  
 `chn`: channel  

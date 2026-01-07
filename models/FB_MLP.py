@@ -1,12 +1,18 @@
 import logging
 import os
+import datetime
+import pickle
 import time
 
 import keras
 import numpy as np
 import pandas as pd
 from keras import layers
+from pandas import DataFrame
+from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.losses import BinaryCrossentropy
+
+from utils.utils import PeriodicalLogger
 
 # make tensorflow only use GPU 0
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -16,13 +22,17 @@ from tensorflow.keras.metrics import Recall, AUC
 
 from feature_extraction.extract_features import Features
 from config.paths import PATHS, PatientDir
-from models.load_data import load_features_and_labels
+from models.load_data import subsample_shuffle_convert_train_segs
 from utils.io import pickle_path
 
-EPOCHS = 500
+EPOCHS = 500 # 500
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
-LEARNING_RATE = 0.0001
-ENSEMBLE_SIZE = 100
+LEARNING_RATE = 0.0001 # 0.0001
+ENSEMBLE_SIZE = 100 # 100
+ENSEMBLE_SIZE = 10 # todo delete
+
+
+# ENSEMBLE_SIZE = 3 # todo delete
 
 
 def create_mlp(n_features: int, name: str) -> tf.keras.models.Sequential:
@@ -57,16 +67,23 @@ def calc_class_weights(y_train: np.ndarray) -> dict:
     return class_weights
 
 
-def create_ensemble(x_train: np.ndarray, y_train: np.ndarray,
+def create_ensemble(train_segs: DataFrame,
                     ensemble_size: int = ENSEMBLE_SIZE, epochs: int = EPOCHS, batch_size: int = BATCH_SIZE):
-    class_weights = calc_class_weights(y_train)
     input_layer = Input([Features.N_FEATURES], name='ensemble_input')
-
     models = []
     for i in range(ensemble_size):
-        model = create_mlp(Features.N_FEATURES, f"FB-MLP_{i:02}")
+        name = f"FB-MLP_{i:02}"
+        logging.info(f'Creating model {name}')
+        # Select train data for this model
+        # Due to subsampling, every model gets different interictal segs
+        x_train, y_train = subsample_shuffle_convert_train_segs(train_segs, Features.ORDERED_FEATURE_NAMES)
+        class_weights = calc_class_weights(y_train)
+        model = create_mlp(Features.N_FEATURES, name)
         # Train individual model
-        model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, class_weight=class_weights)
+        model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, class_weight=class_weights,
+                  verbose=0,
+                  callbacks=[PeriodicalLogger(name, interval=100)],
+                  )
         # Make all models share the same input layer
         y = model(input_layer)
         models.append(y)
@@ -80,28 +97,45 @@ def create_ensemble(x_train: np.ndarray, y_train: np.ndarray,
 def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
     # Load Data
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
-    split = pd.read_pickle(pickle_path(ptnt_dir.train_test_split))
-    x_train, y_train, x_test, y_test = load_features_and_labels(segs, split, Features.ORDERED_FEATURE_NAMES)
+    esegs = segs[segs['exists']]
+    split_idx = pd.read_pickle(pickle_path(ptnt_dir.train_test_split)).segment_index
+
+    # Perform z-score normalization on the features
+    scaler = StandardScaler()
+    train_segs = esegs.loc[:split_idx - 1]
+    train_features = train_segs[Features.ORDERED_FEATURE_NAMES].values
+    scaler.fit(train_features)
+    # Transform
+    train_segs.loc[:, Features.ORDERED_FEATURE_NAMES] = scaler.transform(train_features)
+
     # Create ensemble
-    ensemble = create_ensemble(x_train, y_train)
-    return ensemble
+    # noinspection PyTypeChecker
+    ensemble = create_ensemble(train_segs)
+    return ensemble, scaler
 
 
-def create_ensemble_models(ptnt_dirs: list[PatientDir]):
+def create_ptnt_mlp_ensembles(ptnt_dirs: list[PatientDir]):
     for ptnt_dir in ptnt_dirs:
         start = time.perf_counter()
         logging.info(f'Creating ensemble for {ptnt_dir.name}')
 
-        ensemble = create_ptnt_mlp_ensemble(ptnt_dir)
+        ensemble, scaler = create_ptnt_mlp_ensemble(ptnt_dir)
         # Save
         ptnt_dir.models_dir.mkdir(exist_ok=True, parents=True)
         ensemble.save(ptnt_dir.ensemble_model)
+        with open(ptnt_dir.feature_scaler, 'wb') as f:
+            # noinspection PyTypeChecker
+            pickle.dump(scaler, f)
 
         logging.info(f'Finished ensemble creation for {ptnt_dir.name} in {time.perf_counter() - start:.3f} sec.')
 
 
 if __name__ == '__main__':
+    date_str = datetime.now().strftime('%Y-%m-%d')
+    log_path = PATHS / f'mlp_creation_log_{date_str}.txt'
     logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
     st = time.perf_counter()
-    create_ensemble_models(PATHS.patient_dirs())
-    logging.info(f'Finished ensemble creation in {time.perf_counter() - st:.3f} sec')
+    create_ptnt_mlp_ensembles(PATHS.patient_dirs())
+
+    elapsed_time = time.perf_counter() - st
+    logging.info(f'Finished ensemble creation in {elapsed_time / 3600:.2f} hours')

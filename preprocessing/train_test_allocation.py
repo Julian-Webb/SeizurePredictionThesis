@@ -6,7 +6,6 @@ from pandas import Series, Timestamp, Timedelta, DataFrame
 
 from config.constants import RATIO_OF_TIMESPAN_FOR_TRAINING
 from config.paths import PATHS, PatientDir
-from models.load_data import choose_interictal_train_segs
 from utils.io import pickle_path, save_dataframe_multiformat
 
 
