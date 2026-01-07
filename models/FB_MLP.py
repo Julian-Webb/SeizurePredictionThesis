@@ -22,14 +22,15 @@ from tensorflow.keras.metrics import Recall, AUC
 
 from feature_extraction.extract_features import Features
 from config.paths import PATHS, PatientDir
-from models.load_data import subsample_shuffle_convert_train_segs
+from models.load_data import subsample_shuffle_train_segs, seg_features_to_numpy
 from utils.io import pickle_path
 
 EPOCHS = 500 # 500
+EPOCHS = 2 # todo delete
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
 LEARNING_RATE = 0.0001 # 0.0001
 ENSEMBLE_SIZE = 100 # 100
-ENSEMBLE_SIZE = 10 # todo delete
+ENSEMBLE_SIZE = 2 # todo delete
 
 
 # ENSEMBLE_SIZE = 3 # todo delete
@@ -77,7 +78,9 @@ def create_ensemble(train_segs: DataFrame,
         start = time.perf_counter()
         # Select train data for this model
         # Due to subsampling, every model gets different interictal segs
-        x_train, y_train = subsample_shuffle_convert_train_segs(train_segs, Features.ORDERED_FEATURE_NAMES)
+        train_segs = subsample_shuffle_train_segs(train_segs)
+        x_train, y_train = seg_features_to_numpy(train_segs, Features.ORDERED_NAMES)
+
         class_weights = calc_class_weights(y_train)
         model = create_mlp(Features.N_FEATURES, name)
         # Train individual model
@@ -109,10 +112,10 @@ def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
     # Perform z-score normalization on the features
     scaler = StandardScaler()
     train_segs = esegs.loc[:split_idx - 1]
-    train_features = train_segs[Features.ORDERED_FEATURE_NAMES].values
+    train_features = train_segs[Features.ORDERED_NAMES].values
     scaler.fit(train_features)
     # Transform
-    train_segs.loc[:, Features.ORDERED_FEATURE_NAMES] = scaler.transform(train_features)
+    train_segs.loc[:, Features.ORDERED_NAMES] = scaler.transform(train_features)
 
     # Create ensemble
     # noinspection PyTypeChecker

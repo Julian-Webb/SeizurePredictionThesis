@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
 from pyedflib import EdfReader
 
 from config.constants import MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO, N_CHANNELS
@@ -33,14 +33,13 @@ def _subsample_interictal_train_segs(ts: DataFrame, random_state: int = None) ->
     return selected_interictal
 
 
-def subsample_shuffle_convert_train_segs(train_segs: DataFrame, feature_cols: list[str], random_state: int = None) -> \
-        tuple[np.ndarray, np.ndarray]:
+def subsample_shuffle_train_segs(train_segs: DataFrame, random_state: int = None) -> \
+        DataFrame:
     """
     Subsample interictal segments to achieve an acceptable ratio between preictal and interictal segs.
-    Shuffle the segments and convert them to numpy arrays.
+    Shuffle the segments.
     Segs that aren't of type preictal or interictal are dropped.
     :param train_segs:
-    :param feature_cols:
     :param random_state:
     :return: x_train, y_train
     """
@@ -50,30 +49,7 @@ def subsample_shuffle_convert_train_segs(train_segs: DataFrame, feature_cols: li
     preictal = train_segs[train_segs['type'] == 'preictal']
     train_segs = pd.concat([preictal, selected_interictal])
     train_segs = train_segs.sample(frac=1, random_state=random_state)  # shuffle
-    # Convert to numpy arrays
-    x_train, y_train = seg_features_to_numpy(train_segs, feature_cols)
-    return x_train, y_train
-
-# todo is this necessary? (almost same as func above)
-def _split_train_test_data_and_process(segs: DataFrame, train_test_split: Series, random_state: int = None):
-    """
-    Drop non-existing segs. Split segments for training and testing. Select a subset of interictal training segs.
-    Combine the preictal and interictal segs and shuffle. Segs that aren't of type preictal or interictal are dropped.
-    :return: train_segs, test_segs
-    """
-    segs = segs[segs['exists']]
-    # Split segs into train and test
-    split_idx = train_test_split.segment_index
-    train_segs = segs.loc[:split_idx - 1]
-    test_segs = segs.loc[split_idx:]
-
-    # Filter interictal segs. Then, combine preictal and interictal segs and shuffle
-    interictal = choose_interictal_train_segs(train_segs, random_state)
-    preictal = train_segs[train_segs['type'] == 'preictal']
-    train_segs = pd.concat([preictal, interictal])
-    train_segs = train_segs.sample(frac=1, random_state=random_state)  # shuffle
-
-    return train_segs, test_segs
+    return train_segs
 
 
 def seg_features_to_numpy(partial_segs: DataFrame, feature_cols: list[str]):
@@ -94,10 +70,10 @@ def load_features_and_labels(esegs: DataFrame, train_test_split_idx: int, featur
     train_segs = esegs.loc[:train_test_split_idx - 1]
     test_segs = esegs.loc[train_test_split_idx:]
 
-    x_train, y_train = subsample_shuffle_convert_train_segs(train_segs, feature_cols, random_state)
+    train_segs = subsample_shuffle_train_segs(train_segs, random_state)
+    x_train, y_train = seg_features_to_numpy(train_segs, feature_cols)
     x_test, y_test = seg_features_to_numpy(test_segs, feature_cols)
     return x_train, y_train, x_test, y_test
-
 
 
 def _load_eeg_x_train(train_segs: DataFrame, edf_dir: Path) -> np.ndarray:
@@ -130,17 +106,19 @@ def _load_eeg_x_test(test_segs: DataFrame, edf_dir: Path) -> np.ndarray:
     return x_test
 
 
-def load_eeg_data(segs: DataFrame, train_test_split: Series, edf_dir: Path, random_state: int = None) -> \
+def load_eeg_data(esegs: DataFrame, split_idx: int, edf_dir: Path, random_state: int = None) -> \
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Split segments for training and testing. Select a subset of interictal training segs. Return data as numpy arrays.
-    :param segs:
-    :param train_test_split:
+    :param esegs: existing segments
+    :param split_idx: index of the train-test split
     :param random_state:  random_state parameter for pd.DataFrame.sample()
     :return: x_train, y_train, x_test, y_test
     """
     # todo how will I need to load it to evaluate it later on?
-    train_segs, test_segs = _split_train_test_data_and_process(segs, train_test_split, random_state)
+    train_segs = esegs.loc[:split_idx - 1]
+    test_segs = esegs.loc[split_idx:]
+    train_segs = subsample_shuffle_train_segs(train_segs, random_state)
 
     for df in [train_segs, test_segs]:
         # Drop features (not needed here)
