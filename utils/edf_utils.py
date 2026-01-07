@@ -23,10 +23,12 @@ def index_to_time(start_time: datetime, index: int, sampling_freq_hz: float):
     return start_time + time_dif
 
 
-def load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> ndarray:
+def load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> np.ndarray:
     """
     Read signals and segment them.
-    :return:
+    :param first_idx: The first index of the first segment in that file.
+    :param n_segs: The number of segments to read.
+    :return: segmented_sigs
     """
     total_samples = n_segs * SEGMENT.n_samples
     segmented_sigs = np.empty((n_segs, N_CHANNELS, SEGMENT.n_samples))

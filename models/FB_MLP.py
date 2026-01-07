@@ -74,6 +74,7 @@ def create_ensemble(train_segs: DataFrame,
     for i in range(ensemble_size):
         name = f"FB-MLP_{i:02}"
         logging.info(f'Creating model {name}')
+        start = time.perf_counter()
         # Select train data for this model
         # Due to subsampling, every model gets different interictal segs
         x_train, y_train = subsample_shuffle_convert_train_segs(train_segs, Features.ORDERED_FEATURE_NAMES)
@@ -88,6 +89,8 @@ def create_ensemble(train_segs: DataFrame,
         y = model(input_layer)
         models.append(y)
 
+        logging.info(f'Finished individual model {i:02} in {time.perf_counter() - start:.3f} sec.')
+
     # The ensemble output averages the outputs of the individual models
     output_layer = layers.average(models, name='ensemble_average')
     ensemble = keras.Model(inputs=input_layer, outputs=output_layer, name='ensemble')
@@ -96,6 +99,9 @@ def create_ensemble(train_segs: DataFrame,
 
 def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
     # Load Data
+    logging.info(f'Creating ensemble for {ptnt_dir.name}')
+    start = time.perf_counter()
+
     segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
     esegs = segs[segs['exists']]
     split_idx = pd.read_pickle(pickle_path(ptnt_dir.train_test_split)).segment_index
@@ -111,6 +117,7 @@ def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
     # Create ensemble
     # noinspection PyTypeChecker
     ensemble = create_ensemble(train_segs)
+    logging.info(f'Finished ensemble creation for {ptnt_dir.name} in {time.perf_counter() - start:.3f} sec.')
     return ensemble, scaler
 
 
@@ -133,8 +140,9 @@ def create_ptnt_mlp_ensembles(ptnt_dirs: list[PatientDir]):
 if __name__ == '__main__':
     date_str = datetime.now().strftime('%Y-%m-%d')
     log_path = PATHS / f'mlp_creation_log_{date_str}.txt'
-    logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
+    logging.basicConfig(filename=log_path, level='INFO', format='[%(levelname)s] %(message)s')
     st = time.perf_counter()
+
     create_ptnt_mlp_ensembles(PATHS.patient_dirs())
 
     elapsed_time = time.perf_counter() - st
