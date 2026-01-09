@@ -1,6 +1,7 @@
 import logging
 import os
-import datetime
+from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
 import pickle
 import time
 
@@ -25,15 +26,10 @@ from config.paths import PATHS, PatientDir
 from models.load_data import subsample_shuffle_train_segs, seg_features_to_numpy
 from utils.io import pickle_path
 
-EPOCHS = 500 # 500
-EPOCHS = 2 # todo delete
+EPOCHS = 500  # 500
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
-LEARNING_RATE = 0.0001 # 0.0001
-ENSEMBLE_SIZE = 100 # 100
-ENSEMBLE_SIZE = 2 # todo delete
-
-
-# ENSEMBLE_SIZE = 3 # todo delete
+LEARNING_RATE = 0.0001  # 0.0001
+ENSEMBLE_SIZE = 100  # 100
 
 
 def create_mlp(n_features: int, name: str) -> tf.keras.models.Sequential:
@@ -124,20 +120,24 @@ def create_ptnt_mlp_ensemble(ptnt_dir: PatientDir):
     return ensemble, scaler
 
 
-def create_ptnt_mlp_ensembles(ptnt_dirs: list[PatientDir]):
-    for ptnt_dir in ptnt_dirs:
-        start = time.perf_counter()
-        logging.info(f'Creating ensemble for {ptnt_dir.name}')
+def create_ptnt_ensemble_and_save(ptnt_dir: PatientDir):
+    ensemble, scaler = create_ptnt_mlp_ensemble(ptnt_dir)
+    # Save
+    ptnt_dir.models_dir.mkdir(exist_ok=True, parents=True)
+    ensemble.save(ptnt_dir.ensemble_model)
+    with open(ptnt_dir.feature_scaler, 'wb') as f:
+        # noinspection PyTypeChecker
+        pickle.dump(scaler, f)
 
-        ensemble, scaler = create_ptnt_mlp_ensemble(ptnt_dir)
-        # Save
-        ptnt_dir.models_dir.mkdir(exist_ok=True, parents=True)
-        ensemble.save(ptnt_dir.ensemble_model)
-        with open(ptnt_dir.feature_scaler, 'wb') as f:
-            # noinspection PyTypeChecker
-            pickle.dump(scaler, f)
+def create_ptnt_mlp_ensembles(ptnt_dirs: list[PatientDir], serial_processing: bool = False):
+    if serial_processing:
+        for ptnt_dir in ptnt_dirs:
+            create_ptnt_ensemble_and_save(ptnt_dir)
+    else:
+        max_workers = len(tf.config.list_physical_devices('GPU'))
+        with ProcessPoolExecutor(max_workers=max_workers) as pool:
+            pool.map(create_ptnt_ensemble_and_save, ptnt_dirs)
 
-        logging.info(f'Finished ensemble creation for {ptnt_dir.name} in {time.perf_counter() - start:.3f} sec.')
 
 
 if __name__ == '__main__':
