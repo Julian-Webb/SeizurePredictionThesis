@@ -47,6 +47,7 @@ class PatientDir(type(Path())):
         self.ensemble_model = Path(self.models_dir, 'ensemble.keras')
         self.feature_scaler = Path(self.models_dir, 'feature_scaler.pkl')
         self.cnn_model = Path(self.models_dir, 'CNN.keras')
+        self.cnn_history = Path(self.models_dir, 'CNN_history.csv')
 
         return self
 

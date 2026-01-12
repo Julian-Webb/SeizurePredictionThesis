@@ -23,7 +23,7 @@ def index_to_time(start_time: datetime, index: int, sampling_freq_hz: float):
     return start_time + time_dif
 
 
-def load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> np.ndarray:
+def load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int, channels_last: bool = False) -> np.ndarray:
     """
     Read signals and segment them.
     :param first_idx: The first index of the first segment in that file.
@@ -31,11 +31,18 @@ def load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int) -> np.ndar
     :return: segmented_sigs
     """
     total_samples = n_segs * SEGMENT.n_samples
-    segmented_sigs = np.empty((n_segs, N_CHANNELS, SEGMENT.n_samples))
+
+    if channels_last:
+        segmented_sigs = np.empty((n_segs, SEGMENT.n_samples, N_CHANNELS))
+    else:
+        segmented_sigs = np.empty((n_segs, N_CHANNELS, SEGMENT.n_samples))
 
     with EdfReader(str(file_path)) as edf:
         for chn in range(N_CHANNELS):
-            s = edf.readSignal(chn, first_idx, total_samples)
-            segmented_sigs[:, chn, :] = s.reshape((n_segs, SEGMENT.n_samples))
+            s = edf.readSignal(chn, first_idx, total_samples).reshape((n_segs, SEGMENT.n_samples))
+            if channels_last:
+                segmented_sigs[:, :, chn] = s
+            else:
+                segmented_sigs[:, chn, :] = s
 
     return segmented_sigs

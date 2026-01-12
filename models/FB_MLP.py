@@ -33,7 +33,7 @@ LEARNING_RATE = 0.0001  # 0.0001
 ENSEMBLE_SIZE = 100  # 100
 
 
-def create_mlp(n_features: int, name: str) -> tf.keras.models.Sequential:
+def mlp_model(n_features: int, name: str) -> tf.keras.models.Sequential:
     model = tf.keras.models.Sequential([
         Input([n_features], name='mlp_input'),
         Dense(16, activation='relu', name='dense0'),
@@ -79,7 +79,7 @@ def create_ensemble(train_segs: DataFrame,
         x_train, y_train = seg_features_to_numpy(train_segs, Features.ORDERED_NAMES)
 
         class_weights = calc_class_weights(y_train)
-        model = create_mlp(Features.N_FEATURES, name)
+        model = mlp_model(Features.N_FEATURES, name)
         # Train individual model
         model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, class_weight=class_weights,
                   verbose=0,

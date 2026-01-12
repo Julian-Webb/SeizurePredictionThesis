@@ -9,6 +9,7 @@
       <w>esegs</w>
       <w>freqs</w>
       <w>hann</w>
+      <w>pdirs</w>
       <w>ptnt</w>
       <w>ptnts</w>
       <w>segs</w>
@@ -16,7 +17,6 @@
       <w>startdate</w>
       <w>szrs</w>
       <w>uneeg</w>
-      <w>unneg</w>
     </words>
   </dictionary>
 </component>
