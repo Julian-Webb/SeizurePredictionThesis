@@ -1,10 +1,6 @@
 import logging
 import os
 import time
-from concurrent.futures import ProcessPoolExecutor
-
-from config.constants import N_CHANNELS
-from config.intervals import SEGMENT
 
 # make tensorflow only use GPU 0
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -16,6 +12,8 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 import pandas as pd
 
+from config.constants import N_CHANNELS
+from config.intervals import SEGMENT
 from models.load_data import load_eeg_train_data
 from models.FB_MLP import calc_class_weights
 from config.paths import PatientDir, PATHS
@@ -116,17 +114,12 @@ def create_ptnt_cnn(ptnt_dir: PatientDir):
     pd.DataFrame.from_dict(history.history).to_csv(ptnt_dir.cnn_history)
 
 
-def create_ptnt_cnns(ptnt_dirs: list[PatientDir], serial_processing: bool = False):
-    if serial_processing:
-        for ptnt_dir in ptnt_dirs:
-            create_ptnt_cnn(ptnt_dir)
-    else:
-        max_workers = len(tf.config.list_physical_devices('GPU'))
-        with ProcessPoolExecutor(max_workers=max_workers) as pool:
-            pool.map(create_ptnt_cnn, ptnt_dirs)
+def create_ptnt_cnns(ptnt_dirs: list[PatientDir]):
+    for ptnt_dir in ptnt_dirs:
+        create_ptnt_cnn(ptnt_dir)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level='INFO', format='[%(levelname)s] %(message)s')
-    pdirs = PATHS.patient_dirs()[0:1]
-    create_ptnt_cnns(pdirs, serial_processing=True)
+    pdirs = PATHS.patient_dirs()
+    create_ptnt_cnns(pdirs)
