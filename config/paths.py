@@ -110,10 +110,9 @@ class Paths(type(Path())):
 
         return ptnt_dirs
 
-    # todo change to root
     @property
-    def base_dir(self) -> Path:
-        """:return: The base directory where the data is stored"""
+    def root(self) -> Path:
+        """:return: The root directory of the dataset"""
         # This is just an alias
         return self
 

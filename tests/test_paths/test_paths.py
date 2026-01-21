@@ -14,7 +14,7 @@ class TestPaths(unittest.TestCase):
 
     def _adjust_path_lists(self, correct: List[str], computed: List[Path]) -> Tuple[List[Path], List[Path]]:
         # prepend the base path
-        correct = [PatientDir(self.PATHS.base_dir / path) for path in correct]
+        correct = [PatientDir(self.PATHS.root / path) for path in correct]
         correct.sort()
         computed.sort()
         return correct, computed

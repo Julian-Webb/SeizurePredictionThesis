@@ -13,7 +13,7 @@ def preprocessing(ask_confirm: bool = True):
     logging.info("==== Preprocessing ====")
 
     if ask_confirm:
-        input(f"Preprocessing for {PATHS.base_dir}. Press enter to continue.")
+        input(f"Preprocessing for {PATHS.root}. Press enter to continue.")
 
     with FunctionTimer('Total Preprocessing'):
         logging.info(f"===== Estimating seizure starts =====")

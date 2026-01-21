@@ -250,7 +250,7 @@ def remove_duplicates():
     2. Regarding patient M39K4B3C, visit 5d appears to have been copied into visit 5e -> the files are removed from V5e
     3. Patient P4Hk23M7L and A4RW34Z5B share certain files -> A4RW34Z5B's files are removed
     """
-    duplicate_groups = run_fdupes(PATHS.base_dir)
+    duplicate_groups = run_fdupes(PATHS.root)
 
     # with open(base_path / 'duplicates.txt', "w") as f:
     #     f.writelines(duplicate_groups)
@@ -355,7 +355,7 @@ def file_correction() -> list[Path]:
     # remove a random png which should not be there
     remove_png()
 
-    clean_mac_files(PATHS.base_dir)
+    clean_mac_files(PATHS.root)
 
     # move annotation files to the patient's annotation folder
     move_annotation_files()

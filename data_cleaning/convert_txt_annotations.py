@@ -285,5 +285,5 @@ def convert_txt_annotations():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    clean_mac_files(PATHS.base_dir)
+    clean_mac_files(PATHS.root)
     convert_txt_annotations()
