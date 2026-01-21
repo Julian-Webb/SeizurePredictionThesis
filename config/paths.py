@@ -7,9 +7,8 @@ from typing import List, Optional
 
 class Dataset(Enum):
     """The available datasets"""
-    for_mayo = '20240201_UNEEG_ForMayo'
-    uneeg_extended = '20250217_UNEEG_Extended'
-    competition = '20250501_SUBQ_SeizurePredictionCompetition_2025final'
+    competition = 'competition'
+    uniclinic = 'uniclinic'
 
 
 # Use type(Path()) to get the correct class based on the operating system
@@ -24,7 +23,7 @@ class PatientDir(type(Path())):
 
         ### seizure annotations
         self.szr_anns_dir = Path(self, "seizure_annotations")
-        self.szr_anns_original_dir = Path(self.szr_anns_dir, "seizure_annotations_original")
+        self.szr_anns_original_dir = Path(self.szr_anns_dir, "original")
         self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations")
         self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all")
         self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid")
@@ -60,19 +59,25 @@ class Paths(type(Path())):
         self = super().__new__(cls, *args, **kwargs)
 
         # dataset dirs
-        self.dataset_dirs = {dataset: Path(self, dataset.value) for dataset in Dataset}
-        self.for_mayo_dir = self.dataset_dirs[Dataset.for_mayo]
-        self.uneeg_extended_dir = self.dataset_dirs[Dataset.uneeg_extended]
-        self.competition_dir = self.dataset_dirs[Dataset.competition]
+        self.datasets_dir = Path(self, "datasets")  # The dir that contains the datasets
+        self.uniclinic_dir = Path(self.datasets_dir, Dataset.uniclinic.value)
+        self.competition_dir = Path(self.datasets_dir, Dataset.competition.value)
+
+        # todo remove old dir values throughout code
+        # self.dataset_dirs = {dataset: Path(self, dataset.value) for dataset in Dataset}
+        # self.for_mayo_dir = self.dataset_dirs[Dataset.for_mayo]
+        # self.uneeg_extended_dir = self.dataset_dirs[Dataset.uneeg_extended]
+        # self.competition_dir = self.dataset_dirs[Dataset.competition]
+
 
         # data cleaning logs
         self.data_cleaning_logs_dir = Path(self, "data_cleaning_logs")
-        self.problematic_edfs_dir = Path(self.data_cleaning_logs_dir, 'problematic_edf_files')
-        self.problematic_edfs_file = Path(self.problematic_edfs_dir / 'problematic_edf_files.csv')
+        self.problematic_edfs_dir = Path(self.data_cleaning_logs_dir, 'problematic_edfs')
         self.remaining_duplicates_file = Path(self.data_cleaning_logs_dir / 'remaining_duplicates.txt')
 
         # preprocessing
         self.patient_info_dir = Path(self, "patient_info")
+        self.basic_patient_info = Path(self.patient_info_dir, "basic_patient_info.xlsx")
         self.patient_info_exact = Path(self.patient_info_dir, "patient_info_exact")
         self.patient_info_readable = Path(self.patient_info_dir, "patient_info_readable")
 
@@ -90,7 +95,7 @@ class Paths(type(Path())):
         if datasets is None:
             datasets = list(Dataset)
 
-        base_dirs = [self.base_dir]
+        base_dirs = [self.datasets_dir]
         if include_invalid_ptnts:
             base_dirs.append(self.invalid_patients_dir)
 
@@ -99,12 +104,13 @@ class Paths(type(Path())):
             for dataset in datasets:
                 dataset_path = base_dir / dataset.value
                 if dataset_path.is_dir():
-                    for ptnt_dir in dataset_path.iterdir():
+                    for ptnt_dir in sorted(dataset_path.iterdir()):
                         if ptnt_dir.is_dir():
                             ptnt_dirs.append(PatientDir(ptnt_dir, dataset=dataset))
 
         return ptnt_dirs
 
+    # todo change to root
     @property
     def base_dir(self) -> Path:
         """:return: The base directory where the data is stored"""
@@ -113,11 +119,11 @@ class Paths(type(Path())):
 
 
 # Change base path here
-PATHS = Paths('/data/home/webb/UNEEG_data')
+PATHS = Paths('/data/home/webb/original_UNEEG')
 # PATHS = Paths('/Users/julian/Developer/SeizurePredictionData')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
-    for ptnt_dir in Paths('/data/home/webb/UNEEG_data').patient_dirs(include_invalid_ptnts=True):
+    for ptnt_dir in Paths('/data/home/webb/original_UNEEG').patient_dirs(include_invalid_ptnts=True):
         print(ptnt_dir)
 

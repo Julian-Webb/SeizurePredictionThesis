@@ -13,7 +13,7 @@ from pandas import DataFrame
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.losses import BinaryCrossentropy
 
-from utils.utils import PeriodicalLogger
+from utils.tensorflow_utils import PeriodicalLogger
 
 # make tensorflow only use GPU 0
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"

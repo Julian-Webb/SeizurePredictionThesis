@@ -9,6 +9,7 @@
       <w>esegs</w>
       <w>freqs</w>
       <w>hann</w>
+      <w>patientcode</w>
       <w>pdirs</w>
       <w>ptnt</w>
       <w>ptnts</w>
@@ -17,6 +18,7 @@
       <w>startdate</w>
       <w>szrs</w>
       <w>uneeg</w>
+      <w>uniclinic</w>
     </words>
   </dictionary>
 </component>
