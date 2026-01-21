@@ -8,7 +8,7 @@ from pandas import DataFrame
 from pyedflib import EdfReader
 
 from config.paths import PatientDir, PATHS, Dataset
-from data_cleaning.list_and_rename_edfs import list_edfs
+from cleaning_edfs.list_and_rename_edfs import list_edfs
 from utils.io import pickle_path
 
 # EDFs with a start before this year are considered corrupted

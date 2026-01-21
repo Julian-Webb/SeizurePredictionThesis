@@ -9,7 +9,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from config.paths import PATHS, Dataset
-from data_cleaning.file_correction import clean_mac_files
+from cleaning_edfs.file_correction import clean_mac_files
 from utils.io import save_dataframe_multiformat
 from utils.timezone import PatientTimezone
 

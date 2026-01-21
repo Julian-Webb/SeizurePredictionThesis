@@ -7,7 +7,7 @@ import pandas as pd
 from pandas import NaT
 
 from config.paths import PATHS
-from data_cleaning.file_correction import clean_mac_files
+from cleaning_edfs.file_correction import clean_mac_files
 from config.paths import PatientDir, Dataset
 from utils.io import pickle_path, save_dataframe_multiformat
 

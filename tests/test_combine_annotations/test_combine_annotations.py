@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_cleaning.combine_annotations import combine_annotation_files
+from cleaning_annotations.combine_annotations import combine_annotation_files
 
 
 class TestCombineAnnotations(unittest.TestCase):
