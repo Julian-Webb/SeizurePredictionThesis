@@ -235,8 +235,4 @@ def extract_features(ptnt_dirs: List[PatientDir], serial_processing: bool = Fals
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
-
-    pdir = PatientDir(PATHS.for_mayo_dir / 'B52K3P3G')
-    extract_features([pdir], serial_processing=False)
-
-    # extract_features(PATHS.patient_dirs())
+    extract_features(PATHS.patient_dirs())

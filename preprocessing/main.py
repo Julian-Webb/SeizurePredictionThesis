@@ -17,8 +17,8 @@ def preprocessing(ask_confirm: bool = True):
 
     with FunctionTimer('Total Preprocessing'):
         logging.info(f"===== Estimating seizure starts =====")
-        with FunctionTimer('estimate_seizure_starts'):
-            estimate_seizure_starts()
+        # with FunctionTimer('estimate_seizure_starts'):
+        #     estimate_seizure_starts()
 
         logging.info("===== Validating Patients and moving invalid patient dirs =====")
         with FunctionTimer('validate_patients'):

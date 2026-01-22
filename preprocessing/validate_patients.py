@@ -42,6 +42,7 @@ def find_lead_szrs(szrs: DataFrame):
     return szrs
 
 
+# todo change from ptnt_dir to edfs
 def ptnt_timespan_info(ptnt_dir: PatientDir) -> dict[str, dict]:
     """
     Compute information about the recording timespans
@@ -129,4 +130,4 @@ def validate_patients(ptnt_dirs: Iterable[PatientDir], move_invalid_ptnt_dirs: b
 
 
 if __name__ == '__main__':
-    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=True)
+    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=False)

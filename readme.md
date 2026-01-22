@@ -14,7 +14,7 @@ Various abbreviations throughout the code:
 * There are two EEG channels in the data: the distal (D) and proximal (P).  
 
 
-
+# todo update with new dataset steps
 # Pipeline Steps
 1. data_cleaning
    1. file_correction
