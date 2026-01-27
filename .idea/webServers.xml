@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="20ad1393-fca9-4e14-883f-39a9e0136caa" name="orignal_UNEEG" url="http://localhost">
+        <fileTransfer mountedRoot="$PROJECT_DIR$/../original_UNEEG" accessType="MOUNT" port="0" />
+      </webServer>
+    </option>
+  </component>
+</project>

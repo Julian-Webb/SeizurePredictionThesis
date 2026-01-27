@@ -24,8 +24,10 @@ class PatientDir(type(Path())):
         ### seizure annotations
         self.szr_anns_dir = Path(self, "seizure_annotations")
         self.szr_anns_original_dir = Path(self.szr_anns_dir, "original")
-        self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations")
+        self.szr_starts_naive_file = Path(self.szr_anns_original_dir, "seizure_starts_naive")
         self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all")
+        # todo delete
+        self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations")
         self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid")
 
         ### edf data

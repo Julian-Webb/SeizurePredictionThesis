@@ -98,19 +98,19 @@ def list_edfs(pdir: PatientDir) -> DataFrame:
     # Normalize all to the patient's main timezone and strip TZ info
     # We use row-by-row conversion, because for uniclinic, the dtype of start_localized is object, because
     #  localized times of the format UTC+01, are used, rather than datetime[ns, 'Europe/Berlin']
-    edfs['start'] = (edfs['start_localized'].apply(lambda t: t.tz_convert(tz_info.main_timezone).tz_localize(None)))
+    edfs['start_mtz'] = (edfs['start_localized'].apply(lambda t: t.tz_convert(tz_info.main_timezone).tz_localize(None)))
 
-    if not edfs['start'].is_unique:
-        duplicates = edfs[edfs.duplicated('start', keep=False)]
-        logging.error(f"Non-unique start times in {pdir.name}:\n{duplicates[['old_file_name', 'start']]}")
+    if not edfs['start_mtz'].is_unique:
+        duplicates = edfs[edfs.duplicated('start_mtz', keep=False)]
+        logging.error(f"Non-unique start times in {pdir.name}:\n{duplicates[['old_file_name', 'start_mtz']]}")
 
     # Add additional values
-    edfs['end'] = edfs['start'] + edfs['duration']
+    edfs['end'] = edfs['start_mtz'] + edfs['duration']
     edfs.reset_index(drop=True, inplace=True)
     edfs['file_name'] = edfs.apply(lambda row: name_file(pdir.name, row.name, len(edf_paths), row.start), axis=1)
 
     # Remove unnecessary columns
-    edfs = edfs[['old_file_name', 'file_name', 'start_localized', 'start', 'end', 'duration']]
+    edfs = edfs[['old_file_name', 'file_name', 'start_localized', 'start_mtz', 'end', 'duration']]
     return edfs
 
 

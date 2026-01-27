@@ -2,6 +2,7 @@
 Various abbreviations throughout the code:  
 `szr`: seizure  
 `ann`: annotation  
+`mtz`: main time zone (of a patient)
 `ptnt`: patient  
 `seg`: segment  
 `esegs`: existing segments
@@ -9,6 +10,7 @@ Various abbreviations throughout the code:
 `sig`: signal  
 `chn`: channel  
 `acfw`: autocorrelation function width  
+
 
 # General Notes
 * There are two EEG channels in the data: the distal (D) and proximal (P).  

@@ -11,18 +11,18 @@ from preprocessing.validate_patients import ptnt_valid_szrs
 class TestValidPatients(unittest.TestCase):
     def test_validate_patient(self):
         szr_starts_path = Path(__file__).parent / 'data' / 'seizure_starts.csv'
-        szrs_corr = pd.read_csv(szr_starts_path, parse_dates=['start'], index_col=0)
+        szrs_corr = pd.read_csv(szr_starts_path, parse_dates=['start_mtz'], index_col=0)
 
         valid_szrs_comp, szrs_comp, patient_info = ptnt_valid_szrs(szrs_corr)
 
         # load the expected results
         valid_szrs_corr = szrs_corr[szrs_corr['should_be_valid']]
 
-        comparison = valid_szrs_comp['start'].values == valid_szrs_corr['start'].values
+        comparison = valid_szrs_comp['start_mtz'].values == valid_szrs_corr['start_mtz'].values
         self.assertTrue(comparison.all(),
                         'The computed valid seizure starts do not match the expected ones.\n'
-                        f'valid_szrs_comp: {valid_szrs_comp["start"].values}\n'
-                        f'valid_szrs_corr: {valid_szrs_corr["start"].values}')
+                        f'valid_szrs_comp: {valid_szrs_comp["start_mtz"].values}\n'
+                        f'valid_szrs_corr: {valid_szrs_corr["start_mtz"].values}')
 
         total_szrs = len(szrs_corr)
         valid_szrs = len(valid_szrs_corr)
