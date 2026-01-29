@@ -21,14 +21,16 @@ def interpret_line(line: str, filename: str = ''):
     values = line.split('\t')
     # If it has 4 values, the last one is a comment
     comment = values.pop() if len(values) == 4 else ''
+    #todo delete
+    if comment:
+        print(comment)
     type_, datetime1, datetime2 = values
-
     if any(type_ in LINE_STARTS[k] for k in ("Seizure", "Seizure_boundary", "Button")):
         assert datetime1 == datetime2, f"The dates are not the same:\n{datetime1}\n{datetime2}\n{filename=}"
         return {'type': type_, 'start_naive': datetime1, 'comment': comment}
     elif type_ in LINE_STARTS["Pattern-Rhythmic"]:
         assert datetime1 != datetime2, f"Pattern Rhythmic, but the dates are the same:\n{datetime1}\n{datetime2}\n{filename=}"
-        return {'type': type_, 'start_naive': datetime1, 'end': datetime2, 'comment': comment}
+        return {'type': type_, 'start_naive': datetime1, 'end_naive': datetime2, 'comment': comment}
     else:
         raise ValueError(f"Unknown type: {type_}\n{filename=}")
 
@@ -134,5 +136,6 @@ def localize_anns(pdirs: list[PatientDir]):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    # convert_uniclinic_anns(sorted(list(Path('/data/home/webb/STEP3_combined_anns').iterdir())))
     convert_uniclinic_anns(PATHS.patient_dirs([Dataset.uniclinic]))
     localize_anns(PATHS.patient_dirs())

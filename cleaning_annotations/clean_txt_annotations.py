@@ -17,7 +17,7 @@ class AnnotationType(Enum):
 
 
 def clean_filename(path: Path):
-    replacements_correct_to_wrong = {
+    replacements_correct2wrong = {
         '_': ['__'],
         'Consensus.txt': [
             'CONSENSUS.txt',
@@ -67,7 +67,7 @@ def clean_filename(path: Path):
     }
 
     new_name = path.name
-    for correct, wrong_list in replacements_correct_to_wrong.items():
+    for correct, wrong_list in replacements_correct2wrong.items():
         for wrong in wrong_list:
             new_name = new_name.replace(wrong, correct)
 
@@ -100,6 +100,9 @@ def move_duplicated_files(data: Path, removed_dir: Path):
             # there's already an equivalent file 'U002-DE01-15_OUTPT_V5g_SUBQ_ANN_YN'
             'U002-DE01-15_OUTPT_V5g_SUBQ_YN',
             'U002-DE01-15_OUTPT_V5i_SUBQ_YN',  # this is covered by 'U002-DE01-15_OUTPT_V5i_SUBQ_ANN_YN'
+            # This file belongs to patient 16 (as by patient ID in file and automatic detections of patient 16)
+            # It is already contined in patient 16's annotations
+            'U002-DE01-15_OUTPT_V5h_SUBQ_ANN_MH'
         ],
         'U002-DE01-16': [
             'U002-DE01-16_OUTPT_V5a-c_SUBQ_MH',
@@ -140,7 +143,7 @@ def file_content_corrections(data: Path):
 
             # Normalize whitespace
             new = re.sub(r' {2,}', ' ', content)  # replace multiple spaces with a single space
-            new = re.sub(r'\t{2,}', '\t', new)  # replace multiple tabs with a single tab
+            new = re.sub(r'[ \t]{2,}', '\t', new)  # replace multiple spaces/tabs with a single tab
             # Remove empty lines and remove trailing whitespace
             new = "\n".join(line.strip() for line in new.splitlines() if line.strip())
 
@@ -160,16 +163,38 @@ def file_content_corrections(data: Path):
             if pdir.name == 'U002-DE01-03':
                 new = new.replace('0004111', 'U002-DE01-03')
 
-            additional_replacements = [
-                ['U002_DE01_', 'U002-DE01-'],
-                ['U003-DE01-', 'U002-DE01-'],
+            # Additional replacements
+            repl_correct2wrong = {
+                'U002-DE01-': [
+                    'U002_DE01_',
+                    'U003-DE01-'
+                ],
                 # Remove "Visit 5a" on its own line
-                ['\nVisit 5a\n', '\n'],
-                ['No registred seazures by rewiever MH.', 'No seizures by reviewer MH.']
-            ]
-            for repl in additional_replacements:
-                new = new.replace(*repl)
+                '\n': ['\nVisit 5a\n'],
+                'No seizures by reviewer MH.': ['No registred seazures by rewiever MH.'],
+                'Seizure_Start': [
+                    'Seizure_Start_Right',
+                    'seizure_Start_Right',
+                    'Seizure_Start_Left',
+                    'Seizure Start',
+                    'SUB_Start',
+                ],
+                'Seizure_End': [
+                    'Seizure_End (UNEEG)',
+                    'Seizure_End_Right',
+                    'seizure_End_Right',
+                    'Seizure_End_Left',
+                    'Seizure End',
+                    'SUB-Ende',
+                ],
+                '\nSeizure-rhythmic\t': ['\n6Seizure-rhythmic\t']
+            }
 
+            for correct, wrong_list in repl_correct2wrong.items():
+                for wrong in wrong_list:
+                    new = new.replace(wrong, correct)
+
+            # Save
             if new != content:
                 # print(f'Altering {filepath.name}')
                 filepath.write_text(new)

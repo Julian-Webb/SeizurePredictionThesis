@@ -18,16 +18,18 @@ Various abbreviations throughout the code:
 
 # todo update with new dataset steps
 # Pipeline Steps
-1. data_cleaning
-   1. file_correction
-   2. convert_txt_annotations
-   3. combine_annotations
-   4. list_rename_move_edf_data
-   5. remove_P4Hk23M7L_files_from_2000
-2. preprocessing
+1. cleaning_annotations
+   1. clean_txt_annotations
+   2. convert_txt_to_tabular
+   3. combine_visit_annotations
+   4. check_and_transfer_annotations
+   5. localize_annotations
+2. cleaning_edfs
+   1. todo
+3. preprocessing
    1. estimate_seizure_starts
    2. validate_patients
    3. segment_tables
    4. train_test_split
-3. feature_extraction
+4. feature_extraction
    1. extract_features
