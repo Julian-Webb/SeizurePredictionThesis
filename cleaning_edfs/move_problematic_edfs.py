@@ -114,7 +114,7 @@ def move_duplicates_within_patients(duplicate_groups: list[list[str]], dataset_d
                 # Check if the file starts with the patient's name
                 if path.name.startswith(patient_id):
                     score += 2
-                # Check if it contains a suffix like _1 or _2, which is typical of copying a file (uniclinic dataset).
+                # Check if it contains a suffix like _1 or _2, which is typical of copying a file (ultra2 dataset).
                 # For competition patients, most files are like this, so we choose the one with the lower index
                 match = re.search(r"_\d+$", path.stem)
                 if match:
@@ -204,6 +204,6 @@ def move_problematic_edfs(pdirs: list[PatientDir]):
 
 if __name__ == '__main__':
     move_problematic_edfs(PATHS.patient_dirs())
-    # for pdir in PATHS.patient_dirs([Dataset.uniclinic]):
+    # for pdir in PATHS.patient_dirs([Dataset.ultra2]):
     #     move_edfs_with_duplicate_start(pdir,
     #                                    edfs=pd.read_pickle(pickle_path(pdir.edf_files_sheet)))

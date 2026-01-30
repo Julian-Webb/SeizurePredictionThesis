@@ -8,7 +8,7 @@ from typing import List, Optional
 class Dataset(Enum):
     """The available datasets"""
     competition = 'competition'
-    uniclinic = 'uniclinic'
+    ultra2 = 'ultra2'
 
 
 # Use type(Path()) to get the correct class based on the operating system
@@ -62,7 +62,7 @@ class Paths(type(Path())):
 
         # dataset dirs
         self.datasets_dir = Path(self, "datasets")  # The dir that contains the datasets
-        self.uniclinic_dir = Path(self.datasets_dir, Dataset.uniclinic.value)
+        self.ultra2_dir = Path(self.datasets_dir, Dataset.ultra2.value)
         self.competition_dir = Path(self.datasets_dir, Dataset.competition.value)
 
         # todo remove old dir values throughout code

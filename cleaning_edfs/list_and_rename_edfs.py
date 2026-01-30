@@ -12,8 +12,8 @@ from utils.timezone import PatientTimezone, timezone_from_edf_annotation
 from utils.utils import timeit
 
 
-def name_file(patient_id: str, sequence_number: int, n_edfs: int, start: Timestamp):
-    datetime = start.strftime('%Y-%m-%d_%H-%M-%S')
+def name_file(patient_id: str, sequence_number: int, n_edfs: int, start_mtz: Timestamp):
+    datetime = start_mtz.strftime('%Y-%m-%d_%H-%M-%S')
     # Look at the number all this patient's edfs, to determine how the sequence number should be padded
     n_digits = len(str(n_edfs))
     return f"{patient_id}_{sequence_number:0{n_digits}d}_{datetime}.edf"
@@ -23,7 +23,7 @@ def name_file(patient_id: str, sequence_number: int, n_edfs: int, start: Timesta
 def list_edfs(pdir: PatientDir) -> DataFrame:
     """
     Make a DataFrame of all edf files in a patient dir with timestamps localized to the patient's main timezone.
-    :return: DataFrame with columns 'old_file_name', 'file_name', 'start_localized', 'start', 'end', 'duration'
+    :return: DataFrame with columns 'old_file_name', 'file_name', 'start_localized', 'start_mtz', 'end_mtz', 'duration'
     """
 
     def get_competition_sequence_number(path: Path) -> int:
@@ -41,6 +41,10 @@ def list_edfs(pdir: PatientDir) -> DataFrame:
     edfs = []
 
     # Read in EDF info
+    if not pdir.edf_dir.exists() or list(pdir.edf_dir.iterdir()) == 0:
+        logging.warning(f"No edfs found in {pdir}")
+        return DataFrame(edfs)
+
     edf_paths = list(pdir.edf_dir.iterdir())
     for edf_path in edf_paths:
         logging.debug(f"Processing {edf_path}")
@@ -58,7 +62,7 @@ def list_edfs(pdir: PatientDir) -> DataFrame:
                 # Keep naive start for localization later
                 edf_info['start_naive'] = start_naive
             else:
-                # Uniclinic: Localize immediately using the file's specific offset
+                # ultra2: Localize immediately using the file's specific offset
                 annotation = edf.read_annotation()
                 tz_offset = timezone_from_edf_annotation(annotation)
                 # Localize to the specific offset (e.g. UTC+02:00)
@@ -67,13 +71,10 @@ def list_edfs(pdir: PatientDir) -> DataFrame:
         edfs.append(edf_info)
 
     edfs = DataFrame(edfs)
-    if edfs.empty:
-        logging.warning(f"No edfs found in {pdir}")
-        return edfs
 
     tz_info = PatientTimezone.from_competition(is_competition)
     if is_competition:
-        # Uniclinic: already localized
+        # ultra2: already localized
         # 1. Sort by filename sequence
         edfs['seq'] = edfs['path'].apply(get_competition_sequence_number)
         edfs = edfs.sort_values('seq').reset_index(drop=True)
@@ -96,7 +97,7 @@ def list_edfs(pdir: PatientDir) -> DataFrame:
     edfs.sort_values('start_localized', inplace=True)
 
     # Normalize all to the patient's main timezone and strip TZ info
-    # We use row-by-row conversion, because for uniclinic, the dtype of start_localized is object, because
+    # We use row-by-row conversion, because for ultra2, the dtype of start_localized is object, because
     #  localized times of the format UTC+01, are used, rather than datetime[ns, 'Europe/Berlin']
     edfs['start_mtz'] = (edfs['start_localized'].apply(lambda t: t.tz_convert(tz_info.main_timezone).tz_localize(None)))
 
@@ -105,12 +106,12 @@ def list_edfs(pdir: PatientDir) -> DataFrame:
         logging.error(f"Non-unique start times in {pdir.name}:\n{duplicates[['old_file_name', 'start_mtz']]}")
 
     # Add additional values
-    edfs['end'] = edfs['start_mtz'] + edfs['duration']
+    edfs['end_mtz'] = edfs['start_mtz'] + edfs['duration']
     edfs.reset_index(drop=True, inplace=True)
-    edfs['file_name'] = edfs.apply(lambda row: name_file(pdir.name, row.name, len(edf_paths), row.start), axis=1)
+    edfs['file_name'] = edfs.apply(lambda row: name_file(pdir.name, row.name, len(edf_paths), row.start_mtz), axis=1)
 
     # Remove unnecessary columns
-    edfs = edfs[['old_file_name', 'file_name', 'start_localized', 'start_mtz', 'end', 'duration']]
+    edfs = edfs[['old_file_name', 'file_name', 'start_localized', 'start_mtz', 'end_mtz', 'duration']]
     return edfs
 
 
@@ -156,4 +157,5 @@ def list_and_rename_edfs(pdirs: list[PatientDir]):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-    list_and_rename_edfs(PATHS.patient_dirs())
+    pdirs = PATHS.patient_dirs()
+    list_and_rename_edfs(pdirs)

@@ -41,13 +41,13 @@ def find_existing_segs(edf_files: DataFrame, segs: DataFrame) -> DataFrame:
     segs['exists'] = False
     for _, edf in edf_files.iterrows():
         # We only want segments completely contained in the interval, because we only want full segments
-        edf_segs_mask = (edf['start'] <= segs['start']) & (segs['end'] <= edf['end'])
+        edf_segs_mask = (edf['start_mtz'] <= segs['start_mtz']) & (segs['end_mtz'] <= edf['end_mtz'])
         segs.loc[edf_segs_mask, 'exists'] = True
         segs.loc[edf_segs_mask, 'file'] = edf['file_name']
 
         # Calculate the start index based on the start of the file
-        segs.loc[edf_segs_mask, 'start_index'] = segs.loc[edf_segs_mask, 'start'].apply(
-            lambda start: round(time_to_index(file_start=edf['start'], timestamp=start,
+        segs.loc[edf_segs_mask, 'start_index'] = segs.loc[edf_segs_mask, 'start_mtz'].apply(
+            lambda start_mtz: round(time_to_index(file_start=edf['start_mtz'], timestamp=start_mtz,
                                               sampling_freq_hz=SAMPLING_FREQUENCY_HZ)))
         # Since we converted from time to index, which is slightly messy, we assert that the distance between
         #  the start indexes is correct.
@@ -72,7 +72,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
 
         # How much before the szr the first iv starts
         pre_szr_offset = sum([iv.exact_dur for iv in pre_szr_ivs], Timedelta(0))
-        iv_start = szr['start'] - pre_szr_offset
+        iv_start = szr['start_mtz'] - pre_szr_offset
 
         # Iterate through the intervals and set the properties of segs
         # NOTE: If the next szr is non-lead, the preictal interval and horizon will overlap with inter_post and
@@ -80,7 +80,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
         for iv in ivs:
             iv_end = iv_start + iv.exact_dur
             # Find segs in this interval
-            in_iv_mask = (iv_start <= segs['start']) & (segs['start'] < iv_end)
+            in_iv_mask = (iv_start <= segs['start_mtz']) & (segs['start_mtz'] < iv_end)
             segs.loc[in_iv_mask, 'type'] = iv.label
             segs.loc[in_iv_mask, 'lead_szr'] = szr['lead']
             iv_start = iv_end
@@ -95,12 +95,12 @@ def make_segs_table(ptnt_dir: PatientDir):
     # We floor here because we only want full segments
     n_segs = math.floor(timespan / SEGMENT.exact_dur)
 
-    segs = DataFrame(columns=['start', 'end', 'type', 'lead_szr', 'exists', 'file', 'start_index'],
+    segs = DataFrame(columns=['start_mtz', 'end_mtz', 'type', 'lead_szr', 'exists', 'file', 'start_index'],
                      index=np.arange(n_segs))
 
     # The start is shifted by the duration of a segment per segment
-    segs['start'] = first_start + segs.index * SEGMENT.exact_dur
-    segs['end'] = segs['start'] + SEGMENT.exact_dur
+    segs['start_mtz'] = first_start + segs.index * SEGMENT.exact_dur
+    segs['end_mtz'] = segs['start_mtz'] + SEGMENT.exact_dur
     segs = find_existing_segs(edf_files, segs)
     valid_szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))
     segs = find_seg_type(segs, valid_szrs)
@@ -139,10 +139,10 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: s
         for tp in type_props:
             marker = '>' if exists else 'x'
             mask = tp['mask'] & (segs['exists'] == exists)
-            ax.scatter(segs.loc[mask, 'start'], y[mask], s=7, label=tp['label'], c=tp['color'], marker=marker)
+            ax.scatter(segs.loc[mask, 'start_mtz'], y[mask], s=7, label=tp['label'], c=tp['color'], marker=marker)
 
     # Plot seizures
-    for t in szrs['start']:
+    for t in szrs['start_mtz']:
         ax.axvline(t, color='r', linestyle='--', linewidth=0.5)
         ax.annotate(t.strftime("%d.%m.%y %H:%M:%S"), xy=(t, 1.0),
                     xycoords=('data', 'axes fraction'),
@@ -157,7 +157,7 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: s
     # Plot edf times
     if edfs is not None:
         for edf in edfs.itertuples(index=False):
-            ax.axvspan(edf.start, edf.end, color='green', alpha=0.2)
+            ax.axvspan(edf.start_mtz, edf.end_mtz, color='green', alpha=0.2)
 
     ax.grid(axis='x', linestyle='--', alpha=0.4)
     ax.legend(loc='upper left')
@@ -177,7 +177,7 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
 
     else:
         segs = make_segs_table(ptnt_dir)
-        save_dataframe_multiformat(segs.drop(columns=['end']), ptnt_dir.segments_table)
+        save_dataframe_multiformat(segs.drop(columns=['end_mtz']), ptnt_dir.segments_table)
 
     # Make the plot
     szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))

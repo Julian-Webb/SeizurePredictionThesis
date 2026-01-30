@@ -49,7 +49,7 @@ def copy_anns(src: Path, dst_dataset_dir: Path):
 def main():
     root = Path('/data/home/webb/seizure_annotations/STEP4_combined_csv_anns')
     check_duplicate_anns(root)
-    copy_anns(root, PATHS.uniclinic_dir)
+    copy_anns(root, PATHS.ultra2_dir)
 
 
 if __name__ == '__main__': main()

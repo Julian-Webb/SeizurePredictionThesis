@@ -1,7 +1,6 @@
 import logging
 
 from config.paths import PATHS
-from preprocessing.estimate_seizure_starts import estimate_seizure_starts
 from preprocessing.segment_tables import segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
@@ -16,10 +15,6 @@ def preprocessing(ask_confirm: bool = True):
         input(f"Preprocessing for {PATHS.root}. Press enter to continue.")
 
     with FunctionTimer('Total Preprocessing'):
-        logging.info(f"===== Estimating seizure starts =====")
-        # with FunctionTimer('estimate_seizure_starts'):
-        #     estimate_seizure_starts()
-
         logging.info("===== Validating Patients and moving invalid patient dirs =====")
         with FunctionTimer('validate_patients'):
             validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=True)

@@ -24,12 +24,9 @@ Various abbreviations throughout the code:
    3. combine_visit_annotations
    4. check_and_transfer_annotations
    5. localize_annotations
-2. cleaning_edfs
-   1. todo
-3. preprocessing
-   1. estimate_seizure_starts
-   2. validate_patients
-   3. segment_tables
-   4. train_test_split
-4. feature_extraction
+2. preprocessing
+   1. validate_patients
+   2. segment_tables
+   3. train_test_split
+3. feature_extraction
    1. extract_features

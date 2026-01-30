@@ -11,7 +11,7 @@ from config.paths import Dataset, PATHS
 
 def check_edf_names_with_patient_id_correct_format():
     other_types = []
-    for pdir in PATHS.patient_dirs([Dataset.uniclinic]):
+    for pdir in PATHS.patient_dirs([Dataset.ultra2]):
         logging.info(f'Processing {pdir.name}')
         for edf in pdir.edf_dir.iterdir():
             if edf.name.lower().startswith('u'):
@@ -41,7 +41,7 @@ def correct_edf_names_with_patient_id():
         ['U002_DE01-', correct],
     ]
 
-    for pdir in PATHS.patient_dirs([Dataset.uniclinic]):
+    for pdir in PATHS.patient_dirs([Dataset.ultra2]):
         logging.info(f'Processing {pdir.name}')
         for edf in pdir.edf_dir.iterdir():
             if edf.name.lower().startswith('u'):
@@ -58,7 +58,7 @@ def show_edf_info_per_ptnt():
     all_ptnt_infos = {}
 
     # Iterate over all patients and edfs
-    for pdir in PATHS.patient_dirs([Dataset.uniclinic]):
+    for pdir in PATHS.patient_dirs([Dataset.ultra2]):
         print(f'---- {pdir.name}:')
 
         # Read Info from files
