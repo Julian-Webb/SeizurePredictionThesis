@@ -37,6 +37,8 @@ class PatientDir(type(Path())):
         self.edf_dir = Path(self, 'edf_data')
         # The name of the sheet containing the edf file names and their metadata for each patient
         self.edf_files_sheet = Path(self, 'edf_files')
+        self.valid_edf_intervals = Path(self, 'valid_edf_intervals')
+        self.invalid_edf_intervals = Path(self, 'invalid_edf_intervals')
 
         ### Preprocessing
         self.segments_table = Path(self, 'segments')
@@ -120,11 +122,11 @@ class Paths(type(Path())):
 
 
 # Change base path here
-PATHS = Paths('/data/home/webb/original_UNEEG')
+PATHS = Paths('/data/home/webb/UNEEG')
 # PATHS = Paths('/Users/julian/Developer/SeizurePredictionData')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
-    for ptnt_dir in Paths('/data/home/webb/original_UNEEG').patient_dirs(include_invalid_ptnts=True):
+    for ptnt_dir in PATHS.patient_dirs(include_invalid_ptnts=True):
         print(ptnt_dir)
 
