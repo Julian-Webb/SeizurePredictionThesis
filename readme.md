@@ -26,7 +26,8 @@ Various abbreviations throughout the code:
    5. localize_annotations
 2. preprocessing
    1. validate_patients
-   2. segment_tables
-   3. train_test_split
+   2. filter_signals
+   3. segment_tables
+   4. train_test_allocation
 3. feature_extraction
    1. extract_features

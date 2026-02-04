@@ -36,7 +36,7 @@ from utils.io import save_dataframe_multiformat, pickle_path
 
 # ------ COPY FEATURES TO POOL ------
 # for pdir in PATHS.patient_dirs():
-#     dst = Path('/data/pool/sotirios/UNEEG_Features', pdir.name)
+#     dst = Path('/data/pool/sotirios/UNEEG_Features_with_interval_type_and_signals_filtered', pdir.name)
 #     dst.mkdir(exist_ok=True, parents=True)
 #
 #     shutil.copy2(pdir / 'segments.csv', dst / 'segments.csv')
