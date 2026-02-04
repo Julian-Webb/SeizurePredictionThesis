@@ -37,8 +37,8 @@ class PatientDir(type(Path())):
         self.edf_dir = Path(self, 'edf_data')
         # The name of the sheet containing the edf file names and their metadata for each patient
         self.edf_files_sheet = Path(self, 'edf_files')
-        self.valid_edf_intervals = Path(self, 'valid_edf_intervals')
-        self.invalid_edf_intervals = Path(self, 'invalid_edf_intervals')
+        self.valid_edf_intervals = Path(self, 'edf_intervals_valid')
+        self.invalid_edf_intervals = Path(self, 'edf_intervals_invalid')
 
         ### Preprocessing
         self.segments_table = Path(self, 'segments')

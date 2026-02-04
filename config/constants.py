@@ -1,5 +1,3 @@
-from collections import OrderedDict
-
 import pandas as pd
 
 # The sampling frequency of all EEG signals in the edf files

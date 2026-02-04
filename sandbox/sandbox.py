@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from config.paths import PATHS
 from utils.io import pickle_path
@@ -36,7 +37,11 @@ def check_files_contained_in_both():
                 print(f'x File not in dst: {file.parent.name}/{file.name}')
 
 
-
+def plot_something():
+    plt.ion()
+    plt.plot([1, 2, 3])
+    plt.show()
 
 if __name__ == '__main__':
-    check_files_contained_in_both()
+    # check_files_contained_in_both()
+    plot_something()

@@ -16,12 +16,6 @@ from utils.edf_utils import time_to_index
 from utils.io import pickle_path, save_dataframe_multiformat
 
 
-# todo do this locally
-# from pyvirtualdisplay import Display
-# disp = Display(visible=False, size=(800, 600))
-# disp.start()
-
-
 def load_ptnt_timespan_info(ptnt_dir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
     """
     :return: start of the recordings, end of the recordings, timespan
@@ -35,26 +29,30 @@ def load_ptnt_timespan_info(ptnt_dir: PatientDir) -> Tuple[Timestamp, Timestamp,
 
 
 # noinspection PyUnresolvedReferences
-def find_existing_segs(edf_files: DataFrame, segs: DataFrame) -> DataFrame:
-    """In the segs DataFrame, fill in which segments exist in the edf data."""
-    # Loop through each edf and set the segs it contains to True
+def find_existing_segs(valid_edf_intervals: DataFrame, edfs: DataFrame, segs: DataFrame) -> DataFrame:
+    """In the segs DataFrame, fill in which segments exist in the valid EDF data."""
+    # Loop through each interval and set the segs it contains to True
     segs['exists'] = False
-    for _, edf in edf_files.iterrows():
-        # We only want segments completely contained in the interval, because we only want full segments
-        edf_segs_mask = (edf['start_mtz'] <= segs['start_mtz']) & (segs['end_mtz'] <= edf['end_mtz'])
-        segs.loc[edf_segs_mask, 'exists'] = True
-        segs.loc[edf_segs_mask, 'file'] = edf['file_name']
 
-        # Calculate the start index based on the start of the file
-        segs.loc[edf_segs_mask, 'start_index'] = segs.loc[edf_segs_mask, 'start_mtz'].apply(
-            lambda start_mtz: round(time_to_index(file_start=edf['start_mtz'], timestamp=start_mtz,
-                                              sampling_freq_hz=SAMPLING_FREQUENCY_HZ)))
-        # Since we converted from time to index, which is slightly messy, we assert that the distance between
-        #  the start indexes is correct.
-        index_diffs = segs.loc[edf_segs_mask, 'start_index'].diff()
-        # Ignore the first start entry because there is no previous start and make sure the differences are correct
-        assert (index_diffs.iloc[1:] == SEGMENT.n_samples).all(), \
-            f'The differences between two starts indexes is not {SEGMENT.n_samples=}'
+    for file_name, group in valid_edf_intervals.groupby('file_name'):
+        file_start = edfs.loc[edfs['file_name'] == file_name, 'start_mtz'].item()
+        for iv in group.itertuples():
+            # We only want segments completely contained in the interval because we only want full segments
+            iv_segs_mask = (iv.start_mtz <= segs['start_mtz']) & (segs['end_mtz'] <= iv.end_mtz)
+            segs.loc[iv_segs_mask, 'exists'] = True
+            segs.loc[iv_segs_mask, 'file'] = file_name
+
+            # Calculate the start index based on the start of the file
+            segs.loc[iv_segs_mask, 'start_index'] = segs.loc[iv_segs_mask, 'start_mtz'].apply(
+                lambda seg_start: round(time_to_index(file_start, seg_start, SAMPLING_FREQUENCY_HZ)))
+
+            # Since we converted from time to index, which is slightly messy, we assert that the distance between
+            #  the start indexes is correct.
+            index_diffs = segs.loc[iv_segs_mask, 'start_index'].diff()
+            # Ignore the first start entry because there is no previous start and make sure the differences are correct
+            assert (index_diffs.iloc[1:] == SEGMENT.n_samples).all(), \
+                f'The differences between two starts indexes is not {SEGMENT.n_samples=}'
+
     return segs
 
 
@@ -88,9 +86,8 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
     return segs
 
 
-def make_segs_table(ptnt_dir: PatientDir):
-    edf_files = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
-    first_start, last_end, timespan = load_ptnt_timespan_info(ptnt_dir)
+def make_segs_table(pdir: PatientDir):
+    first_start, last_end, timespan = load_ptnt_timespan_info(pdir)
 
     # We floor here because we only want full segments
     n_segs = math.floor(timespan / SEGMENT.exact_dur)
@@ -101,8 +98,11 @@ def make_segs_table(ptnt_dir: PatientDir):
     # The start is shifted by the duration of a segment per segment
     segs['start_mtz'] = first_start + segs.index * SEGMENT.exact_dur
     segs['end_mtz'] = segs['start_mtz'] + SEGMENT.exact_dur
-    segs = find_existing_segs(edf_files, segs)
-    valid_szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))
+
+    valid_intervals = pd.read_pickle(pickle_path(pdir.valid_edf_intervals))
+    edfs = pd.read_pickle(pickle_path(pdir.edf_files_sheet))
+    segs = find_existing_segs(valid_intervals, edfs, segs)
+    valid_szrs = pd.read_pickle(pickle_path(pdir.valid_szr_starts_file))
     segs = find_seg_type(segs, valid_szrs)
     return segs
 
@@ -174,7 +174,6 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
     logging.info(f"Processing {ptnt_dir.name}")
     if from_preexisting_segs:
         segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
-
     else:
         segs = make_segs_table(ptnt_dir)
         save_dataframe_multiformat(segs.drop(columns=['end_mtz']), ptnt_dir.segments_table)
@@ -186,24 +185,23 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
     plot_segs(segs, szrs, edfs, ptnt_dir.name, show=False, savepath=ptnt_dir.segments_plot)
 
 
-def segment_tables(ptnt_dirs: List[PatientDir]):
-    # Serial Processing:
-    # for ptnt_dir in ptnt_dirs:
-    #     logging.info(f'Seg table for : {ptnt_dir.name}')
-    #     make_segs_table(ptnt_dir)
-
-    # Parallel Processing:
-    max_workers = min(len(ptnt_dirs), multiprocessing.cpu_count())
-    logging.info(f"Using {max_workers} max workers")
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in ptnt_dirs}
-        for fut in as_completed(futures):
-            ptnt_dir = futures[fut]
-            try:
-                fut.result()
-                logging.info(f"Finished seg table for: {ptnt_dir.name}")
-            except:
-                logging.warning(f"Failed seg table for: {ptnt_dir.name}")
+def segment_tables(ptnt_dirs: List[PatientDir], serial_processing: bool = False):
+    if serial_processing:
+        for ptnt_dir in ptnt_dirs:
+            logging.info(f'Seg table for : {ptnt_dir.name}')
+            make_segs_table(ptnt_dir)
+    else:
+        max_workers = min(len(ptnt_dirs), multiprocessing.cpu_count())
+        logging.info(f"Using {max_workers} max workers")
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in ptnt_dirs}
+            for fut in as_completed(futures):
+                ptnt_dir = futures[fut]
+                try:
+                    fut.result()
+                    logging.info(f"Finished seg table for: {ptnt_dir.name}")
+                except:
+                    logging.warning(f"Failed seg table for: {ptnt_dir.name}")
 
 
 if __name__ == '__main__':
