@@ -12,7 +12,7 @@ from tensorflow.keras.layers import Dense, Input, BatchNormalization
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
-from config.paths import PatientDir
+from config.paths import PatientDir, PATHS
 from feature_extraction.extract_features import Features
 from models.load_data import subsample_shuffle_train_segs, seg_features_to_numpy
 from utils.io import pickle_path
@@ -75,7 +75,7 @@ def create_ensemble(train_segs: DataFrame, ptnt: str = 'unknown patient',
         # Train individual model
         model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, class_weight=class_weights,
                   verbose=0,
-                  callbacks=[PeriodicalLogger(name, interval=100)],
+                  callbacks=[PeriodicalLogger(f'{ptnt} - {name}', interval=100)],
                   )
         # Make all models share the same input layer
         y = model(input_layer)
@@ -135,4 +135,4 @@ def create_mlp_ensembles(ptnt_dirs: list[PatientDir]):
     print(f'Finished ensemble creation in {elapsed_time / 3600:.2f} hours')
 
 
-if __name__ == '__main__': create_mlp_ensembles()
+if __name__ == '__main__': create_mlp_ensembles(PATHS.patient_dirs())

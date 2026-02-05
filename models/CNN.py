@@ -13,6 +13,7 @@ from models.load_data import load_eeg_train_data
 from models.FB_MLP import calc_class_weights
 from config.paths import PatientDir, PATHS
 from utils.io import pickle_path
+from utils.tensorflow_utils import PeriodicalLogger
 
 EPOCHS = 50  # 50
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
@@ -85,29 +86,32 @@ def cnn_model(n_samples: int, n_channels: int) -> tf.keras.models.Sequential:
     return model
 
 
-def create_ptnt_cnn(ptnt_dir: PatientDir):
+def create_ptnt_cnn(pdir: PatientDir):
     cnn = cnn_model(SEGMENT.n_samples, N_CHANNELS)
 
     # load data
     start = time.perf_counter()
-    print(f'[{ptnt_dir.name}] Loading EEG data for CNN training')
-    segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
+    print(f'[{pdir.name}] Loading EEG data for CNN training')
+    segs = pd.read_pickle(pickle_path(pdir.segments_table))
     esegs = segs[segs['exists']]
-    split_idx = pd.read_pickle(pickle_path(ptnt_dir.train_test_split)).segment_index
-    x_train, y_train = load_eeg_train_data(esegs, split_idx, ptnt_dir.edf_dir)
-    print(f'[{ptnt_dir.name}] Finished loading data in {time.perf_counter() - start:.3f} sec.')
+    split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index
+    x_train, y_train = load_eeg_train_data(esegs, split_idx, pdir.edf_dir)
+    print(f'[{pdir.name}] Finished loading data in {time.perf_counter() - start:.3f} sec.')
 
     # train model
     start = time.perf_counter()
-    print(f'[{ptnt_dir.name}] Training CNN')
+    print(f'[{pdir.name}] Training CNN')
     class_weights = calc_class_weights(y_train)
-    history = cnn.fit(x_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights)
-    print(f'[{ptnt_dir.name}] Finished training CNN in {time.perf_counter() - start:.3f} sec.')
+    history = cnn.fit(x_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
+                      verbose=0,
+                      callbacks=[PeriodicalLogger(f'[{pdir.name}] CNN', interval=10)],
+                      )
+    print(f'[{pdir.name}] Finished training CNN in {time.perf_counter() - start:.3f} sec.')
 
     # Save
-    ptnt_dir.cnn_model.parent.mkdir(parents=True, exist_ok=True)
-    cnn.save(ptnt_dir.cnn_model)
-    pd.DataFrame.from_dict(history.history).to_csv(ptnt_dir.cnn_history)
+    pdir.cnn_model.parent.mkdir(parents=True, exist_ok=True)
+    cnn.save(pdir.cnn_model)
+    pd.DataFrame.from_dict(history.history).to_csv(pdir.cnn_history)
 
 
 def create_ptnt_cnns(ptnt_dirs: list[PatientDir]):
