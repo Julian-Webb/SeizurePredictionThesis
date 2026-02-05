@@ -29,5 +29,5 @@ Various abbreviations throughout the code:
    2. filter_signals
    3. segment_tables
    4. train_test_allocation
-3. feature_extraction
-   1. extract_features
+3. feature_extraction.extract_features
+4. models.train_models

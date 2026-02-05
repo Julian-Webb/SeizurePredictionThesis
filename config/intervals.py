@@ -48,6 +48,7 @@ CLIP = _Interval.init_non_seg(Timedelta(minutes=10), SEGMENT)
 INTER_PRE = _Interval.init_non_seg(Timedelta(minutes=175), SEGMENT, 'inter_pre')
 PREICTAL = _Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'preictal')
 # How much time is between the end of the preictal interval and the seizure
+# todo this should have a different name (grace period?)
 HORIZON = _Interval.init_non_seg(Timedelta(minutes=5), SEGMENT, 'horizon')
 POSTICTAL = _Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'postictal')
 INTER_POST = _Interval.init_non_seg(Timedelta(minutes=180), SEGMENT, 'inter_post')
