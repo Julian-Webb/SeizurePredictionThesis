@@ -31,3 +31,4 @@ Various abbreviations throughout the code:
    4. train_test_allocation
 3. feature_extraction.extract_features
 4. models.train_models
+5. model_eval
