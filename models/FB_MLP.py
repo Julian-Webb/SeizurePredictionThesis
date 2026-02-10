@@ -14,7 +14,7 @@ from tensorflow.keras.metrics import Recall, AUC
 
 from config.paths import PatientDir, PATHS
 from feature_extraction.extract_features import Features
-from models.load_data import subsample_shuffle_train_segs, seg_features_to_numpy
+from models.load_data import seg_features_to_numpy, subsample_shuffle_and_subselect_types_for_segs
 from utils.io import pickle_path
 from utils.tensorflow_utils import PeriodicalLogger
 from utils.utils import timeit
@@ -67,7 +67,7 @@ def create_ensemble(train_segs: DataFrame, ptnt: str = 'unknown patient',
         start = time.perf_counter()
         # Select train data for this model
         # Due to subsampling, every model gets different interictal segs
-        train_segs = subsample_shuffle_train_segs(train_segs)
+        train_segs = subsample_shuffle_and_subselect_types_for_segs(train_segs)
         x_train, y_train = seg_features_to_numpy(train_segs, Features.ORDERED_NAMES)
 
         class_weights = calc_class_weights(y_train)
