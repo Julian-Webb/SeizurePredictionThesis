@@ -46,3 +46,4 @@ def load_segmented_sigs(file_path: Path, first_idx: int, n_segs: int, channels_l
                 segmented_sigs[:, chn, :] = s
 
     return segmented_sigs
+    return results

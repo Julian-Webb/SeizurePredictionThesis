@@ -1,18 +1,17 @@
 import time
 
+import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Conv2D, MaxPool2D, Dropout, Flatten, Dense, \
     BatchNormalization, LeakyReLU
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
-import pandas as pd
 
 from config.constants import N_CHANNELS
 from config.intervals import SEGMENT
-from models.load_data import load_eeg_train_data
-from models.FB_MLP import calc_class_weights
 from config.paths import PatientDir, PATHS
-from utils.io import pickle_path
+from models.FB_MLP import calc_class_weights
+from models.load_data import load_data
 from utils.tensorflow_utils import PeriodicalLogger
 
 EPOCHS = 50  # 50
@@ -92,10 +91,7 @@ def create_ptnt_cnn(pdir: PatientDir):
     # load data
     start = time.perf_counter()
     print(f'[{pdir.name}] Loading EEG data for CNN training')
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
-    esegs = segs[segs['exists']]
-    split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index
-    x_train, y_train = load_eeg_train_data(esegs, split_idx, pdir.edf_dir)
+    x_train, y_train = load_data(pdir, 'eeg', subsample_shuffle_and_subselect_types=True, train=True)
     print(f'[{pdir.name}] Finished loading data in {time.perf_counter() - start:.3f} sec.')
 
     # train model
