@@ -89,7 +89,6 @@ def load_data(
         segs = segs[segs.index >= split_idx]
 
     # Select only existing segs for further processing
-    # todo can i drop index here?
     segs = segs[segs['exists']].drop(columns=['exists']).reset_index(drop=True)
 
     if subsample_shuffle_and_subselect_types:
