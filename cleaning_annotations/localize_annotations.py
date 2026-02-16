@@ -65,6 +65,10 @@ def drop_duplicates_and_localize(pdirs: list[PatientDir]):
             # Localize
             anns = localize_anns_dataframe(anns, PatientTimezone.from_competition(is_competition))
 
+            # Sort
+            anns.sort_values('start_mtz', inplace=True)
+
+            # Save
             save_dataframe_multiformat(anns, pdir.all_szr_starts_file)
         else:
             logging.warning(f'No annotation file found for: {pdir.name}')
