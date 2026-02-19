@@ -47,22 +47,21 @@ CLIP = _Interval.init_non_seg(Timedelta(minutes=10), SEGMENT)
 
 INTER_PRE = _Interval.init_non_seg(Timedelta(minutes=175), SEGMENT, 'inter_pre')
 PREICTAL = _Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'preictal')
-# How much time is between the end of the preictal interval and the seizure
-# todo this should have a different name (grace period?)
-HORIZON = _Interval.init_non_seg(Timedelta(minutes=5), SEGMENT, 'horizon')
+# Intervention time: How much time is between the end of the preictal interval and the seizure
+INTERVENTION = _Interval.init_non_seg(Timedelta(minutes=5), SEGMENT, 'intervention')
 POSTICTAL = _Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'postictal')
 INTER_POST = _Interval.init_non_seg(Timedelta(minutes=180), SEGMENT, 'inter_post')
 INTERICTAL = _Interval(label='interictal')
 
 # How much of an offset from a previous szr is necessary for a szr to not be a lead szr
-LEAD = INTER_PRE + PREICTAL + HORIZON
+LEAD = INTER_PRE + PREICTAL + INTERVENTION
 
 CLIPS_PER_PREICTAL_INTERVAL = safe_float_to_int(PREICTAL.n_samples / CLIP.n_samples)
 SEGMENTS_PER_PREICTAL_INTERVAL = safe_float_to_int(PREICTAL.n_samples / SEGMENT.n_samples)
 SEGMENTS_PER_CLIP = safe_float_to_int(CLIP.n_samples / SEGMENT.n_samples)
 
 if __name__ == "__main__":
-    for name in ["SEGMENT", "CLIP", "INTER_PRE", "PREICTAL", "HORIZON", "POSTICTAL", "INTER_POST", "LEAD"]:
+    for name in ["SEGMENT", "CLIP", "INTER_PRE", "PREICTAL", "INTERVENTION", "POSTICTAL", "INTER_POST", "LEAD"]:
         iv = locals()[name]
         print(f'{name} parameters')
         print(f'approx_dur: {iv.exact_dur}')

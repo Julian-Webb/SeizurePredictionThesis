@@ -19,7 +19,7 @@ def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
 
     diff = szrs['start_mtz'].diff()
 
-    min_diff = intervals.PREICTAL.exact_dur + intervals.HORIZON.exact_dur
+    min_diff = intervals.PREICTAL.exact_dur + intervals.INTERVENTION.exact_dur
     valid = diff > min_diff
     valid.iloc[0] = True  # the first seizure is always valid
 

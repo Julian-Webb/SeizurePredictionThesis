@@ -4,7 +4,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 from config.paths import PATHS
-from utils.io import pickle_path
+from utils.io import pickle_path, save_dataframe_multiformat
 
 
 def rename_edfs_start_mtz():
@@ -42,6 +42,13 @@ def plot_something():
     plt.plot([1, 2, 3])
     plt.show()
 
+
+def rename_horizon_to_intervention():
+    for pdir in PATHS.patient_dirs():
+        segs = pd.read_pickle(pickle_path(pdir.segments_table))
+        segs['type'] = segs['type'].replace('horizon', 'intervention')
+        save_dataframe_multiformat(segs, pdir.segments_table)
+
 if __name__ == '__main__':
     # check_files_contained_in_both()
-    plot_something()
+    rename_horizon_to_intervention()

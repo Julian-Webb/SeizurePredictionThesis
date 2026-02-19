@@ -10,7 +10,7 @@ import pandas as pd
 from pandas import DataFrame, Timestamp, Timedelta
 
 from config.constants import SAMPLING_FREQUENCY_HZ
-from config.intervals import SEGMENT, HORIZON, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
+from config.intervals import SEGMENT, INTERVENTION, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config.paths import PatientDir, PATHS
 from utils.edf_utils import time_to_index
 from utils.io import pickle_path, save_dataframe_multiformat
@@ -60,9 +60,9 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
     """Fill in the segment type for the segs DataFrame.
     :param segs: All the segments
     :param szrs: The valid seizures"""
-    # Since we are working with valid seizures only, we can assume that starts are more than PREICTAL + HORIZON apart
+    # Since we are working with valid seizures only, we can assume that starts are more than PREICTAL + INTERVENTION apart
     for i, szr in szrs.iterrows():
-        pre_szr_ivs = [PREICTAL, HORIZON]
+        pre_szr_ivs = [PREICTAL, INTERVENTION]
         if szr['lead']:
             # There will be an inter_pre only if this is a lead szr
             pre_szr_ivs = [INTER_PRE] + pre_szr_ivs
@@ -73,7 +73,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
         iv_start = szr['start_mtz'] - pre_szr_offset
 
         # Iterate through the intervals and set the properties of segs
-        # NOTE: If the next szr is non-lead, the preictal interval and horizon will overlap with inter_post and
+        # NOTE: If the next szr is non-lead, the preictal and intervention interval will overlap with inter_post and
         #  possibly postictal. However, it will naturally be overwritten by the next seizure, since they are in order.
         for iv in ivs:
             iv_end = iv_start + iv.exact_dur
@@ -110,7 +110,7 @@ def make_segs_table(pdir: PatientDir):
 def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: str = None, figsize=(30, 8),
               savepath: str = None,
               show: bool = True):
-    types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, HORIZON.label, POSTICTAL.label, INTER_POST.label]
+    types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, INTERVENTION.label, POSTICTAL.label, INTER_POST.label]
     type_to_y = {t: i for i, t in enumerate(types)}
 
     y = segs['type'].map(type_to_y)

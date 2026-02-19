@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 from concurrent.futures import as_completed, ThreadPoolExecutor
 
-from cleaning_edfs.file_correction import MAC_PATTERNS
+from utils.utils import MAC_PATTERNS
 
 
 def copy_item(src: Path, dst: Path):

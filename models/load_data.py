@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
@@ -5,10 +7,11 @@ from pyedflib import EdfReader
 
 from config.constants import MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO, N_CHANNELS
 from config.intervals import SEGMENT
-from config.paths import PatientDir, PATHS
+from config.paths import PATHS
 from feature_extraction.extract_features import Features
 from utils.edf_utils import load_segmented_sigs
 from utils.io import pickle_path
+from utils.utils import timeit
 
 
 def subsample_shuffle_and_subselect_types_for_segs(esegs: DataFrame, random_state: int = None) -> DataFrame:
@@ -46,18 +49,22 @@ def seg_features_to_numpy(partial_segs: DataFrame, feature_cols: list[str]):
     y = (partial_segs['type'] == 'preictal').to_numpy(dtype=np.int32)
     return x, y
 
+
 # noinspection PyUnboundLocalVariable
+@timeit
 def load_data(
-        pdir: PatientDir,
+        segs: DataFrame,
         type_: str,
         subsample_shuffle_and_subselect_types: bool,
         train: bool = False,
         test: bool = False,
-        random_state: int = None
+        split_idx: int = None,
+        edf_dir: Path = None,
+        random_state: int = None,
 ):
     """
     Load features and/or EEG data for a patient. Specify whether to include training and test data.
-    :param pdir:
+    :param segs: all segments of this patient: ``pd.read_pickle(pickle_path(pdir.segments_table))``
     :param type_: either 'features' or 'eeg'
     :param subsample_shuffle_and_subselect_types: Apply operations that are used for model training:
         * only use interictal and preictal segments, exclude other types.
@@ -65,38 +72,48 @@ def load_data(
         * shuffle segments
     :param train: Whether to load training data
     :param test: Whether to load testing data
+    :param split_idx: The segment index of the split between train and test data, if train and test are not both True.
+    ``pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index``
+    :param edf_dir: The patient's edf_dir, if type_ is 'eeg'.
     :param random_state: Optional random state for subsampling and shuffling
 
-    :return: x, y. (data, labels)
+    :return: dict with keys x (data), y (labels), and index_and_start (DataFrame with segment index and start_mtz to
+    associate x and y values with segments)
     """
     # Check arguments
-    if not (train or test): raise ValueError('Specify either train, test, or both')
+    if not (train or test):
+        raise ValueError('Specify either train, test, or both')
     if type_ not in ['features', 'eeg']:
         raise ValueError(f'Parameter type_ must be either "features" or "eeg", but is {type_}')
-
-    # Load segments
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
-
-    # Select train / test data or keep both, depending on args
-    if train or test:
-        split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index
-        if split_idx not in segs.index and not segs.index.is_monotonic_increasing:
+    if type_ == 'eeg' and edf_dir is None:
+        raise ValueError('If type_ is "eeg", specify edf_dir')
+    if train != test:  # train or test, but not both
+        if split_idx is None:
+            raise ValueError('If train and test are not both True, specify split_idx')
+        if split_idx not in segs.index or not segs.index.is_monotonic_increasing:
             raise RuntimeError("split_idx does not correspond to segment index; check train_test_split contents")
 
+    segs = segs.copy()
+
+    # Select train / test data or keep both, depending on args
     if train and not test:
         segs = segs[segs.index < split_idx]
     elif test and not train:
         segs = segs[segs.index >= split_idx]
 
     # Select only existing segs for further processing
-    segs = segs[segs['exists']].drop(columns=['exists']).reset_index(drop=True)
+    segs = segs[segs['exists']].drop(columns=['exists'])
 
     if subsample_shuffle_and_subselect_types:
         # noinspection PyTypeChecker
         segs = subsample_shuffle_and_subselect_types_for_segs(segs, random_state)
 
+    # Save the index and start for all remaining segs in the correct order to be able to associate the array values with
+    # segments
+    segs_index_and_start = segs[['start_mtz']]
+
     if type_ == 'features':
-        return seg_features_to_numpy(segs, Features.ORDERED_NAMES)
+        x, y = seg_features_to_numpy(segs, Features.ORDERED_NAMES)
     else:  # EEG
         segs.drop(columns=Features.ORDERED_NAMES, inplace=True)
 
@@ -108,7 +125,7 @@ def load_data(
         if subsample_shuffle_and_subselect_types:
             # Load data by file for efficiency
             for file_name, file_segs in segs.groupby('file'):
-                with EdfReader(str(pdir.edf_dir / file_name)) as edf:
+                with EdfReader(str(edf_dir / file_name)) as edf:
                     for seg in file_segs.itertuples():
                         for chn in range(N_CHANNELS):
                             # seg.Index: index in segs DataFrame
@@ -117,22 +134,26 @@ def load_data(
         else:
             for file_name, file_segs in segs.groupby('file'):
                 x[file_segs.index, :, :] = load_segmented_sigs(
-                    file_path=pdir.edf_dir / file_name,
+                    file_path=edf_dir / file_name,
                     first_idx=file_segs.iloc[0]['start_index'],
                     n_segs=len(file_segs),
                     channels_last=True
                 )
 
         y = (segs['type'] == 'preictal').to_numpy(dtype=np.int32)
-        return x, y
+
+    return {'x': x, 'y': y, 'index_and_start': segs_index_and_start}
 
 
 if __name__ == '__main__':
     pdir = PATHS.patient_dirs()[7]
-    load_data(
-        pdir,
-        type_='eeg',
+
+    res = load_data(
+        segs=pd.read_pickle(pickle_path(pdir.segments_table)),
+        type_='features',
         train=True,
         test=False,
         subsample_shuffle_and_subselect_types=True,
+        split_idx=pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index,
+        edf_dir=pdir.edf_dir,
     )

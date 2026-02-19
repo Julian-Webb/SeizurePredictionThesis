@@ -26,8 +26,6 @@ class PatientDir(type(Path())):
         self.szr_anns_original_dir = Path(self.szr_anns_dir, "original")
         self.szr_starts_naive_file = Path(self.szr_anns_original_dir, "seizure_starts_naive")
         self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all")
-        # todo delete
-        self.combined_anns_file = Path(self.szr_anns_dir, "combined_annotations")
         self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid")
 
         ### edf data
@@ -52,6 +50,17 @@ class PatientDir(type(Path())):
         self.cnn_model = Path(self.models_dir, 'CNN.keras')
         self.cnn_history = Path(self.models_dir, 'CNN_training_history.csv')
 
+        ### Predictions
+        # expected structure:
+        # predictions
+        #   model (ensemble | CNN)
+        #     data (train | test)
+        #       segment_probabilities
+        #       per_clip
+        self.predictions_dir = Path(self, 'predictions')
+        self.ensemble_predictions_dir = Path(self.predictions_dir, 'ensemble')
+        self.cnn_predictions_dir = Path(self.predictions_dir, 'CNN')
+
         return self
 
 
@@ -66,13 +75,6 @@ class Paths(type(Path())):
         self.datasets_dir = Path(self, "datasets")  # The dir that contains the datasets
         self.ultra2_dir = Path(self.datasets_dir, Dataset.ultra2.value)
         self.competition_dir = Path(self.datasets_dir, Dataset.competition.value)
-
-        # todo remove old dir values throughout code
-        # self.dataset_dirs = {dataset: Path(self, dataset.value) for dataset in Dataset}
-        # self.for_mayo_dir = self.dataset_dirs[Dataset.for_mayo]
-        # self.uneeg_extended_dir = self.dataset_dirs[Dataset.uneeg_extended]
-        # self.competition_dir = self.dataset_dirs[Dataset.competition]
-
 
         # data cleaning logs
         self.data_cleaning_logs_dir = Path(self, "data_cleaning_logs")
@@ -118,7 +120,7 @@ class Paths(type(Path())):
     def root(self) -> Path:
         """:return: The root directory of the dataset"""
         # This is just an alias
-        return self
+        return Path(self)
 
 
 # Change base path here

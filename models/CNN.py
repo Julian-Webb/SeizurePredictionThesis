@@ -91,14 +91,14 @@ def create_ptnt_cnn(pdir: PatientDir):
     # load data
     start = time.perf_counter()
     print(f'[{pdir.name}] Loading EEG data for CNN training')
-    x_train, y_train = load_data(pdir, 'eeg', subsample_shuffle_and_subselect_types=True, train=True)
+    train_data = load_data(pdir, 'eeg', subsample_shuffle_and_subselect_types=True, train=True)
     print(f'[{pdir.name}] Finished loading data in {time.perf_counter() - start:.3f} sec.')
 
     # train model
     start = time.perf_counter()
     print(f'[{pdir.name}] Training CNN')
-    class_weights = calc_class_weights(y_train)
-    history = cnn.fit(x_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
+    class_weights = calc_class_weights(train_data['y'])
+    history = cnn.fit(train_data['x'], train_data['y'], epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
                       verbose=0,
                       callbacks=[PeriodicalLogger(f'[{pdir.name}] CNN', interval=10)],
                       )

@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 from pandas import DataFrame
 
-from cleaning_edfs.file_correction import clean_mac_files
+from utils.utils import clean_mac_files
 
 PATIENT_ID_LINE_RE = re.compile(
     r'^(?P<label>patient id|patienten-id)\s*:\s*(?P<id>U002-DE01-\d{2})\s*$',
