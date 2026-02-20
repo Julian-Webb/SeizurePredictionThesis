@@ -29,3 +29,6 @@ SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': 
 # In the data, there are much more interictal that preictal segments (about 100 to 1)
 # During training, we want to subsample the interictal segments to reach a ratio that works well for training.
 MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO = 20
+
+# How many of a clip's segments must be valid/exist for the clip to be valid (i.e. not have too much missing data)
+MIN_SEGMENTS_PER_CLIP_RATIO = 0.875

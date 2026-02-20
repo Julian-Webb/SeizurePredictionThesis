@@ -4,7 +4,7 @@ import time
 from functools import wraps
 from pathlib import Path
 
-from environment import AVAILABLE_GPUS
+from config.environment import AVAILABLE_GPUS
 
 
 def safe_float_to_int(num: float) -> int:

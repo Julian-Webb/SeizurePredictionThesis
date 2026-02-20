@@ -61,7 +61,7 @@ def make_raw_predictions(
         # Save raw probabilities
         save_path = pdir.predictions_dir / model_name / 'segment_probabilities'
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        save_dataframe_multiformat(seg_probs, save_path, csv_index=True)
+        save_dataframe_multiformat(seg_probs, save_path)
         logging.info(f'Saved segment probabilities to {save_path}')
 
 

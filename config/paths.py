@@ -54,12 +54,11 @@ class PatientDir(type(Path())):
         # expected structure:
         # predictions
         #   model (ensemble | CNN)
-        #     data (train | test)
         #       segment_probabilities
         #       per_clip
+        # todo change this to be one sheet per patient (segment_probabilities) which includes probabilities for all models (see calc_segment_probabilities.py and clips.py)
         self.predictions_dir = Path(self, 'predictions')
-        self.ensemble_predictions_dir = Path(self.predictions_dir, 'ensemble')
-        self.cnn_predictions_dir = Path(self.predictions_dir, 'CNN')
+        self.clips_table = self.predictions_dir / 'clips'
 
         return self
 
