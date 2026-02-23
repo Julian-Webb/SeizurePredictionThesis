@@ -28,6 +28,7 @@ def make_raw_predictions(
     ]
 
     segs = pd.read_pickle(pickle_path(pdir.segments_table))
+    seg_probs = segs[['start_mtz']].copy() # duplicate segment's index and start
 
     for model_name, model_path, data_type in model_specs:
         logging.info(f'{model_name=}. Loading data...')
@@ -43,26 +44,23 @@ def make_raw_predictions(
 
         # Predict in batches to avoid overallocating GPU memory
         n_segs = data['x'].shape[0]
-        all_probabilities = []
+        model_probs = []
         for i in range(0, n_segs, batch_size):
             end = min(i + batch_size, n_segs)
             logging.info(f'Processing segments {i}-{end - 1} of {n_segs}...')
 
             batch = data['x'][i:end]
-            probs = model.predict(batch)
-            all_probabilities.append(probs)
+            batch_probs = model.predict(batch)
+            model_probs.append(batch_probs)
 
-        probabilities = np.concatenate(all_probabilities)
+        model_probs = np.concatenate(model_probs)
 
         # Associate probabilities with segments (original index and start time)
-        seg_probs = segs[['start_mtz']].copy()
-        seg_probs.loc[data['index_and_start'].index, 'probabilities'] = probabilities
+        seg_probs.loc[data['index_and_start'].index, model_name] = model_probs
 
-        # Save raw probabilities
-        save_path = pdir.predictions_dir / model_name / 'segment_probabilities'
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        save_dataframe_multiformat(seg_probs, save_path)
-        logging.info(f'Saved segment probabilities to {save_path}')
+    # Save segment probabilities
+    save_dataframe_multiformat(seg_probs, pdir.segment_probabilities_table)
+    logging.info(f'Saved segment probabilities to {pdir.segment_probabilities_table}')
 
 
 def main():

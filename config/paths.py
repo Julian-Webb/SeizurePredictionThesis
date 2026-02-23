@@ -51,13 +51,9 @@ class PatientDir(type(Path())):
         self.cnn_history = Path(self.models_dir, 'CNN_training_history.csv')
 
         ### Predictions
-        # expected structure:
-        # predictions
-        #   model (ensemble | CNN)
-        #       segment_probabilities
-        #       per_clip
         # todo change this to be one sheet per patient (segment_probabilities) which includes probabilities for all models (see calc_segment_probabilities.py and clips.py)
         self.predictions_dir = Path(self, 'predictions')
+        self.segment_probabilities_table = self.predictions_dir / 'segment_probabilities'
         self.clips_table = self.predictions_dir / 'clips'
 
         return self
