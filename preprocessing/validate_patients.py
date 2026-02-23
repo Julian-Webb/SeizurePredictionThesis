@@ -122,7 +122,7 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_ptnt_dirs: bool)
         save_dataframe_multiformat(szrs, pdir.all_szr_starts_file)
 
         try:
-            edfs = pd.read_pickle(pickle_path(pdir.edf_files_sheet))
+            edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
         except FileNotFoundError:
             logging.warning(f'EDF files sheet not found for {pdir.name}')
             edfs = DataFrame()

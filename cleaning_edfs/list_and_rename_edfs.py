@@ -131,7 +131,7 @@ def rename_edfs(pdir: PatientDir, edfs: DataFrame):
 def list_and_rename_ptnt_edfs(pdir: PatientDir):
     logging.info(f"--- {pdir.name} ---")
 
-    list_already_exists = pickle_path(pdir.edf_files_sheet).exists()
+    list_already_exists = pickle_path(pdir.edf_files_table).exists()
     if list_already_exists:
         raise ValueError(f"EDF list already exists for {pdir.name}. Aborting to preserve old file names.")
 
@@ -139,11 +139,11 @@ def list_and_rename_ptnt_edfs(pdir: PatientDir):
 
     # Save EDFs
     if not edfs.empty:
-        edfs.to_pickle(pickle_path(pdir.edf_files_sheet))
+        edfs.to_pickle(pickle_path(pdir.edf_files_table))
         # Make durations better readable for csv
         edfs_copy = edfs.copy()
         edfs_copy['duration'] = edfs_copy['duration'].apply(lambda x: str(x.to_pytimedelta()))
-        edfs_copy.to_csv(pdir.edf_files_sheet.with_suffix('.csv'), index=False)
+        edfs_copy.to_csv(pdir.edf_files_table.with_suffix('.csv'), index=False)
 
     rename_edfs(pdir, edfs)
     logging.info(f"--- Finished {pdir.name} ---")

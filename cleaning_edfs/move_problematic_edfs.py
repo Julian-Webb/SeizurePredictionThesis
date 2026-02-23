@@ -206,4 +206,4 @@ if __name__ == '__main__':
     move_problematic_edfs(PATHS.patient_dirs())
     # for pdir in PATHS.patient_dirs([Dataset.ultra2]):
     #     move_edfs_with_duplicate_start(pdir,
-    #                                    edfs=pd.read_pickle(pickle_path(pdir.edf_files_sheet)))
+    #                                    edfs=pd.read_pickle(pickle_path(pdir.edf_files_table)))

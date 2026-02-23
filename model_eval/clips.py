@@ -14,7 +14,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from config.constants import MIN_SEGMENTS_PER_CLIP_RATIO
-from config.intervals import SEGMENTS_PER_CLIP
+from config.intervals import SEGMENTS_PER_CLIP, SEGMENT
 from config.paths import PatientDir, PATHS
 from utils.io import pickle_path, save_dataframe_multiformat
 from utils.utils import safe_float_to_int, timeit
@@ -103,7 +103,11 @@ def make_ptnt_clips(
     # ==================================================================================================================
     clips = DataFrame({'start_seg': all_clip_starts, 'end_seg': all_clip_ends})
 
-    # Check if clip is full (has all segs_per_clip "theoretical" segments (whether actual recordings exist or not))
+    # Calculate end datetime
+    end_segs_start = segs.loc[clips['end_seg'], 'start_mtz'].values
+    clips['end_time'] = end_segs_start + SEGMENT.exact_dur
+
+    # Check if the clip is full (has all segs_per_clip "theoretical" segments (whether actual recordings exist or not))
     clips['segs_in_clip'] = clips['end_seg'] - clips['start_seg'] + 1
     clips['full'] = clips['segs_in_clip'] == segs_per_clip
 
@@ -138,7 +142,7 @@ def make_ptnt_clips(
     clips['valid'] = clips['full'] & clips['sufficient_data']
 
     # Sort columns
-    clips = clips[['start_seg', 'end_seg', *list(probability_columns), 'preictal', 'types',
+    clips = clips[['start_seg', 'end_seg', 'end_time', *list(probability_columns), 'preictal', 'types',
                    'valid', 'segs_in_clip', 'full', 'n_existing', 'sufficient_data']]
 
     return clips
@@ -153,10 +157,10 @@ def process_ptnt(
     segs = segs[['start_mtz', 'type', 'exists']]
 
     probability_columns = []
+    seg_probs = pd.read_pickle(pickle_path(pdir.predictions_dir / 'segment_probabilities'))
     for model in models:
-        seg_probs = pd.read_pickle(pickle_path(pdir.predictions_dir / model / 'segment_probabilities'))
         probability_column = f'{model}_probability'
-        segs[probability_column] = seg_probs['probabilities']
+        segs[probability_column] = seg_probs[model]
         probability_columns.append(probability_column)
 
     clips = make_ptnt_clips(segs, probability_columns)

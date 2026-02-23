@@ -83,7 +83,7 @@ def plot_signals_with_bad_regions(signals: ndarray, invalid_intervals: ndarray, 
 def show_examples_per_ptnt(pdirs: list[PatientDir], n_examples_per_ptnt: int = 3):
     for pdir in pdirs:
         invalid_ivs_df = pd.read_pickle(pickle_path(pdir.invalid_edf_intervals))
-        edfs = pd.read_pickle(pickle_path(pdir.edf_files_sheet))
+        edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
         all_files = invalid_ivs_df['file_name'].unique()
         selected_files = np.random.choice(all_files, n_examples_per_ptnt, replace=False)
 

@@ -100,7 +100,7 @@ def make_segs_table(pdir: PatientDir):
     segs['end_mtz'] = segs['start_mtz'] + SEGMENT.exact_dur
 
     valid_intervals = pd.read_pickle(pickle_path(pdir.valid_edf_intervals))
-    edfs = pd.read_pickle(pickle_path(pdir.edf_files_sheet))
+    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
     segs = find_existing_segs(valid_intervals, edfs, segs)
     valid_szrs = pd.read_pickle(pickle_path(pdir.valid_szr_starts_file))
     segs = find_seg_type(segs, valid_szrs)
@@ -180,7 +180,7 @@ def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool =
 
     # Make the plot
     szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))
-    edfs = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
+    edfs = pd.read_pickle(pickle_path(ptnt_dir.edf_files_table))
 
     plot_segs(segs, szrs, edfs, ptnt_dir.name, show=False, savepath=ptnt_dir.segments_plot)
 

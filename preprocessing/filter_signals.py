@@ -209,7 +209,7 @@ def filter_ptnt_edfs(pdir: PatientDir):
       - return two DataFrames (one row per interval) with:
           file_name, start_mtz, end_mtz, start_idx, end_idx
     """
-    edfs = pd.read_pickle(pickle_path(pdir.edf_files_sheet))
+    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
 
     valid_ivs = []
     invalid_ivs = []

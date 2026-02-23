@@ -31,7 +31,7 @@ def generate_edf(interval: Interval, file_path: Path, ptnt_name: str):
 
 
 def generate_fake_ptnt_data(ptnt_dir: PatientDir):
-    edf_files = pd.read_pickle(pickle_path(ptnt_dir.edf_files_sheet))
+    edf_files = pd.read_pickle(pickle_path(ptnt_dir.edf_files_table))
     ptnt_dir.edf_dir.mkdir(parents=True, exist_ok=True)
     for i, edf in edf_files.iterrows():
         interval = Interval(edf['start'], edf['end'])

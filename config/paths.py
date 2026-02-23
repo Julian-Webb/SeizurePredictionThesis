@@ -33,8 +33,8 @@ class PatientDir(type(Path())):
         self.original_edf_dir = Path(self, 'original_edf_data')
         # The directory containing the edf files
         self.edf_dir = Path(self, 'edf_data')
-        # The name of the sheet containing the edf file names and their metadata for each patient
-        self.edf_files_sheet = Path(self, 'edf_files')
+        # The name of the table containing the edf file names and their metadata for each patient
+        self.edf_files_table = Path(self, 'edf_files')
         self.valid_edf_intervals = Path(self, 'edf_intervals_valid')
         self.invalid_edf_intervals = Path(self, 'edf_intervals_invalid')
 
@@ -55,6 +55,9 @@ class PatientDir(type(Path())):
         self.predictions_dir = Path(self, 'predictions')
         self.segment_probabilities_table = self.predictions_dir / 'segment_probabilities'
         self.clips_table = self.predictions_dir / 'clips'
+
+        # Model Evaluation
+        self.model_eval_dir = Path(self, 'model_evaluation')
 
         return self
 

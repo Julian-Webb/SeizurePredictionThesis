@@ -4,7 +4,7 @@ from config.constants import SAMPLING_FREQUENCY_HZ as sfreq
 from utils.utils import safe_float_to_int
 
 
-class _Interval:
+class Interval:
     def __init__(self, approx_dur: Timedelta = None, exact_dur: Timedelta = None, n_samples: int = None,
                  label: str = None):
         """Represents an interval with an approximate and exact duration, as well as the number of samples based on the
@@ -15,17 +15,17 @@ class _Interval:
         self.label = label
 
     @staticmethod
-    def init_seg(approx_dur: Timedelta, label: str = None) -> "_Interval":
+    def init_seg(approx_dur: Timedelta, label: str = None) -> "Interval":
         """Construct the Interval for a segment"""
         # Because the sample frequency is a decimal fraction, the clip and segment lengths will be based on it, so that
         # slices correspond to full indexes
         # The number of points (=samples) in a segment
         n_samples = round(approx_dur.seconds * sfreq)
         exact_dur = Timedelta(seconds=n_samples / sfreq)
-        return _Interval(approx_dur, exact_dur, n_samples, label)
+        return Interval(approx_dur, exact_dur, n_samples, label)
 
     @staticmethod
-    def init_non_seg(approx_dur: Timedelta, seg: "_Interval", label: str = None) -> "_Interval":
+    def init_non_seg(approx_dur: Timedelta, seg: "Interval", label: str = None) -> "Interval":
         """After the segment has been initialized, use this to initialize other Interval's.
         Calculates the number of samples and the exact duration of an approximate duration based on the length of a
         segment and the sampling frequency. This is done so that the number of samples is a whole number."""
@@ -33,25 +33,28 @@ class _Interval:
         assert segs_per_window % 1 == 0, "The approximate length isn't a multiple of the segment length"
         n_samples = safe_float_to_int(segs_per_window * seg.n_samples)
         exact_dur = Timedelta(seconds=n_samples / sfreq)
-        return _Interval(approx_dur, exact_dur, n_samples, label)
+        return Interval(approx_dur, exact_dur, n_samples, label)
 
-    def __add__(self, other: "_Interval") -> "_Interval":
-        if isinstance(other, _Interval):
-            return _Interval(self.approx_dur + other.approx_dur, self.exact_dur + other.exact_dur,
-                             self.n_samples + other.n_samples)
+    def __add__(self, other: "Interval") -> "Interval":
+        if isinstance(other, Interval):
+            return Interval(self.approx_dur + other.approx_dur, self.exact_dur + other.exact_dur,
+                            self.n_samples + other.n_samples)
         return NotImplemented
 
 
-SEGMENT = _Interval.init_seg(Timedelta(seconds=15))
-CLIP = _Interval.init_non_seg(Timedelta(minutes=10), SEGMENT)
+SEGMENT = Interval.init_seg(Timedelta(seconds=15))
+CLIP = Interval.init_non_seg(Timedelta(minutes=10), SEGMENT)
 
-INTER_PRE = _Interval.init_non_seg(Timedelta(minutes=175), SEGMENT, 'inter_pre')
-PREICTAL = _Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'preictal')
+INTER_PRE = Interval.init_non_seg(Timedelta(minutes=175), SEGMENT, 'inter_pre')
+PREICTAL = Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'preictal')
 # Intervention time: How much time is between the end of the preictal interval and the seizure
-INTERVENTION = _Interval.init_non_seg(Timedelta(minutes=5), SEGMENT, 'intervention')
-POSTICTAL = _Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'postictal')
-INTER_POST = _Interval.init_non_seg(Timedelta(minutes=180), SEGMENT, 'inter_post')
-INTERICTAL = _Interval(label='interictal')
+INTERVENTION = Interval.init_non_seg(Timedelta(minutes=5), SEGMENT, 'intervention')
+POSTICTAL = Interval.init_non_seg(Timedelta(minutes=60), SEGMENT, 'postictal')
+INTER_POST = Interval.init_non_seg(Timedelta(minutes=180), SEGMENT, 'inter_post')
+INTERICTAL = Interval(label='interictal')
+
+# Seizure Prediction Horizon (same as preictal interval)
+SPH = Interval.init_non_seg(PREICTAL.approx_dur, SEGMENT, 'SPH')
 
 # How much of an offset from a previous szr is necessary for a szr to not be a lead szr
 LEAD = INTER_PRE + PREICTAL + INTERVENTION
