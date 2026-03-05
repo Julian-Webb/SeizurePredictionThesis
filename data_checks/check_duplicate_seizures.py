@@ -3,7 +3,7 @@ from typing import List
 
 import pandas as pd
 
-from config.paths import PATHS
+from config.paths import PATHS, PatientDir
 from utils.io import pickle_path
 
 
@@ -28,5 +28,25 @@ def check_duplicate_seizures():
                                   patient=patient_dir.name)
 
 
+def check_all_szrs():
+    pdirs = [pdir for pdir in PATHS.patient_dirs() if not 'fake' in pdir.name.lower()]
+    szrs_per_ptnt = {pdir.name : pd.read_pickle(pickle_path(pdir.all_szr_starts_file)) for pdir in pdirs}
+
+    szrs = pd.concat(szrs_per_ptnt, names=['patient', 'seizure'])
+
+    dups = szrs[szrs['start_mtz'].duplicated(keep=False)]
+
+    if dups.empty:
+        print('No duplicates found')
+    else:
+        print('DUPLICATES FOUND:')
+        print(dups)
+
+    return
+
+
+
+
+
 if __name__ == '__main__':
-    check_duplicate_seizures()
+    check_all_szrs()
