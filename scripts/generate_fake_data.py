@@ -17,7 +17,7 @@ from preprocessing.validate_patients import validate_patients
 import model_eval.calc_segment_probabilities
 import model_eval.clips
 import model_eval.event_based_metrics
-import model_eval.model_eval
+import model_eval.eval_models
 from utils.io import pickle_path
 
 PHYSICAL_MIN = -1374.21
@@ -55,12 +55,12 @@ def process_fake_ptnt(pdir: PatientDir):
     # drop_duplicates_and_localize(pdirs)
     # validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=False)
     # filter_all_edfs(pdirs)
-    segment_tables(pdirs)
-    find_ptnt_splits(pdirs)
-    extract_features(pdirs)
-    model_eval.calc_segment_probabilities.main(pdirs)
-    model_eval.clips.main(pdirs)
-    model_eval.event_based_metrics.calc_metrics(pdirs)
+    # segment_tables(pdirs)
+    # find_ptnt_splits(pdirs)
+    # extract_features(pdirs)
+    # model_eval.calc_segment_probabilities.main(pdirs)
+    # model_eval.clips.main(pdirs)
+    # model_eval.event_based_metrics.calc_metrics(pdirs)
 
 
 if __name__ == '__main__':

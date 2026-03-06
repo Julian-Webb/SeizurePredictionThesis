@@ -1,4 +1,11 @@
+"""
+Calculate event-based metrics: Time in False Warning and Seizures Detected.
+"""
 import logging
+
+from concurrent.futures import ProcessPoolExecutor
+from itertools import product
+from pathlib import Path
 from typing import Iterable, Optional, Any, Tuple
 
 import numpy as np
@@ -7,12 +14,33 @@ import portion as P
 from pandas import DataFrame, Timedelta, Series
 
 from config.intervals import Interval, INTERVENTION, SPH
-from config.paths import PATHS
-from utils.io import pickle_path
+from config.paths import PATHS, PatientDir
+from utils.io import pickle_path, save_dataframe_multiformat
 from utils.utils import timeit
 
+SUBSELECT_THRESHOLDS_GRANULARITY: float = 0.005
 
-# todo try this for all patients with minimum duration missing super low (minus 1 year or something) to find file overlaps
+
+def subselect_thresholds(thresholds: np.ndarray, granularity: float = SUBSELECT_THRESHOLDS_GRANULARITY):
+    # Round to granularity
+    rounded = np.round(thresholds / granularity) * granularity
+    unique = np.sort(np.unique(rounded))
+    # Prepend a value slightly lower than the lowest if it's not already 0
+    if unique[0] > 0:
+        low = max(0, unique[0] - granularity)
+        unique = np.insert(unique, 0, low)
+    return unique
+
+
+def ensure_results_dir(pdir: PatientDir, split: str, model: str | None = None) -> Path:
+    """Return pdir.model_eval_dir/<split>/<model>, creating it if necessary."""
+    results_dir = pdir.model_eval_dir / split
+    if model is not None:
+        results_dir = results_dir / model
+    results_dir.mkdir(parents=True, exist_ok=True)
+    return results_dir
+
+
 def missing_recording_intervals(
         edfs: DataFrame,
         minimum_duration_missing: Timedelta = Timedelta(seconds=0),
@@ -92,6 +120,14 @@ def dataframe2portion_interval(df: DataFrame, start_col: str = 'start', end_col:
     return union
 
 
+def safe_dataframe_concat(objs: list, concat_kwargs) -> DataFrame:
+    include = [obj for obj in objs if not len(obj)]
+    if len(include) > 0:
+        return pd.concat(include, **concat_kwargs)
+    else:
+        return DataFrame(objs[0])
+
+
 @timeit
 def event_based_metrics(
         clips: DataFrame,
@@ -104,7 +140,7 @@ def event_based_metrics(
         logging_info: str = 'unknown patient',
 ) -> Tuple[dict[str, DataFrame], dict[str, dict[float, dict[str, Any]]]]:
     """
-    Takes a set of predictions and calculates the time in false warning (TIFW) and event_based_sensitivity.
+    Takes a set of predictions and calculates the time in false warning (TIFW) and relative number of seizures detected.
 
     Seizure predictions are issued at the warning time (WT). After that, there's the intervention interval/time (IT),
     followed by the seizure prediction horizon (SPH) in which the seizure should occur. If no seizure occurs within the
@@ -113,47 +149,63 @@ def event_based_metrics(
     The SPH is, in a way, the preictal interval, when looking forwards in time from the prediction, instead of backwards
     from the seizure. Thus, the SPH has the same duration as the preictal interval.
 
-    This function works as follows:
+    This function conceptually works as follows:
 
     1. From the clip predictions, the WTs are determined as the end time of the clips.
     2. The SPHs are calculated from the WTs. The SPHs will (almost certainly) be overlapping.
-    3. Intervals with missing EEG data will be subtracted from the SPHs because we don't know if a seizure occurred
-       during them.
-    4. For each seizure, we check if it's contained in an SPH. We save which SPHs contain a seizure and which seizures
-       were detected.
-    5. The false SPHs will be merged to make them non-overlapping.
-    6. The duration of the remaining SPHs is the absolute TIFW.
-    7. The absolute TIFW / total duration time is the relative TIFW.
+    3. SPHs are verified by checking if they contain a seizure.
+    4. It is also checked which seizures were detected.
+    5. False SPHs are merged to make them non-overlapping
+    6. Intervals with missing EEG data are subtracted from the merged SPHs because it's unknown whether a seizure
+       occurred during them.
+    7. The absolute TIFW is the total duration of the remaining SPHs
+    8. The relative TIFW is the absolute TIFW / total recording duration.
+    9. The relative number of seizures detected is #seizures detected / #total seizures
 
     :param clips: DataFrame with columns '{model}_probability', 'end_time', 'valid' (optional)
     :param edfs: The patient's EDF DataFrame
     :param szr_starts: The patient's seizure starts
     :param thresholds_per_model: If specified, will use these thresholds per model instead of all thresholds in clips.
-    :param subselect_thresholds_granularity: If specified, will subsample the thresholds to this granularity
-    :return: Two nested dicts summary_metrics and intermediary_results with keys model, metric, threshold
+    :return: Two nested dicts summary_metrics and intermediary_results with keys (model, metric, threshold)
     """
     clips = clips.copy()
-
     if 'valid' in clips.columns:
         clips = clips[clips['valid']]
     else:
         logging.warning("No 'valid' column in clips DataFrame. Assuming all clips are valid.")
+    # Keep only relevant columns and make a copy
+    clips.drop(columns=['segs_in_clip', 'full', 'n_existing', 'sufficient_data', 'valid'],
+               errors='ignore', inplace=True)
+
+    #### Calculate all possible SPHs so that we can later select the processed SPHs per threshold
+    all_wts: Series = clips['end_time']
+    all_sphs = DataFrame({'types': clips['types']})
+    all_sphs['start'] = all_wts + intervention_iv.exact_dur
+    all_sphs['end'] = all_sphs['start'] + sph_iv.exact_dur
+
+    # Check whether each SPH is correct: Loop through seizures and mark SPHs that contain at least one as correct.
+    all_sphs['correct'] = False
+    for szr in szr_starts:
+        # Note: The end must be treated as exclusive here, otherwise the first inter_pre clip before a seizure would
+        #  be marked as correct, since its end is exactly the seizure start.
+        szr_in_sphs_mask = (all_sphs['start'] <= szr) & (szr < all_sphs['end'])
+        all_sphs.loc[szr_in_sphs_mask, 'correct'] = True
 
     # Calc values which are the same for all thresholds and models
-    missing_intervals = missing_recording_intervals(
+    missing_ivs = missing_recording_intervals(
         edfs,
         minimum_duration_missing=Timedelta(seconds=1),
         last_interval_duration=2 * (intervention_iv.exact_dur + sph_iv.exact_dur)
     )
-    missing_intervals = dataframe2portion_interval(missing_intervals)
+    missing_ivs = dataframe2portion_interval(missing_ivs)
+
     total_recording_time = edfs['duration'].sum()
 
-    summary_metrics = {}  # Metrics with a single number that can be turned into a DataFrame
-    intermediary_results = {}
+    metrics_per_model = {}  # Metrics with a single number that can be turned into a DataFrame
+    intermediate_results_per_model = {}
 
     for model in models:
         logging.info(f"{logging_info} Processing event-based metrics for model {model}...")
-
         prob_col = f'{model}_probability'
 
         # Use this model's thresholds if specified, otherwise use all unique thresholds in the clips for this model
@@ -162,84 +214,158 @@ def event_based_metrics(
         else:
             model_thresholds = thresholds_per_model[model]
 
-        model_summary_metrics = {m: {} for m in
-                                 ['absolute_tifw', 'relative_tifw', 'event_based_sensitivity', 'event_based_f1']}
-        model_intermediary_results = {m: {} for m in ['sphs', 'szrs_detected']}
+        # Per threshold dicts:
+        metrics = {k: {} for k in ['abs_tifw', 'n_szrs_detected']}
+        intermediate_results = {k: {} for k in ['szrs_detected', 'sphs']}
 
         for thresh in model_thresholds:
             logging.debug(f'Processing threshold {thresh}...')
-            #### Warning Times
+            # Select SPHs for this threshold
             y_pred = clips[prob_col] >= thresh
-            # noinspection PyTypeChecker
-            warn_times: Series = clips.loc[y_pred, 'end_time']
+            sphs = all_sphs[y_pred]
 
-            #### Seizure prediction horizons
-            sphs = DataFrame({'types': clips.loc[warn_times.index, 'types']}, index=warn_times.index)
-            sphs['start'] = warn_times + intervention_iv.exact_dur
-            sphs['end'] = sphs['start'] + sph_iv.exact_dur
-
-            #### Subtract missing EEG intervals
-            remaining_sphs = subtract_intervals(sphs, missing_intervals)
-
-            #### Check whether each SPH is correct
-            # Loop through seizures and mark SPHs that contain at least one as correct.
-            # Also save which seizures were detected.
-            remaining_sphs['correct'] = False
+            # Check which seizures were detected
             szrs_detected = Series(False, index=szr_starts, name='szr_detected')
+            if len(sphs) > 0:
+                # Vectorized: for each seizure, check if it's in any SPH
+                # Shape: (n_seizures, n_sphs)
+                # Note: The end must be treated as exclusive here, otherwise the first inter_pre clip before a seizure
+                # would be marked as correct, since its end is exactly the seizure start.
+                in_sph = (
+                        (szr_starts[:, None] >= sphs['start'].values) &
+                        (szr_starts[:, None] < sphs['end'].values)
+                )
 
-            for szr in szr_starts:
-                # Note: The end must be treated as exclusive here, otherwise the first inter_pre clip before a seizure would
-                #  be marked as correct, since its end is exactly the seizure start.
-                szr_in_sphs_mask = (remaining_sphs['start'] <= szr) & (szr < remaining_sphs['end'])
-                remaining_sphs.loc[szr_in_sphs_mask, 'correct'] = True
-                if szr_in_sphs_mask.any():
-                    szrs_detected.loc[szr] = True
+                szrs_detected[:] = in_sph.any(axis=1)
 
-            correct_sphs = remaining_sphs[remaining_sphs['correct']]
-            incorrect_sphs = remaining_sphs[~remaining_sphs['correct']]
+            # Merge correct and incorrect SPHs separately and subtract missing intervals
+            def process_sphs(sphs_: DataFrame) -> DataFrame:
 
-            #### Merge SPHs
-            merged_correct_sphs = merge_intervals(correct_sphs[['start', 'end']])
-            merged_incorrect_sphs = merge_intervals(incorrect_sphs[['start', 'end']])
+                merged = merge_intervals(sphs_[['start', 'end']])
+                remaining = subtract_intervals(merged, missing_ivs)
+                remaining['duration'] = remaining['end'] - remaining['start']
+                return remaining
 
-            #### Calculate absolute TIFW
-            merged_correct_sphs['duration'] = merged_correct_sphs['end'] - merged_correct_sphs['start']
-            merged_incorrect_sphs['duration'] = merged_incorrect_sphs['end'] - merged_incorrect_sphs['start']
-            absolute_tifw = Timedelta(merged_incorrect_sphs['duration'].sum())
+            correct_sphs = process_sphs(sphs[sphs['correct']])
+            incorrect_sphs = process_sphs(sphs[~sphs['correct']])
 
-            #### Calculate relative TIFW, event-based sensitivity, and their harmonic mean (event-based F1 Score)
-            relative_tifw = absolute_tifw / total_recording_time
-            event_based_sensitivity = szrs_detected.sum() / len(szr_starts)
-            relative_ticw = 1 - relative_tifw
-            event_based_f1 = 2 * (event_based_sensitivity * relative_ticw) / (event_based_sensitivity + relative_ticw)
-
-            #### Add results to output
-            model_summary_metrics['absolute_tifw'][thresh] = absolute_tifw
-            model_summary_metrics['relative_tifw'][thresh] = relative_tifw
-            model_summary_metrics['event_based_sensitivity'][thresh] = event_based_sensitivity
-            model_summary_metrics['event_based_f1'][thresh] = event_based_f1
-
-            merged_correct_sphs['correct'] = True
-            merged_incorrect_sphs['correct'] = False
-            processed_sphs = pd.concat([merged_correct_sphs, merged_incorrect_sphs], ignore_index=True)
+            # Combine SPHs again to save
+            correct_sphs['correct'] = True
+            incorrect_sphs['correct'] = False
+            processed_sphs = safe_dataframe_concat([correct_sphs, incorrect_sphs], {'ignore_index': True})
             processed_sphs.sort_values(by='start', ignore_index=True, inplace=True)
 
-            model_intermediary_results['sphs'][thresh] = processed_sphs
-            model_intermediary_results['szrs_detected'][thresh] = szrs_detected
+            # Calculate & save metrics
+            metrics['abs_tifw'][thresh] = incorrect_sphs['duration'].sum()
+            metrics['n_szrs_detected'][thresh] = szrs_detected.sum()
+            intermediate_results['szrs_detected'][thresh] = szrs_detected
+            intermediate_results['sphs'][thresh] = processed_sphs
 
-        summary_metrics[model] = DataFrame(model_summary_metrics)
-        intermediary_results[model] = model_intermediary_results
+        # Calculate further metrics for this model in bulk
+        metrics = DataFrame(metrics)
+        metrics['rel_tifw'] = pd.to_timedelta(metrics['abs_tifw']) / total_recording_time
 
-    return summary_metrics, intermediary_results
+        rel_szrs_detected = metrics['n_szrs_detected'] / len(szr_starts)
+        metrics['rel_szrs_detected'] = rel_szrs_detected
+
+        # Calculate event-based F1 Score with "Time in Correct warning (ticw) and sensitivity
+        relative_ticw = 1 - metrics['rel_tifw']
+        metrics['event_based_f1'] = 2 * (rel_szrs_detected * relative_ticw) / (rel_szrs_detected + relative_ticw)
+
+        metrics_per_model[model] = metrics
+        intermediate_results_per_model[model] = intermediate_results
+
+    return metrics_per_model, intermediate_results_per_model
+
+
+def load_data_per_split(pdir: PatientDir):
+    """
+    :return: data per split (type[edfs, clips, szr_starts], split[train, test])
+    """
+    clips = pd.read_pickle(pickle_path(pdir.clips_table))
+    szr_starts = pd.read_pickle(pickle_path(pdir.all_szr_starts_file))['start_mtz'].values
+    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
+    split_dt, split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).values
+
+    #### Select correct EDFs per split and split the EDF that contain the split (if any)
+    edfs = edfs[['file_name', 'start_mtz', 'end_mtz']].copy()
+
+    # Select train and test EDFs that don't contain the split
+    train_edfs = edfs[edfs['end_mtz'] <= split_dt].copy()
+    test_edfs = edfs[split_dt <= edfs['start_mtz']].copy()
+
+    # Split the EDF that spans the boundary (if any)
+    spans_split = (edfs['start_mtz'] < split_dt) & (edfs['end_mtz'] > split_dt)
+    if spans_split.any():
+        idx = spans_split.idxmax()
+        edf = edfs.loc[idx]
+        before, after = edf.copy(), edf.copy()
+        before['end_mtz'], after['start_mtz'] = split_dt, split_dt
+        train_edfs = pd.concat([train_edfs, DataFrame(before).T])
+        test_edfs = pd.concat([DataFrame(after).T, test_edfs])
+
+    for split, edfs in (['train', train_edfs], ['test', test_edfs]):
+        edfs['duration'] = edfs['end_mtz'] - edfs['start_mtz']
+
+    clips = clips[clips['valid']]
+
+    per_split = {
+        'edfs': {'train': train_edfs, 'test': test_edfs},
+        'clips': {
+            'train': clips[clips['start_seg'] <= split_idx],
+            'test': clips[clips['start_seg'] > split_idx],
+        },
+        'szr_starts': {
+            'train': szr_starts[szr_starts <= split_dt],
+            'test': szr_starts[szr_starts > split_dt],
+        }
+    }
+    return per_split
+
+
+def calc_ptnt_split_metrics(args):
+    """Process a single patient-split combination."""
+    pdir, split, models = args
+    logging.info(f'Processing {pdir.name} - {split}')
+    per_split = load_data_per_split(pdir)
+
+    threshs_per_model = {}
+    for model in models:
+        all_threshs = per_split['clips']['train'][f'{model}_probability'].unique()
+        threshs_per_model[model] = subselect_thresholds(all_threshs)
+
+    # noinspection PyTypeChecker
+    ebms, _ = event_based_metrics(
+        clips=per_split['clips'][split],
+        edfs=per_split['edfs'][split],
+        szr_starts=per_split['szr_starts'][split],
+        thresholds_per_model=threshs_per_model,
+        models=models,
+        logging_info=f'[{pdir.name} - {split}]'
+    )
+
+    for model in models:
+        results_dir = ensure_results_dir(pdir, split, model)
+        save_dataframe_multiformat(ebms[model], results_dir / f'event_based_metrics', csv_index=True)
+
+
+def calc_metrics(pdirs: list[PatientDir], splits: tuple[str] = ('train', 'test'),
+                 models: tuple[str] = ('CNN', 'ensemble'), serial_processing: bool = False):
+    if serial_processing:
+        for pdir, split in product(pdirs, splits):
+            calc_ptnt_split_metrics((pdir, split, models))
+    else:
+        tasks = [(pdir, split, models) for pdir, split in product(pdirs, splits)]
+        with ProcessPoolExecutor() as p:
+            p.map(calc_ptnt_split_metrics, tasks)
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(message)s')
-    pdir = PATHS.patient_dirs()[0]
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    pdirs = PATHS.patient_dirs()
+    calc_metrics(pdirs, serial_processing=False)
 
-    metrics = event_based_metrics(
-        pd.read_pickle(pickle_path(pdir.clips_table)),
-        pd.read_pickle(pickle_path(pdir.edf_files_table)),
-        pd.read_pickle(pickle_path(pdir.valid_szr_starts_file))['start_mtz'].values,
-        subselect_thresholds_granularity=0.2
-    )
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    pdirs = PATHS.patient_dirs()
+    calc_metrics(pdirs, serial_processing=False)
