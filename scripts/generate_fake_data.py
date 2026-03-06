@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -5,8 +6,18 @@ import pandas as pd
 from pandas import Interval
 from pyedflib import highlevel
 
+from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
 from config.constants import SAMPLING_FREQUENCY_HZ, N_CHANNELS, CHANNELS
-from config.paths import PatientDir
+from config.paths import PatientDir, PATHS, Dataset
+from feature_extraction.extract_features import extract_features
+from preprocessing.filter_signals import filter_all_edfs
+from preprocessing.segment_tables import segment_tables
+from preprocessing.train_test_allocation import find_ptnt_split, find_ptnt_splits
+from preprocessing.validate_patients import validate_patients
+import model_eval.calc_segment_probabilities
+import model_eval.clips
+import model_eval.event_based_metrics
+import model_eval.model_eval
 from utils.io import pickle_path
 
 PHYSICAL_MIN = -1374.21
@@ -39,7 +50,21 @@ def generate_fake_ptnt_data(ptnt_dir: PatientDir):
         print(f"\rFiles generated: {i} | {edf['file_name']}", end='')
 
 
+def process_fake_ptnt(pdir: PatientDir):
+    pdirs = [pdir]
+    # drop_duplicates_and_localize(pdirs)
+    # validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=False)
+    # filter_all_edfs(pdirs)
+    segment_tables(pdirs)
+    find_ptnt_splits(pdirs)
+    extract_features(pdirs)
+    model_eval.calc_segment_probabilities.main(pdirs)
+    model_eval.clips.main(pdirs)
+    model_eval.event_based_metrics.calc_metrics(pdirs)
+
+
 if __name__ == '__main__':
-    dataset_dir = Path('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo')
-    ptnt_dir = PatientDir(dataset_dir / 'ptnt1')
-    generate_fake_ptnt_data(ptnt_dir)
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    pdir = PatientDir(PATHS.competition_dir / 'competition-01-MINIFAKE', dataset=Dataset.competition)
+
+    # process_fake_ptnt(pdir)

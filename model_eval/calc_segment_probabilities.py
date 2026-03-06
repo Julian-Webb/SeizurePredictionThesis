@@ -63,9 +63,8 @@ def make_raw_predictions(
     logging.info(f'Saved segment probabilities to {pdir.segment_probabilities_table}')
 
 
-def main():
+def main(pdirs: list[PatientDir] = PATHS.patient_dirs()):
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    pdirs = PATHS.patient_dirs()
 
     for pdir in pdirs:
         make_raw_predictions(pdir)

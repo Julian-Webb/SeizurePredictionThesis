@@ -43,35 +43,33 @@ def drop_duplicates_and_localize(pdirs: list[PatientDir]):
     for pdir in pdirs:
         # Get the correct annotation path
         is_competition = pdir.dataset == Dataset.competition
-        path = pdir.szr_starts_naive_file.with_suffix(
-            '.csv') if is_competition else pdir.szr_anns_original_dir / f'{pdir.name}_Consensus.csv'
+        path = pdir.szr_starts_naive_file if is_competition else pdir.szr_anns_original_dir / f'{pdir.name}_Consensus'
+        path = path.with_suffix('.csv')
 
-        # Localize
+        datetime_cols = ['start_naive'] if is_competition else ['start_naive', 'end_naive']
         if path.exists():
-            datetime_cols = ['start_naive'] if is_competition else ['start_naive', 'end_naive']
             anns = pd.read_csv(path, parse_dates=datetime_cols)
-
-            # Drop duplicates
-            dup_mask = anns['start_naive'].notna() & anns['start_naive'].duplicated(keep=False)
-            if dup_mask.any():
-                dups_df = anns.loc[dup_mask].sort_values('start_naive')
-                logging.warning(
-                    f"[{pdir.name}] Dropping {dup_mask.sum()} rows with duplicated start_naive. "
-                    f"Keeping first occurrence.\n{dups_df}"
-                )
-
-                anns = anns.drop_duplicates(subset=['start_naive'], keep='first').reset_index(drop=True)
-
-            # Localize
-            anns = localize_anns_dataframe(anns, PatientTimezone.from_competition(is_competition))
-
-            # Sort
-            anns.sort_values('start_mtz', inplace=True)
-
-            # Save
-            save_dataframe_multiformat(anns, pdir.all_szr_starts_file)
+        elif path.with_suffix('.ods').exists():
+            logging.warning(f'No csv annotation file found for: {pdir.name}. Using .ods instead.')
+            anns = pd.read_excel(path.with_suffix('.ods'), parse_dates=datetime_cols)
         else:
             logging.warning(f'No annotation file found for: {pdir.name}')
+            continue
+
+        # Drop duplicates
+        dup_mask = anns['start_naive'].notna() & anns['start_naive'].duplicated(keep=False)
+        if dup_mask.any():
+            dups_df = anns.loc[dup_mask].sort_values('start_naive')
+            logging.warning(
+                f"[{pdir.name}] Dropping {dup_mask.sum()} rows with duplicated start_naive. "
+                f"Keeping first occurrence.\n{dups_df}"
+            )
+            anns = anns.drop_duplicates(subset=['start_naive'], keep='first').reset_index(drop=True)
+
+        # Localize, Sort, Save
+        anns = localize_anns_dataframe(anns, PatientTimezone.from_competition(is_competition))
+        anns.sort_values('start_mtz', inplace=True)
+        save_dataframe_multiformat(anns, pdir.all_szr_starts_file)
 
 
 if __name__ == '__main__':
