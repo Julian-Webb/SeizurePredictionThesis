@@ -67,7 +67,7 @@ if __name__ == "__main__":
     for name in ["SEGMENT", "CLIP", "INTER_PRE", "PREICTAL", "INTERVENTION", "POSTICTAL", "INTER_POST", "LEAD"]:
         iv = locals()[name]
         print(f'{name} parameters')
-        print(f'approx_dur: {iv.exact_dur}')
+        print(f'approx_dur: {iv.approx_dur}')
         print(f'exact_dur : {iv.exact_dur}')
         print(f'n_samples : {iv.n_samples}')
         print()
