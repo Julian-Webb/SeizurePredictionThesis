@@ -3,7 +3,6 @@
 Assumptions:
 - `segs` index is monotonic and represents sequential segment numbers.
 - Clips are aligned to intervention starts (post-preictal) to avoid mixed preictal/other clips.
-- Clip boundaries are inclusive indices; ranges between seeds are treated as half-open [start, end).
 """
 
 import logging

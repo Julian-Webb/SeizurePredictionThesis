@@ -32,3 +32,6 @@ MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO = 20
 
 # How many of a clip's segments must be valid/exist for the clip to be valid (i.e. not have too much missing data)
 MIN_SEGMENTS_PER_CLIP_RATIO = 0.875
+
+# The random state used for subsampling interictal segments and shuffling for the train data.
+RANDOM_STATE_FOR_TRAIN_DATA = 42

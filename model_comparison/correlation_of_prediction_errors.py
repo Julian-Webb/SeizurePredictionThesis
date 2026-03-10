@@ -83,9 +83,13 @@ if __name__ == '__main__':
     for pdir in PATHS.patient_dirs():
         clips = pd.read_pickle(pickle_path(pdir.clips_table))
         clips = clips[clips['valid']]
-        y_true = clips['preictal'].values
-        pi = clips['ensemble_probability'].values
-        pj = clips['CNN_probability'].values
+        split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index
+
+        test_clips = clips[clips['start_seg'] > split_idx]
+        y_true = test_clips['preictal'].values
+        pi = test_clips['ensemble_probability'].values
+        pj = test_clips['CNN_probability'].values
 
         corr = correlation_of_prediction_errors(pi, pj, y_true)
-        print(f'{pdir.name}: {corr}')
+
+        print(f'{pdir.name:>23}: {corr:5.2f}')

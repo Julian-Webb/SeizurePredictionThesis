@@ -60,6 +60,7 @@ def load_data(
         test: bool = False,
         split_idx: int = None,
         edf_dir: Path = None,
+        feature_names: list[str] = Features.ORDERED_NAMES,
         random_state: int = None,
 ):
     """
@@ -75,6 +76,7 @@ def load_data(
     :param split_idx: The segment index of the split between train and test data, if train and test are not both True.
     ``pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index``
     :param edf_dir: The patient's edf_dir, if type_ is 'eeg'.
+    :param feature_names: The names of the features to load, if type_ is 'features'.
     :param random_state: Optional random state for subsampling and shuffling
 
     :return: dict with keys x (data), y (labels), and index_and_start (DataFrame with segment index and start_mtz to
@@ -113,7 +115,7 @@ def load_data(
     segs_index_and_start = segs[['start_mtz']]
 
     if type_ == 'features':
-        x, y = seg_features_to_numpy(segs, Features.ORDERED_NAMES)
+        x, y = seg_features_to_numpy(segs, feature_names)
     else:  # EEG
         segs.drop(columns=Features.ORDERED_NAMES, inplace=True)
 
@@ -146,7 +148,7 @@ def load_data(
 
 
 if __name__ == '__main__':
-    pdir = PATHS.patient_dirs()[7]
+    pdir = PATHS.patient_dirs()[0]
 
     res = load_data(
         segs=pd.read_pickle(pickle_path(pdir.segments_table)),

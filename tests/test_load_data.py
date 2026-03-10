@@ -10,7 +10,7 @@ from utils.io import pickle_path
 
 class TestLoadData(unittest.TestCase):
     def test_load_data(self):
-        pdir = PATHS.patient_dirs()[7]
+        pdir = PATHS.patient_dirs()[0]
         print(f"\nPatient: {pdir.name}\n")
         count = 0
         for type_ in ['features', 'eeg']:
