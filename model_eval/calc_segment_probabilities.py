@@ -1,4 +1,6 @@
 import logging
+import pickle
+
 import numpy as np
 import pandas as pd
 
@@ -11,7 +13,7 @@ import_tensorflow_with_available_gpus([2])
 import tensorflow as tf
 
 
-def make_raw_predictions(
+def calc_seg_probabilities(
         pdir: PatientDir,
         batch_size: int = 2 ** 19,
 ):
@@ -42,6 +44,12 @@ def make_raw_predictions(
             edf_dir=pdir.edf_dir,
         )
 
+        if data_type == 'features':
+            # Perform z-scaling for features
+            with open(pdir.feature_scaler, 'rb') as f:
+                scaler = pickle.load(f)
+            data['x'] = scaler.transform(data['x'])
+
         # Predict in batches to avoid overallocating GPU memory
         n_segs = data['x'].shape[0]
         model_probs = []
@@ -67,7 +75,7 @@ def main(pdirs: list[PatientDir] = PATHS.patient_dirs()):
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
     for pdir in pdirs:
-        make_raw_predictions(pdir)
+        calc_seg_probabilities(pdir)
 
 
 if __name__ == '__main__': main()
