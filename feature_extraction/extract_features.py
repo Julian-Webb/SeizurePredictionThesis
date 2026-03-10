@@ -1,6 +1,5 @@
 import logging
 import time
-# noinspection PyUnusedImports
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,7 +13,7 @@ from scipy.signal import welch
 from statsmodels.tsa import stattools
 
 from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
-from config.paths import PatientDir, PATHS
+from config.paths import PatientDir
 from utils.edf_utils import load_segmented_sigs
 from utils.io import pickle_path, save_dataframe_multiformat
 
@@ -76,6 +75,18 @@ def bandpowers_vectorized(segmented_sigs: ndarray, sfreq: float, bands: dict):
     return bandpowers
 
 
+class FeatureNames:
+    CORRCOEF = ['corrcoef']
+    ACFW = ['acfw_D', 'acfw_P']
+    VAR = ['var_D', 'var_P']
+    BANDPOWERS = [
+        'Delta_D', 'Theta_D', 'Alpha_D', 'Beta_D', 'Gamma_D',
+        'Delta_P', 'Theta_P', 'Alpha_P', 'Beta_P', 'Gamma_P',
+    ]
+    ALL_ORDERED = CORRCOEF + ACFW + VAR + BANDPOWERS
+    ENSEMBLE = CORRCOEF + BANDPOWERS  # Features for the ensemble model
+
+
 class Features:
     """
     Represents the features for multiple segments.
@@ -93,15 +104,6 @@ class Features:
     Bandpowers for each band and channel:
     bandpowers: ndarray. shape = (#segs, #chn, #bands)
     """
-    CORRCOEF = ['corrcoef']
-    ACFW = ['acfw_D', 'acfw_P']
-    VAR = ['var_D', 'var_P']
-    BANDPOWERS = [
-        'Delta_D', 'Theta_D', 'Alpha_D', 'Beta_D', 'Gamma_D',
-        'Delta_P', 'Theta_P', 'Alpha_P', 'Beta_P', 'Gamma_P',
-    ]
-    ORDERED_NAMES = CORRCOEF + ACFW + VAR + BANDPOWERS
-    N_FEATURES = len(ORDERED_NAMES)
 
     def __init__(self, file_path: Path, first_idx: int, n_segs: int):
         """
@@ -152,7 +154,7 @@ class Features:
     def to_series_for_seg(self, seg_idx: int) -> pd.Series:
         return pd.Series(
             self.to_array()[seg_idx],
-            index=self.ORDERED_NAMES
+            index=FeatureNames.ALL_ORDERED
         )
 
 
@@ -190,7 +192,7 @@ def extract_ptnt_features(ptnt_dir: PatientDir, serial_processing: bool = False)
             file_path = ptnt_dir.edf_dir / file_name
             first_idx = file_segs.iloc[0]['start_index']
             n_segs = file_segs.shape[0]
-            segs.loc[file_segs.index, Features.ORDERED_NAMES] = Features.init_to_array(file_path, first_idx, n_segs)
+            segs.loc[file_segs.index, FeatureNames.ALL_ORDERED] = Features.init_to_array(file_path, first_idx, n_segs)
 
     else:
         # Retrieve file infos
@@ -215,7 +217,7 @@ def extract_ptnt_features(ptnt_dir: PatientDir, serial_processing: bool = False)
             for future in as_completed(futures):
                 batch_res = future.result()
                 for file_name, features_arr in batch_res.items():
-                    segs.loc[file_indices[file_name], Features.ORDERED_NAMES] = features_arr
+                    segs.loc[file_indices[file_name], FeatureNames.ALL_ORDERED] = features_arr
 
     save_dataframe_multiformat(segs, ptnt_dir.segments_table)
     logging.info(f"Features extracted for {ptnt_dir.name} in {time.perf_counter() - start_time:.3f} sec.")
@@ -236,4 +238,5 @@ def extract_features(ptnt_dirs: List[PatientDir], serial_processing: bool = Fals
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
-    extract_features(PATHS.patient_dirs())
+    # extract_features(PATHS.patient_dirs())
+    print(Features.Names.ALL_ORDERED.value)

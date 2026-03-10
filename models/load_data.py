@@ -8,7 +8,7 @@ from pyedflib import EdfReader
 from config.constants import MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO, N_CHANNELS
 from config.intervals import SEGMENT
 from config.paths import PATHS
-from feature_extraction.extract_features import Features
+from feature_extraction.extract_features import FeatureNames
 from utils.edf_utils import load_segmented_sigs
 from utils.io import pickle_path
 from utils.utils import timeit
@@ -60,7 +60,7 @@ def load_data(
         test: bool = False,
         split_idx: int = None,
         edf_dir: Path = None,
-        feature_names: list[str] = Features.ORDERED_NAMES,
+        feature_names: list[str] = FeatureNames.ALL_ORDERED,
         random_state: int = None,
 ):
     """
@@ -117,7 +117,7 @@ def load_data(
     if type_ == 'features':
         x, y = seg_features_to_numpy(segs, feature_names)
     else:  # EEG
-        segs.drop(columns=Features.ORDERED_NAMES, inplace=True)
+        segs.drop(columns=FeatureNames.ALL_ORDERED, inplace=True)
 
         # Reset the index so that it corresponds to the index in the array x
         segs.reset_index(drop=True, inplace=True)

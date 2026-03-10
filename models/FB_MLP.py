@@ -12,7 +12,7 @@ from tensorflow.keras.metrics import Recall, AUC
 
 from config.constants import RANDOM_STATE_FOR_TRAIN_DATA
 from config.paths import PatientDir, PATHS
-from feature_extraction.extract_features import Features
+from feature_extraction.extract_features import FeatureNames
 from models.load_data import load_data
 from utils.io import pickle_path
 from utils.tensorflow_utils import PeriodicalLogger
@@ -95,7 +95,7 @@ def create_ensemble(
 
 def create_ptnt_mlp_ensemble(
         pdir: PatientDir,
-        feature_names: list[str] = Features.CORRCOEF + Features.BANDPOWERS,
+        feature_names: list[str] = FeatureNames.ENSEMBLE,
 ):
     segs = pd.read_pickle(pickle_path(pdir.segments_table))
     split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index

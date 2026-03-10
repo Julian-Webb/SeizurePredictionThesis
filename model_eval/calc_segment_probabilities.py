@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import pandas as pd
 
+from feature_extraction.extract_features import FeatureNames
 from models.load_data import load_data
 from utils.io import pickle_path, save_dataframe_multiformat
 from utils.utils import import_tensorflow_with_available_gpus
@@ -41,6 +42,7 @@ def calc_seg_probabilities(
             subsample_shuffle_and_subselect_types=False,
             train=True,
             test=True,
+            feature_names=FeatureNames.ENSEMBLE,
             edf_dir=pdir.edf_dir,
         )
 
