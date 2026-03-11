@@ -6,7 +6,7 @@ from pathlib import Path
 from pandas import Timestamp, DataFrame, Timedelta, Series
 from pyedflib import EdfReader
 
-from config.paths import PatientDir, PATHS, Dataset
+from config import PatientDir, PATHS, Dataset
 from utils.io import pickle_path
 from utils.timezone import PatientTimezone, timezone_from_edf_annotation
 from utils.utils import timeit

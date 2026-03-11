@@ -5,7 +5,7 @@ from typing import List
 from pyedflib import EdfReader
 
 from config.constants import CHANNELS
-from config.paths import PatientDir, PATHS
+from config import PatientDir, PATHS
 
 
 def check_ptnt_edf_channel_names(pdir: PatientDir):

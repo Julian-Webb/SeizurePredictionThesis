@@ -7,7 +7,7 @@ from pandas import DataFrame, Timedelta
 
 import config.intervals as intervals
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
-from config.paths import PATHS, PatientDir
+from config import PATHS, PatientDir
 from utils.io import save_dataframe_multiformat, pickle_path
 
 

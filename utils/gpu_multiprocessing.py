@@ -7,7 +7,7 @@ Design goals:
 - Workers shut down gracefully via sentinels.
 
 Usage example:
-    from config.paths import PATHS
+    from config import PATHS
     from models.CNN import create_ptnt_cnn
     from models.FB_MLP import create_ptnt_ensemble_and_save
     from utils.gpu_multiprocessing import QueuedCall, run_queued_calls_on_gpus

@@ -6,7 +6,7 @@ from pprint import pprint
 import pandas as pd
 from pyedflib import EdfReader
 
-from config.paths import Dataset, PATHS
+from config import Dataset, PATHS
 
 
 def check_edf_names_with_patient_id_correct_format():

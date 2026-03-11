@@ -8,7 +8,7 @@ from pandas import Timestamp, Timedelta
 from pyedflib import highlevel
 
 from config.constants import SAMPLING_FREQUENCY_HZ
-from config.paths import PatientDir, PATHS
+from config import PatientDir, PATHS
 from utils.io import pickle_path
 
 

@@ -8,7 +8,7 @@ from models.load_data import load_data
 from feature_extraction.extract_features import FeatureNames
 from utils import QueuedCall, run_queued_calls_on_gpus
 from utils.io import pickle_path, save_dataframe_multiformat
-from config.paths import PatientDir, PATHS
+from config import PatientDir, PATHS
 
 
 def calc_ptnt_seg_probabilities(

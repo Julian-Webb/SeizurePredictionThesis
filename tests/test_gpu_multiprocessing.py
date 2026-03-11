@@ -5,6 +5,10 @@ import pytest
 
 from utils.gpu_multiprocessing import QueuedCall, run_queued_calls_on_gpus
 
+# !!! comment out available GPUs when not explicitly testing to avoid blocking them !!!
+GPUS = [0, 1, 2, 3]
+# GPUS = []
+
 
 def _busy_tf_job(log_path: str, task_id: int, mat_size: int = 192, steps: int = 10) -> None:
     """Run enough TF math to keep a worker busy for a short time and emit logs."""
@@ -47,13 +51,11 @@ def _no_op() -> None:
 
 
 def test_run_queued_calls_on_gpus_executes_tensorflow_work(tmp_path, capfd):
-    gpus = [0, 1, 2, 3]
-
     log_path = tmp_path / "tf_worker_tasks.log"
 
     print(f"Writing logs to {log_path}")
 
-    task_count = len(gpus) * 2
+    task_count = len(GPUS) * 2
     tasks = [
         QueuedCall(
             func=_busy_tf_job,
@@ -68,7 +70,7 @@ def test_run_queued_calls_on_gpus_executes_tensorflow_work(tmp_path, capfd):
     disabled_capture = getattr(capfd, "disabled")
     with disabled_capture():
         print("\nRunning worker tasks with live stdout enabled...", flush=True)
-        run_queued_calls_on_gpus(tasks=tasks, gpus=gpus, continue_on_error=False)
+        run_queued_calls_on_gpus(tasks=tasks, gpus=GPUS, continue_on_error=False)
 
 
     log_text = log_path.read_text(encoding="utf-8")
@@ -84,5 +86,5 @@ def test_run_queued_calls_on_gpus_validates_input():
         run_queued_calls_on_gpus(tasks=[QueuedCall(func=_no_op)], gpus=[])
 
     with pytest.raises(ValueError, match="`tasks` is empty"):
-        run_queued_calls_on_gpus(tasks=[], gpus=[0])
+        run_queued_calls_on_gpus(tasks=[], gpus=[GPUS[0]])
 

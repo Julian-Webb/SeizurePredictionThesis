@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 from typing import List, Tuple
 
-from config.paths import Paths, Dataset, PatientDir
+from config import Paths, Dataset, PatientDir
 
 
 class TestPaths(unittest.TestCase):

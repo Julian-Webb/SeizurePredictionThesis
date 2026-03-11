@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from config.paths import PATHS, PatientDir
+from config import PATHS, PatientDir
 
 
 # noinspection PyUnresolvedReferences

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Tuple, Dict
 
 from config.constants import SAMPLING_FREQUENCY_HZ as sfreq
-from config.paths import PATHS, PatientDir
+from config import PATHS, PatientDir
 import pyedflib
 
 

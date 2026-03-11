@@ -4,8 +4,6 @@ import time
 from functools import wraps
 from pathlib import Path
 
-from config.environment import AVAILABLE_GPUS
-
 
 def safe_float_to_int(num: float) -> int:
     if num != int(num):
@@ -40,7 +38,7 @@ def timeit(f):
     return wrap
 
 
-def import_tensorflow_with_available_gpus(available_gpus: tuple[int] | list[int] = AVAILABLE_GPUS):
+def import_tensorflow_with_available_gpus(available_gpus: list[int]):
     gpus_str = ','.join(map(str, available_gpus))
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus_str

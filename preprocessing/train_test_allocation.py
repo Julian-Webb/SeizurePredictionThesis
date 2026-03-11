@@ -5,7 +5,7 @@ import pandas as pd
 from pandas import Series, Timestamp, Timedelta, DataFrame
 
 from config.constants import RATIO_OF_TIMESPAN_FOR_TRAINING
-from config.paths import PATHS, PatientDir
+from config import PATHS, PatientDir
 from utils.io import pickle_path, save_dataframe_multiformat
 
 

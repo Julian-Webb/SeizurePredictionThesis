@@ -11,7 +11,7 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
 from config.constants import RANDOM_STATE_FOR_TRAIN_DATA
-from config.paths import PatientDir, PATHS
+from config import PatientDir, PATHS
 from feature_extraction.extract_features import FeatureNames
 from models.load_data import load_data
 from utils.io import pickle_path

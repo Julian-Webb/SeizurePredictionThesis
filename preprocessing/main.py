@@ -1,6 +1,6 @@
 import logging
 
-from config.paths import PATHS
+from config import PATHS
 from preprocessing.segment_tables import segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients

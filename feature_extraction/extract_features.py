@@ -13,7 +13,7 @@ from scipy.signal import welch
 from statsmodels.tsa import stattools
 
 from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
-from config.paths import PatientDir
+from config import PatientDir
 from utils.edf_utils import load_segmented_sigs
 from utils.io import pickle_path, save_dataframe_multiformat
 

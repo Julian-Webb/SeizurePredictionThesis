@@ -14,7 +14,7 @@ import portion as P
 from pandas import DataFrame, Timedelta, Series
 
 from config.intervals import Interval, INTERVENTION, SPH
-from config.paths import PATHS, PatientDir
+from config import PATHS, PatientDir
 from utils.io import pickle_path, save_dataframe_multiformat
 from utils.utils import timeit
 

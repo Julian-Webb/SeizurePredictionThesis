@@ -77,7 +77,7 @@ def correlation_of_prediction_errors(
 
 
 if __name__ == '__main__':
-    from config.paths import PATHS
+    from config import PATHS
     from utils.io import pickle_path
 
     for pdir in PATHS.patient_dirs():

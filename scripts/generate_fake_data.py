@@ -8,7 +8,7 @@ from pyedflib import highlevel
 
 from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
 from config.constants import SAMPLING_FREQUENCY_HZ, N_CHANNELS, CHANNELS
-from config.paths import PatientDir, PATHS, Dataset
+from config import PatientDir, PATHS, Dataset
 from feature_extraction.extract_features import extract_features
 from preprocessing.filter_signals import filter_all_edfs
 from preprocessing.segment_tables import segment_tables

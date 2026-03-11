@@ -9,7 +9,7 @@ from tensorflow.keras.metrics import Recall, AUC
 
 from config.constants import N_CHANNELS
 from config.intervals import SEGMENT
-from config.paths import PatientDir, PATHS
+from config import PatientDir, PATHS
 from models.FB_MLP import calc_class_weights
 from models.load_data import load_data
 from utils.tensorflow_utils import PeriodicalLogger

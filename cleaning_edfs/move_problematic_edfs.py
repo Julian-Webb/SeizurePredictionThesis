@@ -7,7 +7,7 @@ import pandas as pd
 from pandas import DataFrame
 from pyedflib import EdfReader
 
-from config.paths import PatientDir, PATHS, Dataset
+from config import PatientDir, PATHS, Dataset
 from cleaning_edfs.list_and_rename_edfs import list_edfs
 from utils.io import pickle_path
 

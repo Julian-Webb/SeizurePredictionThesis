@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 from pandas import DataFrame
 
-from config.paths import PATHS
+from config import PATHS
 from preprocessing.validate_patients import ptnt_timespan_info
 from utils.io import save_dataframe_multiformat, pickle_path
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from config.paths import PATHS
+from config import PATHS
 from model_eval.calc_segment_probabilities import calc_ptnt_seg_probabilities
 from models.CNN import create_ptnt_cnn
 from utils import QueuedCall

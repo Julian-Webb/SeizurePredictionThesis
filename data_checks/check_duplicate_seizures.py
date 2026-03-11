@@ -3,7 +3,7 @@ from typing import List
 
 import pandas as pd
 
-from config.paths import PATHS, PatientDir
+from config import PATHS, PatientDir
 from utils.io import pickle_path
 
 
