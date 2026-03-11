@@ -45,8 +45,7 @@ def calc_ptnt_seg_probabilities(
             subsample_shuffle_and_subselect_types=False,
             train=True,
             test=True,
-            # feature_names=FeatureNames.ENSEMBLE, # todo
-            feature_names=FeatureNames.ALL_ORDERED,
+            feature_names=FeatureNames.ENSEMBLE,
             edf_dir=pdir.edf_dir,
         )
 
@@ -94,8 +93,7 @@ def main(
 
 if __name__ == '__main__':
     main(
-        PATHS.patient_dirs()[1:],  # todo do for all patients
-        # PATHS.patient_dirs(), # todo do for all patients
+        PATHS.patient_dirs(),
         serial_processing=False,
         available_gpus=[0, 1, 2, 3],
     )

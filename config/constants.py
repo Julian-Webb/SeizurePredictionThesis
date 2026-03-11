@@ -22,13 +22,11 @@ RATIO_OF_TIMESPAN_FOR_TRAINING = 0.6
 
 # How the EEG bands are defined (lower frequency, upper frequency, name)
 # Note: dicts maintain insertion order in Python
-# todo is the lower delta and upper gamma bound correct?
 SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': (12, 35), 'Gamma': (35, 100)}
 
-# todo which ratio is good? (see Eberlein's diss)
 # In the data, there are much more interictal that preictal segments (about 100 to 1)
 # During training, we want to subsample the interictal segments to reach a ratio that works well for training.
-MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO = 20
+MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO = 10
 
 # How many of a clip's segments must be valid/exist for the clip to be valid (i.e. not have too much missing data)
 MIN_SEGMENTS_PER_CLIP_RATIO = 0.875

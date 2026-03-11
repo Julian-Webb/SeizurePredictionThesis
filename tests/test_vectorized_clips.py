@@ -1,6 +1,6 @@
-# todo this test is AI generated and somewhat lackluster
 """
 Test script to validate the vectorized clip generation produces correct results.
+Note: this test is AI generated and somewhat lackluster
 """
 import numpy as np
 import pandas as pd

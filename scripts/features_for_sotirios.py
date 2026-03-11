@@ -1,4 +1,3 @@
-# todo delete this temp file
 import shutil
 from pathlib import Path
 
