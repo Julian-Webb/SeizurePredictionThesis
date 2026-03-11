@@ -26,7 +26,7 @@ def calc_seg_probabilities(
     logging.info(f'===== Making raw predictions for patient {pdir.name}...')
 
     model_specs = [
-        ['CNN', pdir.cnn_model, 'eeg'],
+        # ['CNN', pdir.cnn_model, 'eeg'], # todo
         ['ensemble', pdir.ensemble_model, 'features'],
     ]
 
@@ -42,7 +42,8 @@ def calc_seg_probabilities(
             subsample_shuffle_and_subselect_types=False,
             train=True,
             test=True,
-            feature_names=FeatureNames.ENSEMBLE,
+            # feature_names=FeatureNames.ENSEMBLE, # todo
+            feature_names=FeatureNames.ALL_ORDERED,
             edf_dir=pdir.edf_dir,
         )
 
@@ -80,4 +81,5 @@ def main(pdirs: list[PatientDir] = PATHS.patient_dirs()):
         calc_seg_probabilities(pdir)
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    main(PATHS.patient_dirs()[1:]) # todo delete the argument, so it's done for all patients
