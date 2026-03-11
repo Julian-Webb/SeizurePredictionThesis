@@ -10,7 +10,7 @@ from tensorflow.keras.metrics import Recall, AUC
 from config.constants import N_CHANNELS
 from config.intervals import SEGMENT
 from config import PatientDir, PATHS
-from models.FB_MLP import calc_class_weights
+from models.ensemble import calc_class_weights
 from models.load_data import load_data
 from utils.tensorflow_utils import PeriodicalLogger
 
@@ -85,7 +85,7 @@ def cnn_model(n_samples: int, n_channels: int) -> tf.keras.models.Sequential:
     return model
 
 
-def create_ptnt_cnn(pdir: PatientDir):
+def create_ptnt_cnn_and_save(pdir: PatientDir):
     cnn = cnn_model(SEGMENT.n_samples, N_CHANNELS)
 
     # load data
@@ -112,7 +112,7 @@ def create_ptnt_cnn(pdir: PatientDir):
 
 def create_ptnt_cnns(pdirs: list[PatientDir]):
     for pdir in pdirs:
-        create_ptnt_cnn(pdir)
+        create_ptnt_cnn_and_save(pdir)
 
 
 if __name__ == '__main__':

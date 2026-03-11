@@ -8,12 +8,12 @@ from utils import QueuedCall, run_queued_calls_on_gpus
 
 def _train_cnn_task(pdir: PatientDir):
     # Imported inside worker after CUDA_VISIBLE_DEVICES is set by gpu_multiprocessing
-    from models.CNN import create_ptnt_cnn
-    create_ptnt_cnn(pdir)
+    from models.CNN import create_ptnt_cnn_and_save
+    create_ptnt_cnn_and_save(pdir)
 
 
 def _train_mlp_task(pdir: PatientDir) -> None:
-    from models.FB_MLP import create_ptnt_ensemble_and_save
+    from models.ensemble import create_ptnt_ensemble_and_save
     create_ptnt_ensemble_and_save(pdir)
 
 
