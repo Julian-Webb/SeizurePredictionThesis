@@ -12,6 +12,7 @@ from config.intervals import SEGMENT
 from config import PatientDir, PATHS
 from models.ensemble import calc_class_weights
 from models.load_data import load_data
+from utils.io import save_dataframe_multiformat
 from utils.tensorflow_utils import PeriodicalLogger
 
 EPOCHS = 50  # 50
@@ -107,7 +108,10 @@ def create_ptnt_cnn_and_save(pdir: PatientDir):
     # Save
     pdir.cnn_model.parent.mkdir(parents=True, exist_ok=True)
     cnn.save(pdir.cnn_model)
-    pd.DataFrame.from_dict(history.history).to_csv(pdir.cnn_history)
+    save_dataframe_multiformat(
+        pd.DataFrame.from_dict(history.history),
+        pdir.cnn_history,
+    )
 
 
 def create_ptnt_cnns(pdirs: list[PatientDir]):
