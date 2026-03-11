@@ -16,13 +16,13 @@ from utils.edf_utils import time_to_index
 from utils.io import pickle_path, save_dataframe_multiformat
 
 
-def load_ptnt_timespan_info(ptnt_dir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
+def load_ptnt_timespan_info(pdir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
     """
     :return: start of the recordings, end of the recordings, timespan
     """
     ptnts_info = pd.read_pickle(pickle_path(PATHS.patient_info_exact))
-    dataset = ptnt_dir.parent.name
-    ptnt = ptnt_dir.name
+    dataset = pdir.parent.name
+    ptnt = pdir.name
     ptnt_info = ptnts_info.loc[dataset, ptnt]
     # noinspection PyTypeChecker
     return ptnt_info['recordings_start'], ptnt_info['recordings_end'], ptnt_info['timespan']
@@ -169,39 +169,39 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: s
     plt.close(fig)
 
 
-def make_segs_table_and_plot(ptnt_dir: PatientDir, from_preexisting_segs: bool = False):
+def make_segs_table_and_plot(pdir: PatientDir, from_preexisting_segs: bool = False):
     # Make segs table and save it to csv
-    logging.info(f"Processing {ptnt_dir.name}")
+    logging.info(f"Processing {pdir.name}")
     if from_preexisting_segs:
-        segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
+        segs = pd.read_pickle(pickle_path(pdir.segments_table))
     else:
-        segs = make_segs_table(ptnt_dir)
-        save_dataframe_multiformat(segs.drop(columns=['end_mtz']), ptnt_dir.segments_table)
+        segs = make_segs_table(pdir)
+        save_dataframe_multiformat(segs.drop(columns=['end_mtz']), pdir.segments_table)
 
     # Make the plot
-    szrs = pd.read_pickle(pickle_path(ptnt_dir.valid_szr_starts_file))
-    edfs = pd.read_pickle(pickle_path(ptnt_dir.edf_files_table))
+    szrs = pd.read_pickle(pickle_path(pdir.valid_szr_starts_file))
+    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
 
-    plot_segs(segs, szrs, edfs, ptnt_dir.name, show=False, savepath=ptnt_dir.segments_plot)
+    plot_segs(segs, szrs, edfs, pdir.name, show=False, savepath=pdir.segments_plot)
 
 
-def segment_tables(ptnt_dirs: List[PatientDir], serial_processing: bool = False):
+def segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
     if serial_processing:
-        for ptnt_dir in ptnt_dirs:
-            logging.info(f'Seg table for : {ptnt_dir.name}')
-            make_segs_table(ptnt_dir)
+        for pdir in pdirs:
+            logging.info(f'Seg table for : {pdir.name}')
+            make_segs_table(pdir)
     else:
-        max_workers = min(len(ptnt_dirs), multiprocessing.cpu_count())
+        max_workers = min(len(pdirs), multiprocessing.cpu_count())
         logging.info(f"Using {max_workers} max workers")
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in ptnt_dirs}
+            futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in pdirs}
             for fut in as_completed(futures):
-                ptnt_dir = futures[fut]
+                pdir = futures[fut]
                 try:
                     fut.result()
-                    logging.info(f"Finished seg table for: {ptnt_dir.name}")
+                    logging.info(f"Finished seg table for: {pdir.name}")
                 except:
-                    logging.warning(f"Failed seg table for: {ptnt_dir.name}")
+                    logging.warning(f"Failed seg table for: {pdir.name}")
 
 
 if __name__ == '__main__':
@@ -209,11 +209,11 @@ if __name__ == '__main__':
 
     segment_tables(PATHS.patient_dirs())
 
-    # ptnt_dir = PatientDir('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1')
-    # ptnt_dir = PatientDir('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D')
-    # ptnt_dir = PatientDir('/data/home/webb/UNEEG_data/20250217_UNEEG_Extended/F5TW95P3X')
-    # make_segs_table_and_plot(ptnt_dir, False)
+    # pdir = PatientDir('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1')
+    # pdir = PatientDir('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D')
+    # pdir = PatientDir('/data/home/webb/UNEEG_data/20250217_UNEEG_Extended/F5TW95P3X')
+    # make_segs_table_and_plot(pdir, False)
 
     # Just make plots
-    # for ptnt_dir in PATHS.patient_dirs():
-    #     make_segs_table_and_plot(ptnt_dir, True)
+    # for pdir in PATHS.patient_dirs():
+    #     make_segs_table_and_plot(pdir, True)

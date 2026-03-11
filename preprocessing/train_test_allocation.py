@@ -30,26 +30,26 @@ def _compute_ptnt_split(recordings_start: Timestamp, timespan: Timedelta, seg_st
     return {'Timestamp': train_end_exact, 'segment_index': idx}
 
 
-def find_ptnt_split(ptnt_dir: PatientDir, all_ptnts_info: DataFrame):
-    dataset = ptnt_dir.parent.name
-    ptnt_info = all_ptnts_info.loc[(dataset, ptnt_dir.name)]
-    segs = pd.read_pickle(pickle_path(ptnt_dir.segments_table))
+def find_ptnt_split(pdir: PatientDir, all_ptnts_info: DataFrame):
+    dataset = pdir.parent.name
+    ptnt_info = all_ptnts_info.loc[(dataset, pdir.name)]
+    segs = pd.read_pickle(pickle_path(pdir.segments_table))
 
     # noinspection PyTypeChecker
     train_end = _compute_ptnt_split(ptnt_info['recordings_start'], ptnt_info['timespan'], segs['start_mtz'])
     train_end = Series(train_end, name='train_end')
-    save_dataframe_multiformat(train_end, ptnt_dir.train_test_split, csv_index=True)
+    save_dataframe_multiformat(train_end, pdir.train_test_split, csv_index=True)
 
 
-def find_ptnt_splits(ptnt_dirs: List[PatientDir]):
+def find_ptnt_splits(pdirs: List[PatientDir]):
     all_ptnts_info = pd.read_pickle(pickle_path(PATHS.patient_info_exact))
 
     # Serial Processing
-    # for ptnt_dir in ptnt_dirs:
-    #     find_ptnt_split(ptnt_dir, all_ptnts_info)
+    # for pdir in pdirs:
+    #     find_ptnt_split(pdir, all_ptnts_info)
 
     # Parallel Processing
-    args = [(ptnt_dir, all_ptnts_info) for ptnt_dir in ptnt_dirs]
+    args = [(pdir, all_ptnts_info) for pdir in pdirs]
     with multiprocessing.Pool() as pool:
         pool.starmap(find_ptnt_split, args)
 

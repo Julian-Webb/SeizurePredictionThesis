@@ -17,7 +17,7 @@ def preprocessing(ask_confirm: bool = True):
     with FunctionTimer('Total Preprocessing'):
         logging.info("===== Validating Patients and moving invalid patient dirs =====")
         with FunctionTimer('validate_patients'):
-            validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=True)
+            validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=True)
 
         logging.info("===== Creating segment tables =====")
         with FunctionTimer('segment_tables'):

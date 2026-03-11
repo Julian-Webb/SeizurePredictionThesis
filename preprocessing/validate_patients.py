@@ -51,7 +51,6 @@ def find_lead_szrs(szrs: DataFrame):
 def ptnt_timespan_info(edfs: DataFrame) -> dict[str, dict]:
     """
     Compute information about the recording timespans
-    :param ptnt_dir:
     :return: exact information, human-readable information
     """
     if not edfs.empty:
@@ -91,16 +90,16 @@ def ptnt_timespan_info(edfs: DataFrame) -> dict[str, dict]:
     return {'exact': exact_info, 'readable': readable_info}
 
 
-def move_ptnt_dir(pdir: Path):
+def move_pdir(pdir: Path):
     """Move a patient dir to the invalid patient dir."""
     invalid_dataset_dir = PATHS.invalid_patients_dir / pdir.parent.name
-    new_ptnt_dir = invalid_dataset_dir / pdir.name
-    if pdir != new_ptnt_dir:  # Check if it was already moved because of previous code execution
+    new_pdir = invalid_dataset_dir / pdir.name
+    if pdir != new_pdir:  # Check if it was already moved because of previous code execution
         invalid_dataset_dir.mkdir(parents=True, exist_ok=True)
         pdir.rename(invalid_dataset_dir / pdir.name)
 
 
-def validate_patients(pdirs: Iterable[PatientDir], move_invalid_ptnt_dirs: bool) -> None:
+def validate_patients(pdirs: Iterable[PatientDir], move_invalid_pdirs: bool) -> None:
     """Find valid seizures for all patients. Save the valid seizures info, and the patient timespan info to files."""
     # patients are grouped by dataset
     ptnt_infos = {'exact': {}, 'readable': {}}
@@ -135,8 +134,8 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_ptnt_dirs: bool)
         for k in ptnt_infos.keys():
             ptnt_infos[k][(dataset, pdir.name)] = {'valid': ptnt_valid, **ptnt_szr_info, **ptnt_time_info[k]}
 
-        if move_invalid_ptnt_dirs and not ptnt_valid:
-            move_ptnt_dir(pdir)
+        if move_invalid_pdirs and not ptnt_valid:
+            move_pdir(pdir)
 
     # Save patient infos
     PATHS.patient_info_dir.mkdir(parents=True, exist_ok=True)
@@ -152,4 +151,4 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_ptnt_dirs: bool)
 
 
 if __name__ == '__main__':
-    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=True)
+    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=True)

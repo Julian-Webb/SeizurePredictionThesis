@@ -41,19 +41,19 @@ def generate_edf(interval: Interval, file_path: Path, ptnt_name: str):
     highlevel.write_edf(str(file_path), signals, signal_headers, header)
 
 
-def generate_fake_ptnt_data(ptnt_dir: PatientDir):
-    edf_files = pd.read_pickle(pickle_path(ptnt_dir.edf_files_table))
-    ptnt_dir.edf_dir.mkdir(parents=True, exist_ok=True)
+def generate_fake_ptnt_data(pdir: PatientDir):
+    edf_files = pd.read_pickle(pickle_path(pdir.edf_files_table))
+    pdir.edf_dir.mkdir(parents=True, exist_ok=True)
     for i, edf in edf_files.iterrows():
         interval = Interval(edf['start'], edf['end'])
-        generate_edf(interval, ptnt_dir.edf_dir / edf['file_name'], ptnt_dir.name)
+        generate_edf(interval, pdir.edf_dir / edf['file_name'], pdir.name)
         print(f"\rFiles generated: {i} | {edf['file_name']}", end='')
 
 
 def process_fake_ptnt(pdir: PatientDir):
     pdirs = [pdir]
     # drop_duplicates_and_localize(pdirs)
-    # validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_ptnt_dirs=False)
+    # validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=False)
     # filter_all_edfs(pdirs)
     # segment_tables(pdirs)
     # find_ptnt_splits(pdirs)

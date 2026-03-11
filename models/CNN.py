@@ -110,9 +110,9 @@ def create_ptnt_cnn(pdir: PatientDir):
     pd.DataFrame.from_dict(history.history).to_csv(pdir.cnn_history)
 
 
-def create_ptnt_cnns(ptnt_dirs: list[PatientDir]):
-    for ptnt_dir in ptnt_dirs:
-        create_ptnt_cnn(ptnt_dir)
+def create_ptnt_cnns(pdirs: list[PatientDir]):
+    for pdir in pdirs:
+        create_ptnt_cnn(pdir)
 
 
 if __name__ == '__main__':

@@ -94,7 +94,7 @@ class Paths(type(Path())):
         Return a list of patient directories of the given datasets
         :param datasets: The datasets to get patient dirs for (default: all)
         :param include_invalid_ptnts: Whether to include invalid patient dirs
-        :returns: ptnt_dirs - a list of PatientDir objects
+        :returns: pdirs - a list of PatientDir objects
         """
         if datasets is None:
             datasets = list(Dataset)
@@ -103,16 +103,16 @@ class Paths(type(Path())):
         if include_invalid_ptnts:
             base_dirs.append(self.invalid_patients_dir)
 
-        ptnt_dirs = []
+        pdirs = []
         for base_dir in base_dirs:
             for dataset in datasets:
                 dataset_path = base_dir / dataset.value
                 if dataset_path.is_dir():
-                    for ptnt_dir in sorted(dataset_path.iterdir()):
-                        if ptnt_dir.is_dir():
-                            ptnt_dirs.append(PatientDir(ptnt_dir, dataset=dataset))
+                    for pdir in sorted(dataset_path.iterdir()):
+                        if pdir.is_dir():
+                            pdirs.append(PatientDir(pdir, dataset=dataset))
 
-        return ptnt_dirs
+        return pdirs
 
     @property
     def root(self) -> Path:
@@ -127,6 +127,6 @@ PATHS = Paths('/data/home/webb/UNEEG')
 #              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == '__main__':
-    for ptnt_dir in PATHS.patient_dirs(include_invalid_ptnts=True):
-        print(ptnt_dir)
+    for pdir_ in PATHS.patient_dirs(include_invalid_ptnts=True):
+        print(pdir_)
 
