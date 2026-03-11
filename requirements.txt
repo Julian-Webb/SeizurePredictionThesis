@@ -12,3 +12,4 @@ mne~=1.11.0
 openpyxl~=3.2.0b1
 scikit-learn
 portion
+pytest
