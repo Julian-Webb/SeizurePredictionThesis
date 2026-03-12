@@ -54,20 +54,23 @@ def drop_duplicates_and_localize(pdirs: list[PatientDir]):
             logging.warning(f'No annotation file found for: {pdir.name}')
             continue
 
-        # Drop duplicates
-        dup_mask = anns['start_naive'].notna() & anns['start_naive'].duplicated(keep=False)
-        if dup_mask.any():
-            dups_df = anns.loc[dup_mask].sort_values('start_naive')
-            logging.warning(
-                f"[{pdir.name}] Dropping {dup_mask.sum()} rows with duplicated start_naive. "
-                f"Keeping first occurrence.\n{dups_df}"
-            )
-            anns = anns.drop_duplicates(subset=['start_naive'], keep='first').reset_index(drop=True)
+        if anns.empty:
+            logging.warning(f"Zero seizures in original annotation file of {pdir.name}.")
+        else:
+            # Drop duplicates
+            dup_mask = anns['start_naive'].notna() & anns['start_naive'].duplicated(keep=False)
+            if dup_mask.any():
+                dups_df = anns.loc[dup_mask].sort_values('start_naive')
+                logging.warning(
+                    f"[{pdir.name}] Dropping {dup_mask.sum()} rows with duplicated start_naive. "
+                    f"Keeping first occurrence.\n{dups_df}"
+                )
+                anns = anns.drop_duplicates(subset=['start_naive'], keep='first').reset_index(drop=True)
 
-        # Localize, Sort, Save
-        anns = localize_anns_dataframe(anns, PatientTimezone.from_competition(is_competition))
-        anns.sort_values('start_mtz', inplace=True)
-        save_dataframe_multiformat(anns, pdir.all_szr_starts_file)
+            # Localize, Sort, Save
+            anns = localize_anns_dataframe(anns, PatientTimezone.from_competition(is_competition))
+            anns.sort_values('start_mtz', inplace=True)
+            save_dataframe_multiformat(anns, pdir.all_szr_starts_file)
 
 
 if __name__ == '__main__':

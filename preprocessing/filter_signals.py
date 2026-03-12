@@ -257,16 +257,9 @@ def filter_all_edfs(pdirs: list[PatientDir], serial_processing: bool = False):
 
 def main():
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-
     pdirs = PATHS.patient_dirs()
-    # root = Path('/data/home/webb/UNEEG/datasets')
-    # p1 = root / 'competition' / 'competition-2'
-    # p2 = root / 'ultra2' / 'U002-DE01-07'
-    # pdirs = [PatientDir(p) for p in [p1, p2]]
 
-    filter_all_edfs(pdirs,
-                    serial_processing=False
-                    )
+    filter_all_edfs(pdirs, serial_processing=False)
 
 
 if __name__ == '__main__': main()

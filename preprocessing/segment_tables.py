@@ -188,7 +188,7 @@ def segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
             logging.info(f'Seg table for : {pdir.name}')
-            make_segs_table(pdir)
+            make_segs_table_and_plot(pdir)
     else:
         max_workers = min(len(pdirs), multiprocessing.cpu_count())
         logging.info(f"Using {max_workers} max workers")
@@ -205,13 +205,7 @@ def segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-
     segment_tables(PATHS.patient_dirs())
-
-    # pdir = PatientDir('/Users/julian/Developer/SeizurePredictionData/20240201_UNEEG_ForMayo/ptnt1')
-    # pdir = PatientDir('/data/home/webb/UNEEG_data/20240201_UNEEG_ForMayo/K37N36L4D')
-    # pdir = PatientDir('/data/home/webb/UNEEG_data/20250217_UNEEG_Extended/F5TW95P3X')
-    # make_segs_table_and_plot(pdir, False)
 
     # Just make plots
     # for pdir in PATHS.patient_dirs():
