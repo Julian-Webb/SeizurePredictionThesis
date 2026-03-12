@@ -3,7 +3,6 @@ Calculate, plot, and store various metrics
 """
 import logging
 import multiprocessing
-from functools import partial
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -115,7 +114,7 @@ def plot_threshold_metrics(
     plt.close(fig)
 
 
-@timeit
+@timeit(kwarg_names=['pdir'])
 def eval_ptnt(
         pdir: PatientDir,
         models: tuple[str] = ('CNN', 'ensemble'),
@@ -202,22 +201,7 @@ def main(
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-
-    main([
-        PatientDir('/data/home/webb/UNEEG/datasets/competition/competition-01-MINIFAKE'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-01-FAKE'),
-        PatientDir('/data/home/webb/UNEEG/datasets/competition/competition-1'),
-        PatientDir('/data/home/webb/UNEEG/datasets/competition/competition-2'),
-        PatientDir('/data/home/webb/UNEEG/datasets/competition/competition-3'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-01'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-03'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-04'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-05'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-07'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-12'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-15'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-16'),
-        PatientDir('/data/home/webb/UNEEG/datasets/ultra2/U002-DE01-17'),
-    ],
+    main(
+        pdirs=PATHS.patient_dirs(),
         serial_processing=False,
     )

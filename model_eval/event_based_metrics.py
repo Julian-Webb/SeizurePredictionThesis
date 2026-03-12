@@ -128,7 +128,9 @@ def safe_dataframe_concat(objs: list, concat_kwargs) -> DataFrame:
         return DataFrame(objs[0])
 
 
-@timeit
+# todo it's possible to seizures to not be detected at the beginning of the test set, because we're not including the clips that would detect it (1:05h before the split)
+# todo The TIFW can never equal 1 because we're using the total recording time. The duration that should be in warning should be subtracted.
+@timeit(kwarg_names=['logging_info'])
 def event_based_metrics(
         clips: DataFrame,
         edfs: DataFrame,
@@ -363,9 +365,4 @@ def calc_metrics(pdirs: list[PatientDir], splits: tuple[str] = ('train', 'test')
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     pdirs = PATHS.patient_dirs()
-    calc_metrics(pdirs, serial_processing=False)
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    pdirs = PATHS.patient_dirs()
-    calc_metrics(pdirs, serial_processing=False)
+    calc_metrics(pdirs, serial_processing=True)

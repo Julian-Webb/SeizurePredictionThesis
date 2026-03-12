@@ -26,16 +26,43 @@ class FunctionTimer:
         logging.info(f"[TIMING] {self.label}: {self.elapsed:.3f}s")
 
 
-def timeit(f):
-    @wraps(f)
-    def wrap(*args, **kw):
-        start = time.perf_counter()
-        result = f(*args, **kw)
-        elapsed = time.perf_counter() - start
-        logging.info(f"[TIMING] {f.__name__}: {elapsed:.3f}s")
-        return result
+def timeit(f=None, *, arg_indices: list[int] | None = None, kwarg_names: list[str] | None = None):
+    """Decorator that logs the execution time of a function.
 
-    return wrap
+    Usage:
+        @timeit                                             – shows all args & kwargs
+        @timeit(arg_indices=[0, 1])                         – selected positional args by index
+        @timeit(kwarg_names=['patient'])                    – selected keyword args by name
+        @timeit(arg_indices=[0], kwarg_names=['patient'])   – both
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrap(*args, **kw):
+            start = time.perf_counter()
+            result = func(*args, **kw)
+            elapsed = time.perf_counter() - start
+
+            selected = (
+                [repr(args[i]) for i in arg_indices if i < len(args)]
+                if arg_indices is not None
+                else [repr(a) for a in args]
+            )
+            selected += (
+                [f"{k}={repr(kw[k])}" for k in kwarg_names if k in kw]
+                if kwarg_names is not None
+                else [f"{k}={repr(v)}" for k, v in kw.items()]
+            )
+
+            args_str = f"({', '.join(selected)})" if selected else ""
+            logging.info(f"[TIMING] {elapsed:.3f}s - {func.__name__}{args_str}: ")
+            return result
+
+        return wrap
+
+    # Supports both @timeit and @timeit(...) usage
+    if f is not None:
+        return decorator(f)
+    return decorator
 
 
 def import_tensorflow_with_available_gpus(available_gpus: list[int]):
