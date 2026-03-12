@@ -6,7 +6,7 @@ from pandas import Series, Timestamp, Timedelta, DataFrame
 
 from config.constants import RATIO_OF_TIMESPAN_FOR_TRAINING
 from config import PATHS, PatientDir
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 
 
 def _compute_ptnt_split(recordings_start: Timestamp, timespan: Timedelta, seg_starts: Series) -> dict:

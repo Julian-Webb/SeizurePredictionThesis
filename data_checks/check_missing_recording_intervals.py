@@ -2,7 +2,7 @@ import pandas as pd
 from pandas import DataFrame, Timedelta
 
 from config import PATHS
-from utils.io import pickle_path
+from config.paths import pickle_path
 
 pdirs = PATHS.patient_dirs()
 

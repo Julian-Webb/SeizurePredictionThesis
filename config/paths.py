@@ -1,14 +1,61 @@
 """This file represents the directory and file structure of the project."""
-
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
+
+from pandas import DataFrame, Series
 
 
 class Dataset(Enum):
     """The available datasets"""
     competition = 'competition'
     ultra2 = 'ultra2'
+
+# todo rename to pickle_hidden_path
+def pickle_path(path: Path):
+    path = path.with_suffix('.pkl')
+    return path.with_name('.' + path.name)  # Hide it with the .
+
+
+class MultiPath(type(Path())):
+    def __new__(cls, *args, **kwargs):
+        self = super().__new__(cls, *args, *kwargs)
+
+        p = Path(self)
+        # todo remove pickle_path func?
+        self.pickle = pickle_path(p)
+        self.pickle_visible = p.with_suffix('.pkl')
+        self.csv = p.with_suffix('.csv')
+        self.ods = p.with_suffix('.ods')
+        return self
+
+
+def save_dataframe_multiformat(
+        df: Union[DataFrame, Series],
+        path: MultiPath,
+        formats: tuple[str] = ('csv', 'pickle'),
+        csv_index: bool = False,
+        make_parent_dir: bool = True):
+    """
+    Save a pd.DataFrame in multiple formats (csv, pickle).
+    :param formats: The formats to save the DataFrame in. The names must correspond to the properties of the `MultiPath`
+     class.
+    """
+    if make_parent_dir:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    for f in formats:
+        match f:
+            case 'pickle':
+                df.to_pickle(path.pickle)
+            case 'pickle_visible':
+                df.to_pickle(path.pickle_visible)
+            case 'csv':
+                df.to_csv(path.csv, index=csv_index)
+            case 'ods':
+                df.to_excel(path.ods, index=csv_index)
+            case _:
+                raise ValueError(f"Unknown format: {f}")
 
 
 # Use type(Path()) to get the correct class based on the operating system
@@ -24,9 +71,9 @@ class PatientDir(type(Path())):
         ### seizure annotations
         self.szr_anns_dir = Path(self, "seizure_annotations")
         self.szr_anns_original_dir = Path(self.szr_anns_dir, "original")
-        self.szr_starts_naive_file = Path(self.szr_anns_original_dir, "seizure_starts_naive")
-        self.all_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_all")
-        self.valid_szr_starts_file = Path(self.szr_anns_dir, "seizure_starts_valid")
+        self.szr_starts_naive_file = MultiPath(self.szr_anns_original_dir, "seizure_starts_naive")
+        self.all_szr_starts_file = MultiPath(self.szr_anns_dir, "seizure_starts_all")
+        self.valid_szr_starts_file = MultiPath(self.szr_anns_dir, "seizure_starts_valid")
 
         ### edf data
         # The directory containing the original edf files for the competition dataset, before they're renamed
@@ -34,27 +81,27 @@ class PatientDir(type(Path())):
         # The directory containing the edf files
         self.edf_dir = Path(self, 'edf_data')
         # The name of the table containing the edf file names and their metadata for each patient
-        self.edf_files_table = Path(self, 'edf_files')
-        self.valid_edf_intervals = Path(self, 'edf_intervals_valid')
-        self.invalid_edf_intervals = Path(self, 'edf_intervals_invalid')
+        self.edf_files_table = MultiPath(self, 'edf_files')
+        self.valid_edf_intervals = MultiPath(self, 'edf_intervals_valid')
+        self.invalid_edf_intervals = MultiPath(self, 'edf_intervals_invalid')
 
         ### Preprocessing
-        self.segments_table = Path(self, 'segments')
+        self.segments_table = MultiPath(self, 'segments')
         self.segments_plot = Path(self, 'segments_plot.png')
-        self.train_test_split = Path(self, 'train_test_split')
+        self.train_test_split = MultiPath(self, 'train_test_split')
 
         ### ML models
         self.models_dir = Path(self, 'models')
         self.ensemble_model = Path(self.models_dir, 'ensemble.keras')
         self.feature_scaler = Path(self.models_dir, 'feature_scaler.pkl')
         self.cnn_model = Path(self.models_dir, 'CNN.keras')
-        self.cnn_history = Path(self.models_dir, 'CNN_training_history')
-        self.mlp_history = Path(self.models_dir, 'FB_MLP_training_history')
+        self.cnn_history = MultiPath(self.models_dir, 'CNN_training_history')
+        self.mlp_history = MultiPath(self.models_dir, 'FB_MLP_training_history')
 
         ### Predictions
         self.predictions_dir = Path(self, 'predictions')
-        self.segment_probabilities_table = self.predictions_dir / 'segment_probabilities'
-        self.clips_table = self.predictions_dir / 'clips'
+        self.segment_probabilities_table = MultiPath(self.predictions_dir, 'segment_probabilities')
+        self.clips_table = MultiPath(self.predictions_dir, 'clips')
 
         # Model Evaluation
         self.model_eval_dir = Path(self, 'model_evaluation')
@@ -76,14 +123,14 @@ class Paths(type(Path())):
 
         # data cleaning logs
         self.data_cleaning_logs_dir = Path(self, "data_cleaning_logs")
-        self.problematic_edfs_dir = Path(self.data_cleaning_logs_dir, 'problematic_edfs')
+        self.problematic_edfs_dir = MultiPath(self.data_cleaning_logs_dir, 'problematic_edfs')
         self.remaining_duplicates_file = Path(self.data_cleaning_logs_dir / 'remaining_duplicates.txt')
 
         # preprocessing
         self.patient_info_dir = Path(self, "patient_info")
         self.basic_patient_info = Path(self.patient_info_dir, "basic_patient_info.xlsx")
-        self.patient_info_exact = Path(self.patient_info_dir, "patient_info_exact")
-        self.patient_info_readable = Path(self.patient_info_dir, "patient_info_readable")
+        self.patient_info_exact = MultiPath(self.patient_info_dir, "patient_info_exact")
+        self.patient_info_readable = MultiPath(self.patient_info_dir, "patient_info_readable")
 
         self.invalid_patients_dir = Path(self, "invalid_patients")
         return self

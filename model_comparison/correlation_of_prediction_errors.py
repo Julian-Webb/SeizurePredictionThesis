@@ -78,7 +78,7 @@ def correlation_of_prediction_errors(
 
 if __name__ == '__main__':
     from config import PATHS
-    from utils.io import pickle_path
+    from config.paths import pickle_path
 
     for pdir in PATHS.patient_dirs():
         clips = pd.read_pickle(pickle_path(pdir.clips_table))

@@ -15,7 +15,7 @@ from statsmodels.tsa import stattools
 from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
 from config import PatientDir
 from utils.edf_utils import load_segmented_sigs
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 
 # How many files to process per file batch
 FILE_BATCH_SIZE: int = 128

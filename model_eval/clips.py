@@ -15,7 +15,7 @@ from pandas import DataFrame
 from config.constants import MIN_SEGMENTS_PER_CLIP_RATIO
 from config.intervals import SEGMENTS_PER_CLIP, SEGMENT
 from config import PatientDir, PATHS
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 from utils.utils import safe_float_to_int, timeit
 
 

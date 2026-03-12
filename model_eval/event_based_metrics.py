@@ -14,8 +14,8 @@ import portion as P
 from pandas import DataFrame, Timedelta, Series
 
 from config.intervals import Interval, INTERVENTION, SPH
-from config import PATHS, PatientDir
-from utils.io import pickle_path, save_dataframe_multiformat
+from config import PATHS, PatientDir, MultiPath
+from config.paths import save_dataframe_multiformat, pickle_path
 from utils.utils import timeit
 
 SUBSELECT_THRESHOLDS_GRANULARITY: float = 0.005
@@ -348,7 +348,7 @@ def calc_ptnt_split_metrics(args):
 
     for model in models:
         results_dir = ensure_results_dir(pdir, split, model)
-        save_dataframe_multiformat(ebms[model], results_dir / f'event_based_metrics', csv_index=True)
+        save_dataframe_multiformat(ebms[model], MultiPath(results_dir, 'event_based_metrics'), csv_index=True)
 
 
 def calc_metrics(pdirs: list[PatientDir], splits: tuple[str] = ('train', 'test'),

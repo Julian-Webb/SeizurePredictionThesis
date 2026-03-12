@@ -5,7 +5,7 @@ import pandas as pd
 
 from config import PATHS
 from models.load_data import load_data
-from utils.io import pickle_path
+from config.paths import pickle_path
 
 
 class TestLoadData(unittest.TestCase):

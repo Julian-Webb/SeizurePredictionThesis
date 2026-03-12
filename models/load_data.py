@@ -10,7 +10,7 @@ from config.intervals import SEGMENT
 from config import PATHS
 from feature_extraction.extract_features import FeatureNames
 from utils.edf_utils import load_segmented_sigs
-from utils.io import pickle_path
+from config.paths import pickle_path
 from utils.utils import timeit
 
 

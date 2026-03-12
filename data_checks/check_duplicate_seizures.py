@@ -4,7 +4,7 @@ from typing import List
 import pandas as pd
 
 from config import PATHS, PatientDir
-from utils.io import pickle_path
+from config.paths import pickle_path
 
 
 def check_file_for_duplicates(ann_path_pkl: Path, column_names: List[str], patient: str):

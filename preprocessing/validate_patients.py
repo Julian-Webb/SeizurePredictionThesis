@@ -8,7 +8,7 @@ from pandas import DataFrame, Timedelta
 import config.intervals as intervals
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
 from config import PATHS, PatientDir
-from utils.io import save_dataframe_multiformat, pickle_path
+from config.paths import save_dataframe_multiformat, pickle_path
 
 
 def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:

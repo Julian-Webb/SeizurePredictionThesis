@@ -12,7 +12,7 @@ from pyedflib import highlevel
 from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT
 from config import PatientDir, PATHS
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 from utils.utils import timeit
 
 

@@ -13,7 +13,7 @@ from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, INTERVENTION, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config import PatientDir, PATHS
 from utils.edf_utils import time_to_index
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 
 
 def load_ptnt_timespan_info(pdir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:

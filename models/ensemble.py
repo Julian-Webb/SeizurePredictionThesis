@@ -14,7 +14,7 @@ from config.constants import RANDOM_STATE_FOR_TRAIN_DATA
 from config import PatientDir, PATHS
 from feature_extraction.extract_features import FeatureNames
 from models.load_data import load_data
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 from utils.tensorflow_utils import PeriodicalLogger
 from utils.utils import timeit
 

@@ -18,7 +18,7 @@ import model_eval.calc_segment_probabilities
 import model_eval.clips
 import model_eval.event_based_metrics
 import model_eval.eval_models
-from utils.io import pickle_path
+from config.paths import pickle_path
 
 PHYSICAL_MIN = -1374.21
 PHYSICAL_MAX = 1373.54

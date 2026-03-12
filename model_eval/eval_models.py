@@ -12,9 +12,9 @@ from pandas import Series
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
-from config import PatientDir, PATHS
+from config import PatientDir, PATHS, MultiPath
 from model_eval.event_based_metrics import load_data_per_split, ensure_results_dir
-from utils.io import pickle_path, save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat, pickle_path
 from utils.utils import timeit
 
 
@@ -163,7 +163,7 @@ def eval_ptnt(
             }, name=pdir.name)
 
             results_dir = ensure_results_dir(pdir, split, model)
-            save_dataframe_multiformat(metrics_to_save, results_dir / 'metrics', csv_index=True)
+            save_dataframe_multiformat(metrics_to_save, MultiPath(results_dir, 'metrics'), csv_index=True)
 
     # Plot various metrics
     for split, split_clips in clips_per_split.items():

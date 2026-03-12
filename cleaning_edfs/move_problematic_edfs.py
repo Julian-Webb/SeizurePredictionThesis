@@ -9,7 +9,7 @@ from pyedflib import EdfReader
 
 from config import PatientDir, PATHS, Dataset
 from cleaning_edfs.list_and_rename_edfs import list_edfs
-from utils.io import pickle_path
+from config.paths import pickle_path
 
 # EDFs with a start before this year are considered corrupted
 BOUNDARY_YEAR = 2010

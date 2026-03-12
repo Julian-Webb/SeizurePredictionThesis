@@ -6,7 +6,7 @@ from pandas import DataFrame
 
 from config import PATHS
 from preprocessing.validate_patients import ptnt_timespan_info
-from utils.io import save_dataframe_multiformat, pickle_path
+from config.paths import save_dataframe_multiformat, pickle_path
 
 # ----- PATIENT INFOS ------
 # ptnt_infos = {'exact': {}, 'readable': {}}

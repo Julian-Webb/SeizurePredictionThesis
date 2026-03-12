@@ -4,7 +4,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from config import Dataset, PATHS, PatientDir
-from utils.io import save_dataframe_multiformat
+from config.paths import save_dataframe_multiformat
 from utils.timezone import PatientTimezone
 
 

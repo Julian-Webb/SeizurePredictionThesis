@@ -9,7 +9,7 @@ from pyedflib import highlevel
 
 from config.constants import SAMPLING_FREQUENCY_HZ
 from config import PatientDir, PATHS
-from utils.io import pickle_path
+from config.paths import pickle_path
 
 
 def plot_signal_with_bad_regions(
