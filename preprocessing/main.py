@@ -10,7 +10,16 @@ from feature_extraction.extract_features import extract_features
 from utils.utils import FunctionTimer
 
 
-def preprocessing(ask_confirm: bool = True):
+def preprocessing(
+        ask_confirm: bool = True,
+        setup_logging: bool = False,
+):
+    if setup_logging:
+        logging_file = PATHS.logs_dir / f'preprocessing_{datetime.now().strftime("%Y-%m-%d")}.log'
+        logging_file.parent.mkdir(exist_ok=True, parents=True)
+        print(f"Logging to: {logging_file}")
+        logging.basicConfig(filename=logging_file, level=logging.INFO, format='[%(levelname)s] %(message)s')
+
     logging.info("==== Preprocessing ====")
 
     if ask_confirm:
@@ -23,7 +32,7 @@ def preprocessing(ask_confirm: bool = True):
                               leave_fake_ptnts=True)
 
         pdirs = PATHS.patient_dirs()
-        logging.info("===== Creating segment tables =====")
+        logging.info("===== Filtering EDFs =====")
         with FunctionTimer('filter_all_edfs'):
             filter_all_edfs(pdirs)
 
@@ -41,6 +50,4 @@ def preprocessing(ask_confirm: bool = True):
 
 
 if __name__ == "__main__":
-    logging_file = PATHS.root / f'preprocessing_{datetime.now().strftime("%Y-%m-%d")}.log'
-    logging.basicConfig(filename=logging_file, level=logging.INFO, format='[%(levelname)s] %(message)s')
-    preprocessing()
+    preprocessing(setup_logging=True)
