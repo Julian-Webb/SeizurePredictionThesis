@@ -13,7 +13,7 @@ from scipy.signal import welch
 from statsmodels.tsa import stattools
 
 from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
-from config import PatientDir
+from config import PatientDir, PATHS
 from utils.edf_utils import load_segmented_sigs
 from config import save_dataframe_multiformat
 
@@ -238,5 +238,4 @@ def extract_features(pdirs: List[PatientDir], serial_processing: bool = False):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
-    # extract_features(PATHS.patient_dirs())
-    print(Features.Names.ALL_ORDERED.value)
+    extract_features(PATHS.patient_dirs())

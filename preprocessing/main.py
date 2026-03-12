@@ -1,6 +1,7 @@
 import logging
 
 from config import PATHS
+from preprocessing.filter_signals import filter_all_edfs
 from preprocessing.segment_tables import segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
@@ -17,20 +18,28 @@ def preprocessing(ask_confirm: bool = True):
     with FunctionTimer('Total Preprocessing'):
         logging.info("===== Validating Patients and moving invalid patient dirs =====")
         with FunctionTimer('validate_patients'):
-            validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=True)
+            validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=True,
+                              leave_fake_ptnts=True)
+
+        pdirs = PATHS.patient_dirs()
+        logging.info("===== Creating segment tables =====")
+        with FunctionTimer('filter_all_edfs'):
+            filter_all_edfs(pdirs)
 
         logging.info("===== Creating segment tables =====")
         with FunctionTimer('segment_tables'):
-            segment_tables(PATHS.patient_dirs(include_invalid_ptnts=False))
+            segment_tables(pdirs)
 
         logging.info("Splitting data into train and test")
         with FunctionTimer('split_train_test'):
-            find_ptnt_splits(PATHS.patient_dirs())
+            find_ptnt_splits(pdirs)
 
         logging.info("Extracting features")
         with FunctionTimer('extract_features'):
-            extract_features(PATHS.patient_dirs())
+            extract_features(pdirs)
+
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+    logging_file = PATHS.root / 'preprocessing.log'
+    logging.basicConfig(filename=logging_file, level=logging.INFO, format='[%(levelname)s] %(message)s')
     preprocessing()

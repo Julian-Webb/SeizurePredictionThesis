@@ -98,8 +98,15 @@ def move_pdir(pdir: Path):
         pdir.rename(invalid_dataset_dir / pdir.name)
 
 
-def validate_patients(pdirs: Iterable[PatientDir], move_invalid_pdirs: bool) -> None:
-    """Find valid seizures for all patients. Save the valid seizures info, and the patient timespan info to files."""
+def validate_patients(
+        pdirs: Iterable[PatientDir],
+        move_invalid_pdirs: bool,
+        leave_fake_ptnts: bool = False,
+) -> None:
+    """
+    Find valid seizures for all patients. Save the valid seizures info, and the patient timespan info to files.
+    :param leave_fake_ptnts: Whether to leave fake patients inplace, rather than moving them, even if they are invalid
+    """
     # patients are grouped by dataset
     ptnt_infos = {'exact': {}, 'readable': {}}
 
@@ -134,7 +141,11 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_pdirs: bool) -> 
             ptnt_infos[k][(dataset, pdir.name)] = {'valid': ptnt_valid, **ptnt_szr_info, **ptnt_time_info[k]}
 
         if move_invalid_pdirs and not ptnt_valid:
-            move_pdir(pdir)
+            if 'FAKE' in pdir.name:
+                if not leave_fake_ptnts:
+                    move_pdir(pdir)
+            else:
+                move_pdir(pdir)
 
     # Save patient infos
     PATHS.patient_info_dir.mkdir(parents=True, exist_ok=True)
