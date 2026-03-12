@@ -15,7 +15,7 @@ from statsmodels.tsa import stattools
 from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
 from config import PatientDir
 from utils.edf_utils import load_segmented_sigs
-from config.paths import save_dataframe_multiformat, pickle_path
+from config import save_dataframe_multiformat
 
 # How many files to process per file batch
 FILE_BATCH_SIZE: int = 128
@@ -182,7 +182,7 @@ def extract_file_batch_features(files_infos: List[FileInfo]):
 def extract_ptnt_features(pdir: PatientDir, serial_processing: bool = False):
     logging.info(f"Extracting features for {pdir.name}")
     start_time = time.perf_counter()
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
+    segs = pd.read_pickle(pdir.segments_table.pickle)
 
     # Iterate through the existing segments based on their file
     # Note: There are typically around 500-2000 EDFs per patient

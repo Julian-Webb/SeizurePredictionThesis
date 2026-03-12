@@ -12,9 +12,8 @@ from pandas import Series
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
-from config import PatientDir, PATHS, MultiPath
+from config import PatientDir, PATHS, MultiPath, save_dataframe_multiformat, pickle_path
 from model_eval.event_based_metrics import load_data_per_split, ensure_results_dir
-from config.paths import save_dataframe_multiformat, pickle_path
 from utils.utils import timeit
 
 

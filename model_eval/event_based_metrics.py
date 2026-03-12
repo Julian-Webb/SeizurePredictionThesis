@@ -14,8 +14,7 @@ import portion as P
 from pandas import DataFrame, Timedelta, Series
 
 from config.intervals import Interval, INTERVENTION, SPH
-from config import PATHS, PatientDir, MultiPath
-from config.paths import save_dataframe_multiformat, pickle_path
+from config import PATHS, PatientDir, MultiPath, save_dataframe_multiformat
 from utils.utils import timeit
 
 SUBSELECT_THRESHOLDS_GRANULARITY: float = 0.005
@@ -36,7 +35,7 @@ def ensure_results_dir(pdir: PatientDir, split: str, model: str | None = None) -
     """Return pdir.model_eval_dir/<split>/<model>, creating it if necessary."""
     results_dir = pdir.model_eval_dir / split
     if model is not None:
-        results_dir = results_dir / model
+        results_dir /= model
     results_dir.mkdir(parents=True, exist_ok=True)
     return results_dir
 
@@ -284,10 +283,10 @@ def load_data_per_split(pdir: PatientDir):
     """
     :return: data per split (type[edfs, clips, szr_starts], split[train, test])
     """
-    clips = pd.read_pickle(pickle_path(pdir.clips_table))
-    szr_starts = pd.read_pickle(pickle_path(pdir.all_szr_starts_file))['start_mtz'].values
-    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
-    split_dt, split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).values
+    clips = pd.read_pickle(pdir.clips_table.pickle)
+    szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
+    edfs = pd.read_pickle(pdir.edf_files_table.pickle)
+    split_dt, split_idx = pd.read_pickle(pdir.train_test_split.pickle).values
 
     #### Select correct EDFs per split and split the EDF that contain the split (if any)
     edfs = edfs[['file_name', 'start_mtz', 'end_mtz']].copy()

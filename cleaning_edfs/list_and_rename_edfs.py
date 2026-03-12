@@ -7,7 +7,6 @@ from pandas import Timestamp, DataFrame, Timedelta, Series
 from pyedflib import EdfReader
 
 from config import PatientDir, PATHS, Dataset
-from config.paths import pickle_path
 from utils.timezone import PatientTimezone, timezone_from_edf_annotation
 from utils.utils import timeit
 
@@ -131,7 +130,7 @@ def rename_edfs(pdir: PatientDir, edfs: DataFrame):
 def list_and_rename_ptnt_edfs(pdir: PatientDir):
     logging.info(f"--- {pdir.name} ---")
 
-    list_already_exists = pickle_path(pdir.edf_files_table).exists()
+    list_already_exists = pdir.edf_files_table.pickle.exists()
     if list_already_exists:
         raise ValueError(f"EDF list already exists for {pdir.name}. Aborting to preserve old file names.")
 
@@ -139,11 +138,11 @@ def list_and_rename_ptnt_edfs(pdir: PatientDir):
 
     # Save EDFs
     if not edfs.empty:
-        edfs.to_pickle(pickle_path(pdir.edf_files_table))
+        edfs.to_pickle(pdir.edf_files_table.pickle)
         # Make durations better readable for csv
         edfs_copy = edfs.copy()
         edfs_copy['duration'] = edfs_copy['duration'].apply(lambda x: str(x.to_pytimedelta()))
-        edfs_copy.to_csv(pdir.edf_files_table.with_suffix('.csv'), index=False)
+        edfs_copy.to_csv(pdir.edf_files_table.csv, index=False)
 
     rename_edfs(pdir, edfs)
     logging.info(f"--- Finished {pdir.name} ---")

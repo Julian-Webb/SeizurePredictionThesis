@@ -2,14 +2,13 @@ import pandas as pd
 from pandas import DataFrame, Timedelta
 
 from config import PATHS
-from config.paths import pickle_path
 
 pdirs = PATHS.patient_dirs()
 
 missing_by_patient: dict[str, DataFrame] = {}
 
 for pdir in pdirs:
-    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
+    edfs = pd.read_pickle(pdir.edf_files_table.pickle)
 
     missing_by_patient[pdir.name] = DataFrame({
         'previous_file': edfs['file_name'].values,

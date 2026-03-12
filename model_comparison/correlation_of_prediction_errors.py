@@ -78,12 +78,11 @@ def correlation_of_prediction_errors(
 
 if __name__ == '__main__':
     from config import PATHS
-    from config.paths import pickle_path
 
     for pdir in PATHS.patient_dirs():
-        clips = pd.read_pickle(pickle_path(pdir.clips_table))
+        clips = pd.read_pickle(pdir.clips_table.pickle)
         clips = clips[clips['valid']]
-        split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index
+        split_idx = pd.read_pickle(pdir.train_test_split.pickle).segment_index
 
         test_clips = clips[clips['start_seg'] > split_idx]
         y_true = test_clips['preictal'].values

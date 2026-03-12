@@ -3,8 +3,7 @@ from typing import List
 
 import pandas as pd
 
-from config import PATHS, PatientDir
-from config.paths import pickle_path
+from config import PATHS
 
 
 def check_file_for_duplicates(ann_path_pkl: Path, column_names: List[str], patient: str):
@@ -24,13 +23,13 @@ def check_file_for_duplicates(ann_path_pkl: Path, column_names: List[str], patie
 def check_duplicate_seizures():
     """Check seizure annotation files for duplicate seizures."""
     for patient_dir in PATHS.patient_dirs():
-        check_file_for_duplicates(pickle_path(patient_dir.valid_szr_starts_file), column_names=['start'],
+        check_file_for_duplicates(patient_dir.valid_szr_starts_file.pickle, column_names=['start'],
                                   patient=patient_dir.name)
 
 
 def check_all_szrs():
     pdirs = [pdir for pdir in PATHS.patient_dirs() if not 'fake' in pdir.name.lower()]
-    szrs_per_ptnt = {pdir.name : pd.read_pickle(pickle_path(pdir.all_szr_starts_file)) for pdir in pdirs}
+    szrs_per_ptnt = {pdir.name : pd.read_pickle(pdir.all_szr_starts_file.pickle) for pdir in pdirs}
 
     szrs = pd.concat(szrs_per_ptnt, names=['patient', 'seizure'])
 

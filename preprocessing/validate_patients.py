@@ -7,8 +7,7 @@ from pandas import DataFrame, Timedelta
 
 import config.intervals as intervals
 from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_TO_BE_VALID
-from config import PATHS, PatientDir
-from config.paths import save_dataframe_multiformat, pickle_path
+from config import PATHS, PatientDir, save_dataframe_multiformat
 
 
 def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
@@ -106,7 +105,7 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_pdirs: bool) -> 
 
     for pdir in pdirs:
         try:
-            szrs = pd.read_pickle(pickle_path(pdir.all_szr_starts_file))
+            szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)
         except FileNotFoundError:
             logging.warning(f'All seizure starts file not found for {pdir.name}')
             szrs = DataFrame()
@@ -121,7 +120,7 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_pdirs: bool) -> 
         save_dataframe_multiformat(szrs, pdir.all_szr_starts_file)
 
         try:
-            edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
+            edfs = pd.read_pickle(pdir.edf_files_table.pickle)
         except FileNotFoundError:
             logging.warning(f'EDF files sheet not found for {pdir.name}')
             edfs = DataFrame()
@@ -145,7 +144,7 @@ def validate_patients(pdirs: Iterable[PatientDir], move_invalid_pdirs: bool) -> 
         ptnt_info = DataFrame(ptnt_info.values(), index=index)
         ptnt_info.sort_values(by=['valid', 'dataset', 'patient'], inplace=True, ascending=[False, True, True])
         if k == 'readable':
-            ptnt_info.to_csv(PATHS.patient_info_readable.with_suffix('.csv'))
+            ptnt_info.to_csv(PATHS.patient_info_readable.csv)
         elif k == 'exact':
             save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact, csv_index=True)
 

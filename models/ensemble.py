@@ -11,10 +11,9 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
 from config.constants import RANDOM_STATE_FOR_TRAIN_DATA
-from config import PatientDir, PATHS
+from config import PatientDir, PATHS, save_dataframe_multiformat
 from feature_extraction.extract_features import FeatureNames
 from models.load_data import load_data
-from config.paths import save_dataframe_multiformat, pickle_path
 from utils.tensorflow_utils import PeriodicalLogger
 from utils.utils import timeit
 
@@ -110,8 +109,8 @@ def create_ptnt_mlp_ensemble(
         pdir: PatientDir,
         feature_names: list[str] = FeatureNames.ENSEMBLE,
 ):
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
-    split_idx = pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index
+    segs = pd.read_pickle(pdir.segments_table.pickle)
+    split_idx = pd.read_pickle(pdir.train_test_split.pickle).segment_index
 
     load_data_partial = partial(load_data,
                                 segs=segs,

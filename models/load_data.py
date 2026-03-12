@@ -5,12 +5,11 @@ import pandas as pd
 from pandas import DataFrame
 from pyedflib import EdfReader
 
+from config import PATHS
 from config.constants import MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO, N_CHANNELS
 from config.intervals import SEGMENT
-from config import PATHS
 from feature_extraction.extract_features import FeatureNames
 from utils.edf_utils import load_segmented_sigs
-from config.paths import pickle_path
 from utils.utils import timeit
 
 
@@ -65,7 +64,7 @@ def load_data(
 ):
     """
     Load features and/or EEG data for a patient. Specify whether to include training and test data.
-    :param segs: all segments of this patient: ``pd.read_pickle(pickle_path(pdir.segments_table))``
+    :param segs: all segments of this patient: ``pd.read_pickle(pdir.segments_table.pickle)``
     :param type_: either 'features' or 'eeg'
     :param subsample_shuffle_and_subselect_types: Apply operations that are used for model training:
         * only use interictal and preictal segments, exclude other types.
@@ -74,7 +73,7 @@ def load_data(
     :param train: Whether to load training data
     :param test: Whether to load testing data
     :param split_idx: The segment index of the split between train and test data, if train and test are not both True.
-    ``pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index``
+    ``pd.read_pickle(pdir.train_test_split.pickle).segment_index``
     :param edf_dir: The patient's edf_dir, if type_ is 'eeg'.
     :param feature_names: The names of the features to load, if type_ is 'features'.
     :param random_state: Optional random state for subsampling and shuffling
@@ -151,11 +150,11 @@ if __name__ == '__main__':
     pdir = PATHS.patient_dirs()[0]
 
     res = load_data(
-        segs=pd.read_pickle(pickle_path(pdir.segments_table)),
+        segs=pd.read_pickle(pdir.segments_table.pickle),
         type_='features',
         train=True,
         test=False,
         subsample_shuffle_and_subselect_types=True,
-        split_idx=pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index,
+        split_idx=pd.read_pickle(pdir.train_test_split.pickle).segment_index,
         edf_dir=pdir.edf_dir,
     )

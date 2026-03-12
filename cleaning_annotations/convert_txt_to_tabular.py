@@ -3,7 +3,6 @@ import re
 import shutil
 from pathlib import Path
 
-import pandas as pd
 from pandas import DataFrame
 
 from utils.utils import clean_mac_files

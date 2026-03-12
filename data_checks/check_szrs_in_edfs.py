@@ -1,14 +1,13 @@
 import pandas as pd
 
 from config import PATHS
-from config.paths import pickle_path
 
 pdirs = PATHS.patient_dirs()
 
 for pdir in pdirs:
 
-    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
-    szrs = pd.read_pickle(pickle_path(pdir.all_szr_starts_file))
+    edfs = pd.read_pickle(pdir.edf_files_table.pickle)
+    szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)
     szr_starts = szrs['start_mtz']
     szr_contained = {}
 

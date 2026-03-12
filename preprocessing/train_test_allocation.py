@@ -5,8 +5,7 @@ import pandas as pd
 from pandas import Series, Timestamp, Timedelta, DataFrame
 
 from config.constants import RATIO_OF_TIMESPAN_FOR_TRAINING
-from config import PATHS, PatientDir
-from config.paths import save_dataframe_multiformat, pickle_path
+from config import PATHS, PatientDir, save_dataframe_multiformat
 
 
 def _compute_ptnt_split(recordings_start: Timestamp, timespan: Timedelta, seg_starts: Series) -> dict:
@@ -33,7 +32,7 @@ def _compute_ptnt_split(recordings_start: Timestamp, timespan: Timedelta, seg_st
 def find_ptnt_split(pdir: PatientDir, all_ptnts_info: DataFrame):
     dataset = pdir.parent.name
     ptnt_info = all_ptnts_info.loc[(dataset, pdir.name)]
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
+    segs = pd.read_pickle(pdir.segments_table.pickle)
 
     # noinspection PyTypeChecker
     train_end = _compute_ptnt_split(ptnt_info['recordings_start'], ptnt_info['timespan'], segs['start_mtz'])
@@ -42,7 +41,7 @@ def find_ptnt_split(pdir: PatientDir, all_ptnts_info: DataFrame):
 
 
 def find_ptnt_splits(pdirs: List[PatientDir]):
-    all_ptnts_info = pd.read_pickle(pickle_path(PATHS.patient_info_exact))
+    all_ptnts_info = pd.read_pickle(PATHS.patient_info_exact.pickle)
 
     # Serial Processing
     # for pdir in pdirs:

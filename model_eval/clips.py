@@ -12,10 +12,9 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
+from config import save_dataframe_multiformat, PatientDir, PATHS
 from config.constants import MIN_SEGMENTS_PER_CLIP_RATIO
 from config.intervals import SEGMENTS_PER_CLIP, SEGMENT
-from config import PatientDir, PATHS
-from config.paths import save_dataframe_multiformat, pickle_path
 from utils.utils import safe_float_to_int, timeit
 
 
@@ -152,11 +151,11 @@ def process_ptnt(
         models: Iterable[str] = ('ensemble', 'CNN'),
 ):
     """Load a patient's segments, compute clips, and save the clip table."""
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
+    segs = pd.read_pickle(pdir.segments_table.pickle)
     segs = segs[['start_mtz', 'type', 'exists']]
 
     probability_columns = []
-    seg_probs = pd.read_pickle(pickle_path(pdir.predictions_dir / 'segment_probabilities'))
+    seg_probs = pd.read_pickle(pdir.segment_probabilities_table.pickle)
     for model in models:
         probability_column = f'{model}_probability'
         segs[probability_column] = seg_probs[model]

@@ -4,9 +4,8 @@ from pathlib import Path
 import pandas as pd
 from pandas import DataFrame
 
-from config import PATHS
+from config import PATHS, save_dataframe_multiformat
 from preprocessing.validate_patients import ptnt_timespan_info
-from config.paths import save_dataframe_multiformat, pickle_path
 
 # ----- PATIENT INFOS ------
 # ptnt_infos = {'exact': {}, 'readable': {}}
@@ -23,15 +22,15 @@ from config.paths import save_dataframe_multiformat, pickle_path
 #     ptnt_info = DataFrame(ptnt_info.values(), index=index)
 #     ptnt_info.sort_values(by=['dataset', 'patient'], inplace=True, ascending=[True, True])
 #     if k == 'readable':
-#         ptnt_info.to_csv(PATHS.patient_info_readable.with_suffix('.csv'))
+#         ptnt_info.to_csv(PATHS.patient_info_readable.csv)
 #     elif k == 'exact':
 #         save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact)
 
 # ------ VALID SEIZURE FILES FOR SEGMENT TABLES ------
 # for pdir in PATHS.patient_dirs(include_invalid_ptnts=True):
 #     valid_szrs = DataFrame(columns=['start'])
-#     valid_szrs.to_pickle(pickle_path(pdir.valid_szr_starts_file))
-#     valid_szrs.to_csv(pdir.valid_szr_starts_file.with_suffix('.csv'))
+#     valid_szrs.to_pickle(pdir.valid_szr_starts_file.pickle)
+#     valid_szrs.to_csv(pdir.valid_szr_starts_file.csv)
 
 # ------ COPY FEATURES TO POOL ------
 # for pdir in PATHS.patient_dirs():

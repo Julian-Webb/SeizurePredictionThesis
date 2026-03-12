@@ -4,7 +4,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from config import Dataset, PATHS, PatientDir
-from config.paths import save_dataframe_multiformat
+from config import save_dataframe_multiformat
 from utils.timezone import PatientTimezone
 
 
@@ -41,17 +41,15 @@ def localize_anns_dataframe(anns: DataFrame, tz: PatientTimezone) -> DataFrame:
 
 def drop_duplicates_and_localize(pdirs: list[PatientDir]):
     for pdir in pdirs:
-        # Get the correct annotation path
         is_competition = pdir.dataset == Dataset.competition
-        path = pdir.szr_starts_naive_file if is_competition else pdir.szr_anns_original_dir / f'{pdir.name}_Consensus'
-        path = path.with_suffix('.csv')
-
         datetime_cols = ['start_naive'] if is_competition else ['start_naive', 'end_naive']
-        if path.exists():
-            anns = pd.read_csv(path, parse_dates=datetime_cols)
-        elif path.with_suffix('.ods').exists():
+
+        path = pdir.szr_starts_naive_file
+        if path.csv.exists():
+            anns = pd.read_csv(path.csv, parse_dates=datetime_cols)
+        elif path.ods.exists():
             logging.warning(f'No csv annotation file found for: {pdir.name}. Using .ods instead.')
-            anns = pd.read_excel(path.with_suffix('.ods'), parse_dates=datetime_cols)
+            anns = pd.read_excel(path.ods, parse_dates=datetime_cols)
         else:
             logging.warning(f'No annotation file found for: {pdir.name}')
             continue

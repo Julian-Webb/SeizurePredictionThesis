@@ -11,7 +11,7 @@ class Dataset(Enum):
     competition = 'competition'
     ultra2 = 'ultra2'
 
-# todo rename to pickle_hidden_path
+
 def pickle_path(path: Path):
     path = path.with_suffix('.pkl')
     return path.with_name('.' + path.name)  # Hide it with the .
@@ -22,7 +22,6 @@ class MultiPath(type(Path())):
         self = super().__new__(cls, *args, *kwargs)
 
         p = Path(self)
-        # todo remove pickle_path func?
         self.pickle = pickle_path(p)
         self.pickle_visible = p.with_suffix('.pkl')
         self.csv = p.with_suffix('.csv')
@@ -38,8 +37,7 @@ def save_dataframe_multiformat(
         make_parent_dir: bool = True):
     """
     Save a pd.DataFrame in multiple formats (csv, pickle).
-    :param formats: The formats to save the DataFrame in. The names must correspond to the properties of the `MultiPath`
-     class.
+    :param formats: The formats to save the DataFrame in. The names must correspond to the properties of the ``MultiPath`` class.
     """
     if make_parent_dir:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,7 +69,8 @@ class PatientDir(type(Path())):
         ### seizure annotations
         self.szr_anns_dir = Path(self, "seizure_annotations")
         self.szr_anns_original_dir = Path(self.szr_anns_dir, "original")
-        self.szr_starts_naive_file = MultiPath(self.szr_anns_original_dir, "seizure_starts_naive")
+        szr_starts_naive_name = f'{self.name}_Consensus' if self.dataset == Dataset.ultra2 else 'seizure_starts_naive'
+        self.szr_starts_naive_file = MultiPath(self.szr_anns_original_dir, szr_starts_naive_name)
         self.all_szr_starts_file = MultiPath(self.szr_anns_dir, "seizure_starts_all")
         self.valid_szr_starts_file = MultiPath(self.szr_anns_dir, "seizure_starts_valid")
 

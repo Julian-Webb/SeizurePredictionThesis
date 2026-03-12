@@ -7,8 +7,7 @@ import pandas as pd
 from models.load_data import load_data
 from feature_extraction.extract_features import FeatureNames
 from utils import QueuedCall, run_queued_calls_on_gpus
-from config.paths import save_dataframe_multiformat, pickle_path
-from config import PatientDir, PATHS
+from config import PatientDir, PATHS, save_dataframe_multiformat
 
 
 def calc_ptnt_seg_probabilities(
@@ -29,7 +28,7 @@ def calc_ptnt_seg_probabilities(
         'ensemble': (pdir.ensemble_model, 'features'),
     }
 
-    segs = pd.read_pickle(pickle_path(pdir.segments_table))
+    segs = pd.read_pickle(pdir.segments_table.pickle)
     seg_probs = segs[['start_mtz']].copy()  # duplicate segment's index and start
 
     for model_name in models:

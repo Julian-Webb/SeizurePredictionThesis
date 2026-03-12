@@ -9,10 +9,9 @@ from tensorflow.keras.metrics import Recall, AUC
 
 from config.constants import N_CHANNELS
 from config.intervals import SEGMENT
-from config import PatientDir, PATHS
+from config import PatientDir, PATHS, save_dataframe_multiformat
 from models.ensemble import calc_class_weights
 from models.load_data import load_data
-from config.paths import save_dataframe_multiformat
 from utils.tensorflow_utils import PeriodicalLogger
 
 EPOCHS = 50  # 50

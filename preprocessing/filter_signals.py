@@ -11,8 +11,7 @@ from pyedflib import highlevel
 
 from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT
-from config import PatientDir, PATHS
-from config.paths import save_dataframe_multiformat, pickle_path
+from config import PatientDir, PATHS, save_dataframe_multiformat
 from utils.utils import timeit
 
 
@@ -209,7 +208,7 @@ def filter_ptnt_edfs(pdir: PatientDir):
       - return two DataFrames (one row per interval) with:
           file_name, start_mtz, end_mtz, start_idx, end_idx
     """
-    edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
+    edfs = pd.read_pickle(pdir.edf_files_table.pickle)
 
     valid_ivs = []
     invalid_ivs = []

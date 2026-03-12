@@ -5,7 +5,6 @@ import pandas as pd
 
 from config import PATHS
 from models.load_data import load_data
-from config.paths import pickle_path
 
 
 class TestLoadData(unittest.TestCase):
@@ -25,12 +24,12 @@ class TestLoadData(unittest.TestCase):
                     start = time.perf_counter()
                     # Mostly, I just want to see if the function executes
                     res = load_data(
-                        segs=pd.read_pickle(pickle_path(pdir.segments_table)),
+                        segs=pd.read_pickle(pdir.segments_table.pickle),
                         type_=type_,
                         subsample_shuffle_and_subselect_types=subsample_shuffle_and_subselect_types,
                         train=train,
                         test=test,
-                        split_idx=pd.read_pickle(pickle_path(pdir.train_test_split)).segment_index,
+                        split_idx=pd.read_pickle(pdir.train_test_split.pickle).segment_index,
                         edf_dir=pdir.edf_dir,
                     )
 

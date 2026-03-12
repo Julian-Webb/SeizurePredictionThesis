@@ -7,9 +7,8 @@ import pandas as pd
 from pandas import DataFrame
 from pyedflib import EdfReader
 
-from config import PatientDir, PATHS, Dataset
 from cleaning_edfs.list_and_rename_edfs import list_edfs
-from config.paths import pickle_path
+from config import PatientDir, PATHS
 
 # EDFs with a start before this year are considered corrupted
 BOUNDARY_YEAR = 2010
@@ -206,4 +205,4 @@ if __name__ == '__main__':
     move_problematic_edfs(PATHS.patient_dirs())
     # for pdir in PATHS.patient_dirs([Dataset.ultra2]):
     #     move_edfs_with_duplicate_start(pdir,
-    #                                    edfs=pd.read_pickle(pickle_path(pdir.edf_files_table)))
+    #                                    edfs=pd.read_pickle(pdir.edf_files_table.pickle)))

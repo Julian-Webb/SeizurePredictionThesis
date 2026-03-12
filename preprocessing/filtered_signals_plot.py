@@ -4,12 +4,10 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from numpy import ndarray
-from pandas import Timestamp, Timedelta
+from pandas import Timestamp
 from pyedflib import highlevel
 
-from config.constants import SAMPLING_FREQUENCY_HZ
 from config import PatientDir, PATHS
-from config.paths import pickle_path
 
 
 def plot_signal_with_bad_regions(
@@ -82,8 +80,8 @@ def plot_signals_with_bad_regions(signals: ndarray, invalid_intervals: ndarray, 
 
 def show_examples_per_ptnt(pdirs: list[PatientDir], n_examples_per_ptnt: int = 3):
     for pdir in pdirs:
-        invalid_ivs_df = pd.read_pickle(pickle_path(pdir.invalid_edf_intervals))
-        edfs = pd.read_pickle(pickle_path(pdir.edf_files_table))
+        invalid_ivs_df = pd.read_pickle(pdir.invalid_edf_intervals.pickle)
+        edfs = pd.read_pickle(pdir.edf_files_table.pickle)
         all_files = invalid_ivs_df['file_name'].unique()
         selected_files = np.random.choice(all_files, n_examples_per_ptnt, replace=False)
 
