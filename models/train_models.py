@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import List
 
 from config import PATHS, PatientDir
@@ -47,26 +47,14 @@ def train_models(pdirs: List[PatientDir], gpus: List[int], train_cnn: bool = Tru
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO,
-                        format="[%(levelname)s] %(asctime)s: %(message)s",
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(asctime)s: %(message)s",
                         datefmt="%Y-%m-%d %H:%M:%S")
 
-    pdirs_ = [
-        PatientDir('/data/home/webb/d/UNEEG/datasets/competition/competition-01-MINIFAKE'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/competition/competition-1'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/competition/competition-2'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/competition/competition-3'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-01'),
-        PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-01-FAKE'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-03'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-04'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-05'),
-        PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-07'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-12'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-15'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-16'),
-        # PatientDir('/data/home/webb/d/UNEEG/datasets/ultra2/U002-DE01-17')
-    ]
+    pdirs_ = PATHS.patient_dirs()
+    print(f'Training patients: ')
+    for pdir_ in pdirs_:
+        print(f'    {pdir_.name}')
+
     train_models(
         pdirs_,
         gpus=[0, 1, 2, 3],
