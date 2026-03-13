@@ -17,7 +17,6 @@ from utils.tensorflow_utils import PeriodicalLogger
 EPOCHS = 50  # 50
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
 LEARNING_RATE = 0.001
-
 LEAKY_RELU_NEGATIVE_SLOPE = 0.3
 CONV2D_KWARGS = {
     'use_bias': False,  # no bias because we use BatchNorm afterward
@@ -98,10 +97,9 @@ def create_ptnt_cnn_and_save(pdir: PatientDir):
     start = time.perf_counter()
     print(f'[{pdir.name}] Training CNN')
     class_weights = calc_class_weights(train_data['y'])
-    history = cnn.fit(train_data['x'], train_data['y'], epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
-                      verbose=0,
-                      callbacks=[PeriodicalLogger(f'[{pdir.name}] CNN', interval=10)],
-                      )
+    history = cnn.fit(train_data['x'], train_data['y'],
+                      epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
+                      verbose=0, callbacks=[PeriodicalLogger(f'[{pdir.name}] CNN', interval=10)], )
     print(f'[{pdir.name}] Finished training CNN in {time.perf_counter() - start:.3f} sec.')
 
     # Save
