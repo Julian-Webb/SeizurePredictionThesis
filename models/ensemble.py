@@ -119,20 +119,19 @@ def create_ptnt_mlp_ensemble(
                                 split_idx=split_idx,
                                 feature_names=feature_names)
 
-    all_train_data = load_data_partial(subsample_shuffle_and_subselect_types=False)
-
     # Fit z-score normalizer on the features of the entire train set
+    all_train_data = load_data_partial(subsample_shuffle_and_subselect_types=False)
     scaler = StandardScaler()
     scaler.fit(all_train_data['x'])
 
     # Subselect segments and train models
-    sub_train_data = load_data_partial(subsample_shuffle_and_subselect_types=True,
+    train_data = load_data_partial(subsample_shuffle_and_subselect_types=True,
                                        random_state=RANDOM_STATE_FOR_TRAIN_DATA)
-    x_train = scaler.transform(sub_train_data['x'], copy=False)
+    x_train = scaler.transform(train_data['x'], copy=False)
 
     ensemble, histories = create_ensemble(
         x_train,
-        sub_train_data['y'],
+        train_data['y'],
         n_features=len(feature_names),
         logging_info=f'[{pdir.name}]'
     )
