@@ -83,7 +83,7 @@ def create_ensemble(
             batch_size=batch_size,
             class_weight=class_weights,
             verbose=0,
-            callbacks=[PeriodicalLogger(ptnt_model_str, interval=100)],
+            callbacks=[PeriodicalLogger(ptnt_model_str, interval=25)],
         )
 
         model_history = pd.DataFrame(history.history)
