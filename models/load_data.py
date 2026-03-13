@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +11,6 @@ from config.constants import MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO, N_CHANNEL
 from config.intervals import SEGMENT
 from feature_extraction.extract_features import FeatureNames
 from utils.edf_utils import load_segmented_sigs
-from utils.utils import timeit
 
 
 def subsample_shuffle_and_subselect_types_for_segs(esegs: DataFrame, random_state: int = None) -> DataFrame:
@@ -49,8 +49,6 @@ def seg_features_to_numpy(partial_segs: DataFrame, feature_cols: list[str]):
     return x, y
 
 
-# noinspection PyUnboundLocalVariable
-@timeit
 def load_data(
         segs: DataFrame,
         type_: str,
@@ -147,6 +145,7 @@ def load_data(
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     pdir = PATHS.patient_dirs()[0]
 
     res = load_data(

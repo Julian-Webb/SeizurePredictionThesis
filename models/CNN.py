@@ -1,4 +1,4 @@
-import time
+import logging
 
 import pandas as pd
 import tensorflow as tf
@@ -7,12 +7,13 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPool2D, Dropout, Flatten, 
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
+from config import PatientDir, PATHS, save_dataframe_multiformat
 from config.constants import N_CHANNELS, RANDOM_STATE_FOR_TRAIN_DATA
 from config.intervals import SEGMENT
-from config import PatientDir, PATHS, save_dataframe_multiformat
 from models.ensemble import calc_class_weights
 from models.load_data import load_data
 from utils.tensorflow_utils import PeriodicalLogger
+from utils.utils import timeit, FunctionTimer
 
 EPOCHS = 50  # 50
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
@@ -84,24 +85,31 @@ def cnn_model(n_samples: int, n_channels: int) -> tf.keras.models.Sequential:
     return model
 
 
+@timeit(kwarg_names=['pdir'])
 def create_ptnt_cnn_and_save(pdir: PatientDir):
     cnn = cnn_model(SEGMENT.n_samples, N_CHANNELS)
+    ptnt_model_str = f'[{pdir.name} - CNN]'
 
     # load data
-    start = time.perf_counter()
-    print(f'[{pdir.name}] Loading EEG data for CNN training')
-    train_data = load_data(pdir, 'eeg', subsample_shuffle_and_subselect_types=True, train=True,
-                           random_state=RANDOM_STATE_FOR_TRAIN_DATA)
-    print(f'[{pdir.name}] Finished loading data in {time.perf_counter() - start:.3f} sec.')
+    logging.info('%s Loading EEG data for training', ptnt_model_str)
+    with FunctionTimer('load_data()'):
+        train_data = load_data(
+            segs=pd.read_pickle(pdir.segments_table.pickle),
+            type_='eeg',
+            subsample_shuffle_and_subselect_types=True,
+            train=True,
+            split_idx=pd.read_pickle(pdir.train_test_split.pickle).segment_index,
+            edf_dir=pdir.edf_dir,
+            random_state=RANDOM_STATE_FOR_TRAIN_DATA
+        )
 
     # train model
-    start = time.perf_counter()
-    print(f'[{pdir.name}] Training CNN')
+    logging.info('%s Training model', ptnt_model_str)
     class_weights = calc_class_weights(train_data['y'])
     history = cnn.fit(train_data['x'], train_data['y'],
                       epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
-                      verbose=0, callbacks=[PeriodicalLogger(f'[{pdir.name}] CNN', interval=10)], )
-    print(f'[{pdir.name}] Finished training CNN in {time.perf_counter() - start:.3f} sec.')
+                      verbose=0,
+                      callbacks=[PeriodicalLogger(ptnt_model_str, interval=10, print_func=logging.info)])
 
     # Save
     pdir.cnn_model.parent.mkdir(parents=True, exist_ok=True)
@@ -118,5 +126,5 @@ def create_ptnt_cnns(pdirs: list[PatientDir]):
 
 
 if __name__ == '__main__':
-    pdirs = PATHS.patient_dirs()
-    create_ptnt_cnns(pdirs)
+    pdirs_ = PATHS.patient_dirs()
+    create_ptnt_cnns(pdirs_)

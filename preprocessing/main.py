@@ -15,7 +15,7 @@ def preprocessing(
         setup_logging: bool = False,
 ):
     if setup_logging:
-        logging_file = PATHS.logs_dir / f'preprocessing_{datetime.now().strftime("%Y-%m-%d")}.log'
+        logging_file = PATHS.logs_dir / f'preprocessing_{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}.log'
         logging_file.parent.mkdir(exist_ok=True, parents=True)
         print(f"Logging to: {logging_file}")
         logging.basicConfig(filename=logging_file, level=logging.INFO, format='[%(levelname)s] %(message)s')

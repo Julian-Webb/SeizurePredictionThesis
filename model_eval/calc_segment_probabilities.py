@@ -8,6 +8,7 @@ from models.load_data import load_data
 from feature_extraction.extract_features import FeatureNames
 from utils import QueuedCall, run_queued_calls_on_gpus
 from config import PatientDir, PATHS, save_dataframe_multiformat
+from utils.utils import FunctionTimer
 
 
 def calc_ptnt_seg_probabilities(
@@ -38,15 +39,16 @@ def calc_ptnt_seg_probabilities(
         print_prefix = f'[{pdir.name} - {model_name}]'
         print(print_prefix, 'Loading data...', flush=True)
 
-        data = load_data(
-            segs,
-            data_type,
-            subsample_shuffle_and_subselect_types=False,
-            train=True,
-            test=True,
-            feature_names=FeatureNames.ENSEMBLE,
-            edf_dir=pdir.edf_dir,
-        )
+        with FunctionTimer(f'load_data for {pdir.name} - {data_type}'):
+            data = load_data(
+                segs,
+                data_type,
+                subsample_shuffle_and_subselect_types=False,
+                train=True,
+                test=True,
+                feature_names=FeatureNames.ENSEMBLE,
+                edf_dir=pdir.edf_dir,
+            )
 
         if data_type == 'features':
             # Perform z-scaling for features

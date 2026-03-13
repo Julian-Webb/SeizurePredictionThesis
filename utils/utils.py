@@ -12,7 +12,7 @@ def safe_float_to_int(num: float) -> int:
 
 
 class FunctionTimer:
-    def __init__(self, label: str = "elapsed"):
+    def __init__(self, label: str = "unknown_func"):
         self.label = label
         self.start = None
         self.elapsed = None
@@ -26,15 +26,23 @@ class FunctionTimer:
         logging.info(f"[TIMING] {self.label}: {self.elapsed:.3f}s")
 
 
-def timeit(f=None, *, arg_indices: list[int] | None = None, kwarg_names: list[str] | None = None):
+def timeit(
+        f=None,
+        *,
+        arg_indices: list[int] | None = None,
+        kwarg_names: list[str] | None = None,
+        show_all: bool = False,
+):
     """Decorator that logs the execution time of a function.
 
     Usage:
-        @timeit                                             – shows all args & kwargs
+        @timeit                                             – shows no args/kwargs
+        @timeit(show_all=True)                             – shows all args & kwargs
         @timeit(arg_indices=[0, 1])                         – selected positional args by index
         @timeit(kwarg_names=['patient'])                    – selected keyword args by name
         @timeit(arg_indices=[0], kwarg_names=['patient'])   – both
     """
+
     def decorator(func):
         @wraps(func)
         def wrap(*args, **kw):
@@ -42,19 +50,18 @@ def timeit(f=None, *, arg_indices: list[int] | None = None, kwarg_names: list[st
             result = func(*args, **kw)
             elapsed = time.perf_counter() - start
 
-            selected = (
-                [repr(args[i]) for i in arg_indices if i < len(args)]
-                if arg_indices is not None
-                else [repr(a) for a in args]
-            )
-            selected += (
-                [f"{k}={repr(kw[k])}" for k in kwarg_names if k in kw]
-                if kwarg_names is not None
-                else [f"{k}={repr(v)}" for k, v in kw.items()]
-            )
+            selected = []
+            if show_all:
+                selected.extend(repr(a) for a in args)
+                selected.extend(f"{k}={repr(v)}" for k, v in kw.items())
+            else:
+                if arg_indices is not None:
+                    selected.extend(repr(args[i]) for i in arg_indices if i < len(args))
+                if kwarg_names is not None:
+                    selected.extend(f"{k}={repr(kw[k])}" for k in kwarg_names if k in kw)
 
-            args_str = f"({', '.join(selected)})" if selected else ""
-            logging.info(f"[TIMING] {elapsed:.3f}s - {func.__name__}{args_str}: ")
+            args_str = f"{', '.join(selected)}" if selected else ""
+            logging.info(f"[TIMING] {elapsed:.3f}s - {func.__name__}({args_str})")
             return result
 
         return wrap

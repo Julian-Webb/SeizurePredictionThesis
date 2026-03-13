@@ -1,3 +1,4 @@
+import logging
 import pickle
 import time
 from functools import partial
@@ -59,7 +60,7 @@ def create_ensemble(
         x_train: np.ndarray,
         y_train: np.ndarray,
         n_features: int,
-        logging_info: str = '[unknown patient]',
+        patient: str = 'unknown patient',
         ensemble_size: int = ENSEMBLE_SIZE,
         epochs: int = EPOCHS,
         batch_size: int = BATCH_SIZE
@@ -73,6 +74,7 @@ def create_ensemble(
     for i in range(ensemble_size):
         start = time.perf_counter()
         name = f"FB-MLP_{i:02}"
+        ptnt_model_str = f'[{patient} - {name}]'
         model = mlp_model(n_features, name)
         history = model.fit(
             x_train,
@@ -81,7 +83,7 @@ def create_ensemble(
             batch_size=batch_size,
             class_weight=class_weights,
             verbose=0,
-            callbacks=[PeriodicalLogger(f'{logging_info} - {name}', interval=100)],
+            callbacks=[PeriodicalLogger(ptnt_model_str, interval=100)],
         )
 
         model_history = pd.DataFrame(history.history)
@@ -93,7 +95,7 @@ def create_ensemble(
         y = model(input_layer)  # Make all models share the same input layer
         models.append(y)
 
-        print(f'{logging_info} Finished model {name} in {time.perf_counter() - start:.3f} sec.')
+        logging.info('%s Finished model in %.3f sec.', ptnt_model_str, time.perf_counter() - start)
 
     # The ensemble output averages the outputs of the individual models
     output_layer = tf.keras.layers.average(models, name='ensemble_average')
@@ -126,22 +128,21 @@ def create_ptnt_mlp_ensemble(
 
     # Subselect segments and train models
     train_data = load_data_partial(subsample_shuffle_and_subselect_types=True,
-                                       random_state=RANDOM_STATE_FOR_TRAIN_DATA)
+                                   random_state=RANDOM_STATE_FOR_TRAIN_DATA)
     x_train = scaler.transform(train_data['x'], copy=False)
 
     ensemble, histories = create_ensemble(
         x_train,
         train_data['y'],
         n_features=len(feature_names),
-        logging_info=f'[{pdir.name}]'
+        patient=pdir.name
     )
     return ensemble, scaler, histories
 
 
-@timeit
+@timeit(kwarg_names=['pdir'])
 def create_ptnt_ensemble_and_save(pdir: PatientDir):
-    print(f'Creating ensemble for {pdir.name}')
-    start = time.perf_counter()
+    logging.info('[%s - ensemble] Creating model', pdir.name)
     ensemble, scaler, histories = create_ptnt_mlp_ensemble(pdir)
 
     # Save
@@ -152,8 +153,6 @@ def create_ptnt_ensemble_and_save(pdir: PatientDir):
         pickle.dump(scaler, f)
     save_dataframe_multiformat(histories, pdir.mlp_history, csv_index=True)
 
-    print(f'Finished ensemble creation for {pdir.name} in {time.perf_counter() - start:.3f} sec.')
-
 
 def create_mlp_ensembles(pdirs: list[PatientDir]):
     st = time.perf_counter()
@@ -162,7 +161,7 @@ def create_mlp_ensembles(pdirs: list[PatientDir]):
         create_ptnt_ensemble_and_save(pdir)
 
     elapsed_time = time.perf_counter() - st
-    print(f'Finished ensemble creation in {elapsed_time / 3600:.2f} hours')
+    logging.info('Finished ensemble creation in %.2f hours', elapsed_time / 3600)
 
 
 if __name__ == '__main__': create_mlp_ensembles(PATHS.patient_dirs())
