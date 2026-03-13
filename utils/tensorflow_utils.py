@@ -15,7 +15,11 @@ class PeriodicalLogger(tf.keras.callbacks.Callback):
         epoch += 1
         if (epoch == 1) or (epoch % self.interval == 0):
             # logs is a dict containing the metrics defined in model.compile
-            msg = f"{self.model_name} Epoch {epoch}/{self.params['epochs']}"
+            total_epochs = int(self.params['epochs'])
+            width = len(str(total_epochs))
+            epoch_text = f"{epoch:0{width}d}"
+
+            msg = f"{self.model_name} Epoch {epoch_text}/{total_epochs}"
             for metric, value in (logs or {}).items():
                 msg += f" - {metric}: {value:.4f}"
             self.print_func(msg)
