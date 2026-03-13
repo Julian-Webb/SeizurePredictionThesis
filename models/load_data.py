@@ -31,14 +31,14 @@ def subsample_shuffle_and_subselect_types_for_segs(esegs: DataFrame, random_stat
     n_interictal = interictal_mask.sum()
     # In case there are less interictal segments than max_interictal, use all:
     n = min(n_interictal, max_interictal)
-    subsampled_interictal = esegs[interictal_mask].sample(n, random_state=random_state)
+    subsampled_interictal = esegs[interictal_mask].sample(n, random_state=random_state, replace=False)
 
     # Combine subsampled interictal and preictal - only use these types
     preictal = esegs[esegs['type'] == 'preictal']
     subsampled = pd.concat([subsampled_interictal, preictal])
 
     # Shuffle
-    shuffled = subsampled.sample(frac=1, random_state=random_state)
+    shuffled = subsampled.sample(frac=1, random_state=random_state, replace=False)
 
     return shuffled
 

@@ -7,7 +7,7 @@ from tensorflow.keras.layers import Input, Conv2D, MaxPool2D, Dropout, Flatten, 
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
-from config.constants import N_CHANNELS
+from config.constants import N_CHANNELS, RANDOM_STATE_FOR_TRAIN_DATA
 from config.intervals import SEGMENT
 from config import PatientDir, PATHS, save_dataframe_multiformat
 from models.ensemble import calc_class_weights
@@ -90,7 +90,8 @@ def create_ptnt_cnn_and_save(pdir: PatientDir):
     # load data
     start = time.perf_counter()
     print(f'[{pdir.name}] Loading EEG data for CNN training')
-    train_data = load_data(pdir, 'eeg', subsample_shuffle_and_subselect_types=True, train=True)
+    train_data = load_data(pdir, 'eeg', subsample_shuffle_and_subselect_types=True, train=True,
+                           random_state=RANDOM_STATE_FOR_TRAIN_DATA)
     print(f'[{pdir.name}] Finished loading data in {time.perf_counter() - start:.3f} sec.')
 
     # train model
