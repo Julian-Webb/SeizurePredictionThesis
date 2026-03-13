@@ -115,6 +115,9 @@ class Paths(type(Path())):
         """
         self = super().__new__(cls, *args, **kwargs)
 
+        # General
+        self.logs_dir = Path(self, "logs")
+
         # dataset dirs
         self.datasets_dir = Path(self, "datasets")  # The dir that contains the datasets
         self.ultra2_dir = Path(self.datasets_dir, Dataset.ultra2.value)
@@ -130,8 +133,8 @@ class Paths(type(Path())):
         self.basic_patient_info = Path(self.patient_info_dir, "basic_patient_info.xlsx")
         self.patient_info_exact = MultiPath(self.patient_info_dir, "patient_info_exact")
         self.patient_info_readable = MultiPath(self.patient_info_dir, "patient_info_readable")
-
         self.invalid_patients_dir = Path(self, "invalid_patients")
+
         return self
 
     def patient_dirs(self, datasets: Optional[List[Dataset]] = None, include_invalid_ptnts: bool = False) -> List[
