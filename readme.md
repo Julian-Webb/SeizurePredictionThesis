@@ -33,4 +33,4 @@ Various abbreviations throughout the code:
    1. calc_segment_probabilities
    2. clips
    3. event_based_metrics
-   4. model_eval
+   4. eval_models
