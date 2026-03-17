@@ -155,9 +155,9 @@ def validate_patients(
         ptnt_info = DataFrame(ptnt_info.values(), index=index)
         ptnt_info.sort_values(by=['valid', 'dataset', 'patient'], inplace=True, ascending=[False, True, True])
         if k == 'readable':
-            ptnt_info.to_csv(PATHS.patient_info_readable.csv)
+            ptnt_info.to_csv(PATHS.patient_info_readable)
         elif k == 'exact':
-            save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact, csv_index=True)
+            save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact, save_index=True)
 
 
 if __name__ == '__main__':

@@ -162,7 +162,7 @@ def eval_ptnt(
             }, name=pdir.name)
 
             results_dir = ensure_results_dir(pdir, split, model)
-            save_dataframe_multiformat(metrics_to_save, MultiPath(results_dir, 'metrics'), csv_index=True)
+            save_dataframe_multiformat(metrics_to_save, MultiPath(results_dir, 'metrics'), save_index=True)
 
     # Plot various metrics
     for split, split_clips in clips_per_split.items():

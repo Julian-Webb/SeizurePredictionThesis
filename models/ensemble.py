@@ -151,7 +151,7 @@ def create_ptnt_ensemble_and_save(pdir: PatientDir):
     with open(pdir.feature_scaler, 'wb') as f:
         # noinspection PyTypeChecker
         pickle.dump(scaler, f)
-    save_dataframe_multiformat(histories, pdir.mlp_history, csv_index=True)
+    save_dataframe_multiformat(histories, pdir.mlp_history, save_index=True)
 
 
 def create_mlp_ensembles(pdirs: list[PatientDir]):

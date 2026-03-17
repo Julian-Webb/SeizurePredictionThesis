@@ -347,7 +347,7 @@ def calc_ptnt_split_metrics(args):
 
     for model in models:
         results_dir = ensure_results_dir(pdir, split, model)
-        save_dataframe_multiformat(ebms[model], MultiPath(results_dir, 'event_based_metrics'), csv_index=True)
+        save_dataframe_multiformat(ebms[model], MultiPath(results_dir, 'event_based_metrics'), save_index=True)
 
 
 def calc_metrics(pdirs: list[PatientDir], splits: tuple[str] = ('train', 'test'),

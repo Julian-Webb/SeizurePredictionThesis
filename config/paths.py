@@ -26,18 +26,20 @@ class MultiPath(type(Path())):
         self.pickle_visible = p.with_suffix('.pkl')
         self.csv = p.with_suffix('.csv')
         self.ods = p.with_suffix('.ods')
+        self.xlsx = p.with_suffix('.xlsx')
         return self
 
 
 def save_dataframe_multiformat(
         df: Union[DataFrame, Series],
         path: MultiPath,
-        formats: tuple[str] = ('csv', 'pickle'),
-        csv_index: bool = False,
+        formats: tuple[str, ...] = ('csv', 'pickle'),
+        save_index: bool = False,
         make_parent_dir: bool = True):
     """
     Save a pd.DataFrame in multiple formats (csv, pickle).
     :param formats: The formats to save the DataFrame in. The names must correspond to the properties of the ``MultiPath`` class.
+    :param save_index: Whether to save the index of the DataFrame for formats that support not saving it.
     """
     if make_parent_dir:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -49,9 +51,11 @@ def save_dataframe_multiformat(
             case 'pickle_visible':
                 df.to_pickle(path.pickle_visible)
             case 'csv':
-                df.to_csv(path.csv, index=csv_index)
+                df.to_csv(path.csv, index=save_index)
             case 'ods':
-                df.to_excel(path.ods, index=csv_index)
+                df.to_excel(path.ods, index=save_index)
+            case 'xlsx':
+                df.to_excel(path.xlsx, index=save_index)
             case _:
                 raise ValueError(f"Unknown format: {f}")
 
@@ -132,8 +136,13 @@ class Paths(type(Path())):
         self.patient_info_dir = Path(self, "patient_info")
         self.basic_patient_info = Path(self.patient_info_dir, "basic_patient_info.xlsx")
         self.patient_info_exact = MultiPath(self.patient_info_dir, "patient_info_exact")
-        self.patient_info_readable = MultiPath(self.patient_info_dir, "patient_info_readable")
+        self.patient_info_readable = Path(self.patient_info_dir, "patient_info_readable.csv")
         self.invalid_patients_dir = Path(self, "invalid_patients")
+
+        # model comparison
+        self.model_comparison_dir = Path(self, "model_comparison")
+        self.per_patient_comparison_table = MultiPath(self.model_comparison_dir, "per_patient")
+        self.per_model_comparison_table = MultiPath(self.model_comparison_dir, "per_model")
 
         return self
 

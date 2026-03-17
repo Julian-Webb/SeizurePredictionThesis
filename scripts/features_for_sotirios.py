@@ -22,7 +22,7 @@ from preprocessing.validate_patients import ptnt_timespan_info
 #     ptnt_info = DataFrame(ptnt_info.values(), index=index)
 #     ptnt_info.sort_values(by=['dataset', 'patient'], inplace=True, ascending=[True, True])
 #     if k == 'readable':
-#         ptnt_info.to_csv(PATHS.patient_info_readable.csv)
+#         ptnt_info.to_csv(PATHS.patient_info_readable)
 #     elif k == 'exact':
 #         save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact)
 

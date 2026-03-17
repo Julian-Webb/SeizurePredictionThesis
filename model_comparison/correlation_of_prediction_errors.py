@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+from config import PatientDir, PATHS
+from model_eval.event_based_metrics import load_data_per_split
 
 
 def weighted_mean(w, z) -> float:
@@ -76,19 +78,21 @@ def correlation_of_prediction_errors(
     return nominator / denominator
 
 
+def correlation_of_prediction_errors_from_pdir(
+        pdir: PatientDir,
+        split: str,
+):
+    clips = load_data_per_split(pdir)['clips'][split]
+
+    pi = clips['ensemble_probability'].values
+    pj = clips['CNN_probability'].values
+    y_true = clips['preictal'].values
+    return correlation_of_prediction_errors(pi, pj, y_true)
+
+
 if __name__ == '__main__':
-    from config import PATHS
+    print('Correlation of prediction errors for test data:')
 
-    for pdir in PATHS.patient_dirs():
-        clips = pd.read_pickle(pdir.clips_table.pickle)
-        clips = clips[clips['valid']]
-        split_idx = pd.read_pickle(pdir.train_test_split.pickle).segment_index
-
-        test_clips = clips[clips['start_seg'] > split_idx]
-        y_true = test_clips['preictal'].values
-        pi = test_clips['ensemble_probability'].values
-        pj = test_clips['CNN_probability'].values
-
-        corr = correlation_of_prediction_errors(pi, pj, y_true)
-
-        print(f'{pdir.name:>23}: {corr:5.2f}')
+    for pdir_ in PATHS.patient_dirs():
+        corr = correlation_of_prediction_errors_from_pdir(pdir_, 'test')
+        print(f'{pdir_.name:>23}: {corr:5.2f}')

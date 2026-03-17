@@ -37,7 +37,7 @@ def find_ptnt_split(pdir: PatientDir, all_ptnts_info: DataFrame):
     # noinspection PyTypeChecker
     train_end = _compute_ptnt_split(ptnt_info['recordings_start'], ptnt_info['timespan'], segs['start_mtz'])
     train_end = Series(train_end, name='train_end')
-    save_dataframe_multiformat(train_end, pdir.train_test_split, csv_index=True)
+    save_dataframe_multiformat(train_end, pdir.train_test_split, save_index=True)
 
 
 def find_ptnt_splits(pdirs: List[PatientDir]):
