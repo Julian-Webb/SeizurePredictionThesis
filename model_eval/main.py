@@ -1,6 +1,6 @@
 import logging
 
-from config import PatientDir
+from config import PatientDir, PATHS
 from model_eval import calc_segment_probabilities, clips, event_based_metrics, eval_models
 from utils.utils import FunctionTimer
 
@@ -29,6 +29,6 @@ def model_eval(
 
 if __name__ == '__main__':
     model_eval(
-        PatientDir.patient_dirs(),
+        PATHS.patient_dirs(),
         available_gpus=[0, 1, 2, 3]
     )
