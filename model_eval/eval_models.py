@@ -63,10 +63,10 @@ def plot_threshold_metrics(
 
         #### Event-based sensitivity vs. Time in Correct Warning (TICW)
         ticw = 1 - ebms['rel_tifw']
-        line, = axes[1, 0].plot(ebms['rel_szrs_detected'].values, ticw.values, label=model)
+        line, = axes[1, 0].plot(ebms['rel_szrs_predicted'].values, ticw.values, label=model)
         # Mark the point that corresponds to the best threshold
         bt = best_thresh_per_model[model]
-        axes[1, 0].scatter(ebms['rel_szrs_detected'].loc[bt], ticw.loc[bt], marker='x', color=line.get_color())
+        axes[1, 0].scatter(ebms['rel_szrs_predicted'].loc[bt], ticw.loc[bt], marker='x', color=line.get_color())
 
         #### Event-based f1 score vs. thresholds
         line, = axes[1, 1].plot(ebms['event_based_f1'], label=model)
@@ -154,7 +154,7 @@ def eval_ptnt(
                 'non_preictal_clips': int(len(y_true) - y_true.sum()),
                 'best_threshold': best_thresh,
                 'rel_tifw': ebms['rel_tifw'].loc[best_thresh],
-                'rel_szrs_detected': ebms['rel_szrs_detected'].loc[best_thresh],
+                'rel_szrs_predicted': ebms['rel_szrs_predicted'].loc[best_thresh],
                 'event_based_f1': ebms['event_based_f1'].loc[best_thresh],
                 'precision': precision_score(y_true, y_pred),
                 'recall': recall_score(y_true, y_pred),

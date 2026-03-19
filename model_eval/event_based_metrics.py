@@ -1,5 +1,5 @@
 """
-Calculate event-based metrics: Time in False Warning and Seizures Detected.
+Calculate event-based metrics: Time in False Warning and Seizures predicted.
 """
 import logging
 
@@ -127,7 +127,7 @@ def safe_dataframe_concat(objs: list, concat_kwargs) -> DataFrame:
         return DataFrame(objs[0])
 
 
-# todo it's possible to seizures to not be detected at the beginning of the test set, because we're not including the clips that would detect it (1:05h before the split)
+# todo it's possible to seizures to not be predicted at the beginning of the test set, because we're not including the clips that would detect it (1:05h before the split)
 # todo The TIFW can never equal 1 because we're using the total recording time. The duration that should be in warning should be subtracted.
 @timeit(kwarg_names=['logging_info'])
 def event_based_metrics(
@@ -141,7 +141,7 @@ def event_based_metrics(
         logging_info: str = 'unknown patient',
 ) -> Tuple[dict[str, DataFrame], dict[str, dict[float, dict[str, Any]]]]:
     """
-    Takes a set of predictions and calculates the time in false warning (TIFW) and relative number of seizures detected.
+    Takes a set of predictions and calculates the time in false warning (TIFW) and relative number of seizures predicted.
 
     Seizure predictions are issued at the warning time (WT). After that, there's the intervention interval/time (IT),
     followed by the seizure prediction horizon (SPH) in which the seizure should occur. If no seizure occurs within the
@@ -155,13 +155,13 @@ def event_based_metrics(
     1. From the clip predictions, the WTs are determined as the end time of the clips.
     2. The SPHs are calculated from the WTs. The SPHs will (almost certainly) be overlapping.
     3. SPHs are verified by checking if they contain a seizure.
-    4. It is also checked which seizures were detected.
+    4. It is also checked which seizures were predicted.
     5. False SPHs are merged to make them non-overlapping
     6. Intervals with missing EEG data are subtracted from the merged SPHs because it's unknown whether a seizure
        occurred during them.
     7. The absolute TIFW is the total duration of the remaining SPHs
     8. The relative TIFW is the absolute TIFW / total recording duration.
-    9. The relative number of seizures detected is #seizures detected / #total seizures
+    9. The relative number of seizures predicted is #seizures predicted / #total seizures
 
     :param clips: DataFrame with columns '{model}_probability', 'end_time', 'valid' (optional)
     :param edfs: The patient's EDF DataFrame
@@ -216,8 +216,8 @@ def event_based_metrics(
             model_thresholds = thresholds_per_model[model]
 
         # Per threshold dicts:
-        metrics = {k: {} for k in ['abs_tifw', 'n_szrs_detected']}
-        intermediate_results = {k: {} for k in ['szrs_detected', 'sphs']}
+        metrics = {k: {} for k in ['abs_tifw', 'n_szrs_predicted']}
+        intermediate_results = {k: {} for k in ['szrs_predicted', 'sphs']}
 
         for thresh in model_thresholds:
             logging.debug(f'Processing threshold {thresh}...')
@@ -225,8 +225,8 @@ def event_based_metrics(
             y_pred = clips[prob_col] >= thresh
             sphs = all_sphs[y_pred]
 
-            # Check which seizures were detected
-            szrs_detected = Series(False, index=szr_starts, name='szr_detected')
+            # Check which seizures were predicted
+            szrs_predicted = Series(False, index=szr_starts, name='szr_predicted')
             if len(sphs) > 0:
                 # Vectorized: for each seizure, check if it's in any SPH
                 # Shape: (n_seizures, n_sphs)
@@ -237,7 +237,7 @@ def event_based_metrics(
                         (szr_starts[:, None] < sphs['end'].values)
                 )
 
-                szrs_detected[:] = in_sph.any(axis=1)
+                szrs_predicted[:] = in_sph.any(axis=1)
 
             # Merge correct and incorrect SPHs separately and subtract missing intervals
             def process_sphs(sphs_: DataFrame) -> DataFrame:
@@ -258,20 +258,20 @@ def event_based_metrics(
 
             # Calculate & save metrics
             metrics['abs_tifw'][thresh] = incorrect_sphs['duration'].sum()
-            metrics['n_szrs_detected'][thresh] = szrs_detected.sum()
-            intermediate_results['szrs_detected'][thresh] = szrs_detected
+            metrics['n_szrs_predicted'][thresh] = szrs_predicted.sum()
+            intermediate_results['szrs_predicted'][thresh] = szrs_predicted
             intermediate_results['sphs'][thresh] = processed_sphs
 
         # Calculate further metrics for this model in bulk
         metrics = DataFrame(metrics)
         metrics['rel_tifw'] = pd.to_timedelta(metrics['abs_tifw']) / total_recording_time
 
-        rel_szrs_detected = metrics['n_szrs_detected'] / len(szr_starts)
-        metrics['rel_szrs_detected'] = rel_szrs_detected
+        rel_szrs_predicted = metrics['n_szrs_predicted'] / len(szr_starts)
+        metrics['rel_szrs_predicted'] = rel_szrs_predicted
 
         # Calculate event-based F1 Score with "Time in Correct warning (ticw) and sensitivity
         relative_ticw = 1 - metrics['rel_tifw']
-        metrics['event_based_f1'] = 2 * (rel_szrs_detected * relative_ticw) / (rel_szrs_detected + relative_ticw)
+        metrics['event_based_f1'] = 2 * (rel_szrs_predicted * relative_ticw) / (rel_szrs_predicted + relative_ticw)
 
         metrics_per_model[model] = metrics
         intermediate_results_per_model[model] = intermediate_results
