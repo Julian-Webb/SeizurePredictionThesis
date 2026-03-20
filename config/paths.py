@@ -109,6 +109,13 @@ class PatientDir(type(Path())):
         # Model Evaluation
         self.model_eval_dir = Path(self, 'model_evaluation')
 
+        # Cycles
+        self.cycle_extraction_dir = Path(self, 'cycles')
+        self.filled_features_dir = Path(self.cycle_extraction_dir, 'filled_features')
+        self.filled_features_table = MultiPath(self.filled_features_dir, 'filled_features')
+
+
+
         return self
 
 
