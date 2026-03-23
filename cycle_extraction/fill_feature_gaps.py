@@ -6,12 +6,13 @@ import multiprocessing
 import pickle
 from functools import partial
 from typing import Optional
+import shutil
 
 import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series, Timedelta
 
-from config import PATHS, PatientDir, MultiPath
+from config import PATHS, PatientDir
 from config.intervals import SEGMENT
 from feature_extraction.extract_features import FeatureNames
 
@@ -67,18 +68,27 @@ def fill_short_gaps_per_column(
         feature_cols: list[str],
         exists_col: str = 'exists',
         warn_gap_n_segs_threshold: Optional[int] = None,
+        min_donor_n_segs: int = 100,
+        max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
         patient: str = 'unknown patient',
 ) -> DataFrame:
     """
     Fill short gaps by sampling donors locally per column.
 
-    For a gap of n_segs=L, donor window is up to L rows before and L rows after.
+    For a gap of n_segs=L, donor window is up to W rows before and W rows after,
+    where W = max(L, min_donor_n_segs).
     Sampling is with replacement and independently per feature column.
+    Filled values are perturbed by a multiplicative factor in
+    [1-max_distortion_pct, 1+max_distortion_pct].
     If no valid donors for a column, the gap cells remain NaN.
     """
     if warn_gap_n_segs_threshold is None:
         warn_gap_n_segs_threshold = float('inf')
+    if min_donor_n_segs < 0:
+        raise ValueError('min_donor_n_segs must be >= 0.')
+    if max_distortion_pct < 0:
+        raise ValueError('max_distortion_pct must be >= 0.')
 
     out = df.copy()
     rng = np.random.default_rng(random_state)
@@ -89,6 +99,7 @@ def fill_short_gaps_per_column(
 
     for gap in gaps.itertuples(index=False):
         g_start, g_end, g_nsegs = gap.start_idx, gap.end_idx, gap.n_segs
+        window_n_segs = max(g_nsegs, min_donor_n_segs)
 
         if g_nsegs > warn_gap_n_segs_threshold:
             duration: Timedelta = g_nsegs * SEGMENT.exact_dur
@@ -96,10 +107,10 @@ def fill_short_gaps_per_column(
                 f'[{patient}] Gap {g_start}-{g_end} has {g_nsegs} segments with duration {duration}; filling anyway.',
                 flush=True)
 
-        left_start = max(int(out.index.min()), g_start - g_nsegs)
+        left_start = max(int(out.index.min()), g_start - window_n_segs)
         left_end = g_start - 1
         right_start = g_end + 1
-        right_end = min(int(out.index.max()), g_end + g_nsegs)
+        right_end = min(int(out.index.max()), g_end + window_n_segs)
 
         donor_idx = []
         if left_start <= left_end:
@@ -117,8 +128,15 @@ def fill_short_gaps_per_column(
         gap_index = range(g_start, g_end + 1)
         for col in feature_cols:
             sampled_vals = rng.choice(donors[col].to_numpy(), size=g_nsegs, replace=True)
+            if max_distortion_pct > 0:
+                distortion = rng.uniform(1 - max_distortion_pct, 1 + max_distortion_pct, size=g_nsegs)
+                sampled_vals = sampled_vals * distortion
             out.loc[gap_index, col] = sampled_vals
 
+    # Change column 'exists' to 'filled'
+    filled = ~out['exists']
+    out.rename(columns={exists_col: 'filled'}, inplace=True)
+    out['filled'] = filled
     return out
 
 
@@ -126,6 +144,8 @@ def fill_ptnt_gaps(
         segs: DataFrame,
         long_gap_min_segs: int,
         warn_gap_n_segs_threshold: Optional[int] = None,
+        min_donor_n_segs: int = 100,
+        max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
         feature_cols: list[str] = FeatureNames.CYCLES,
         patient: str = 'unknown patient',
@@ -139,7 +159,13 @@ def fill_ptnt_gaps(
     filled_chunks = []
     for chunk in chunks:
         filled_chunks.append(
-            fill_short_gaps_per_column(chunk, feature_cols, 'exists', warn_gap_n_segs_threshold, random_state,
+            fill_short_gaps_per_column(chunk,
+                                       feature_cols,
+                                       'exists',
+                                       warn_gap_n_segs_threshold,
+                                       min_donor_n_segs,
+                                       max_distortion_pct,
+                                       random_state,
                                        patient)
         )
     return filled_chunks
@@ -149,32 +175,50 @@ def fill_ptnt_gaps_and_save(
         pdir: PatientDir,
         long_gap_min_segs: int,
         warn_gap_n_segs_threshold: Optional[int] = None,
+        min_donor_n_segs: int = 100,
+        max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
         feature_cols: list[str] = FeatureNames.CYCLES,
 ):
-    print(f'[{pdir.name}] Processing...', flush=True)
+    print(f'[{pdir.name}] Filling Feature Gaps...', flush=True)
     segs = pd.read_pickle(pdir.segments_table.pickle)
-    filled_chunks = fill_ptnt_gaps(segs, long_gap_min_segs, warn_gap_n_segs_threshold, random_state, feature_cols,
+    filled_chunks = fill_ptnt_gaps(segs,
+                                   long_gap_min_segs,
+                                   warn_gap_n_segs_threshold,
+                                   min_donor_n_segs,
+                                   max_distortion_pct,
+                                   random_state,
+                                   feature_cols,
                                    pdir.name)
 
+    # Check for any NaN values
+    for i, chunk in enumerate(filled_chunks):
+        if chunk[feature_cols].isna().to_numpy().any():
+            raise ValueError(f'[{pdir.name}] NaN values found in chunk {i}')
+
+    # Save results
+    shutil.rmtree(pdir.filled_features_dir)
+    pdir.filled_features_dir.mkdir(parents=True, exist_ok=True)
+    path = pdir.filled_feature_chunks
+
     # Save as pickle in one file
-    path = pdir.filled_features_table
-    path.parent.mkdir(parents=True, exist_ok=True)
     with open(path.pickle, 'wb') as handle:
         pickle.dump(filled_chunks, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     # Save as csv for viewing in one file per chunk
     for i, chunk in enumerate(filled_chunks):
-        p = MultiPath(path.with_name(f'{path.name}_chunk{i}')).csv
-        chunk.to_csv(p, index=False, float_format='%.3f')
+        name = path.name.replace('chunks', f'chunk{i}') + '.csv'
+        chunk.to_csv(path.with_name(name), float_format='%.3f')
 
     print(f'[{pdir.name}] Saved {len(filled_chunks)} chunks', flush=True)
 
 
 def fill_gaps_for_ptnts(
         pdirs: list[PatientDir],
-        long_gap_min_duration: Timedelta = Timedelta(days=14),
+        long_gap_min_duration: Timedelta = Timedelta(days=14),  # From Honglui Yang 2024
         warn_gap_threshold: Optional[Timedelta] = Timedelta(days=3),
+        min_donor_n_segs: int = 100,
+        max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
         feature_cols: list[str] = FeatureNames.CYCLES,
         serial_processing: bool = False,
@@ -185,6 +229,8 @@ def fill_gaps_for_ptnts(
 
     func = partial(fill_ptnt_gaps_and_save, long_gap_min_segs=long_gap_min_segs,
                    warn_gap_n_segs_threshold=warn_gap_n_segs_threshold,
+                   min_donor_n_segs=min_donor_n_segs,
+                   max_distortion_pct=max_distortion_pct,
                    random_state=random_state, feature_cols=feature_cols)
 
     if serial_processing:
