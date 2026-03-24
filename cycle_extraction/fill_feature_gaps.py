@@ -3,16 +3,14 @@ Fill gaps in the features during missing recording intervals of patients.
 """
 
 import multiprocessing
-import pickle
 from functools import partial
 from typing import Optional
-import shutil
 
 import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series, Timedelta
 
-from config import PATHS, PatientDir
+from config import PATHS, PatientDir, save_dataframe_multiformat
 from config.intervals import SEGMENT
 from feature_extraction.extract_features import FeatureNames
 
@@ -66,7 +64,6 @@ def split_by_long_gaps(df: DataFrame, gaps: DataFrame, long_gap_min_segs: int) -
 def fill_short_gaps_per_column(
         df: DataFrame,
         feature_cols: list[str],
-        exists_col: str = 'exists',
         warn_gap_n_segs_threshold: Optional[int] = None,
         min_donor_n_segs: int = 100,
         max_distortion_pct: float = 0.05,
@@ -93,7 +90,7 @@ def fill_short_gaps_per_column(
     out = df.copy()
     rng = np.random.default_rng(random_state)
 
-    gaps = detect_contiguous_gaps(out[exists_col])
+    gaps = detect_contiguous_gaps(out['exists'])
     if gaps.empty:
         return out
 
@@ -121,7 +118,7 @@ def fill_short_gaps_per_column(
             raise ValueError(f'No valid donors found for gap {g_start}-{g_end}.')
 
         donors = out.loc[donor_idx]
-        donors = donors.loc[donors[exists_col]]
+        donors = donors.loc[donors['exists']]
         if donors.empty:
             raise ValueError(f'No valid donors found for gap {g_start}-{g_end}.')
 
@@ -133,10 +130,6 @@ def fill_short_gaps_per_column(
                 sampled_vals = sampled_vals * distortion
             out.loc[gap_index, col] = sampled_vals
 
-    # Change column 'exists' to 'filled'
-    filled = ~out['exists']
-    out.rename(columns={exists_col: 'filled'}, inplace=True)
-    out['filled'] = filled
     return out
 
 
@@ -149,26 +142,30 @@ def fill_ptnt_gaps(
         random_state: Optional[int] = None,
         feature_cols: list[str] = FeatureNames.CYCLES,
         patient: str = 'unknown patient',
-) -> list[DataFrame]:
-    """Split by long gaps and fill short gaps per resulting chunk."""
+) -> DataFrame:
+    """Fill short gaps per chunk and reintegrate into one dataframe.
+
+    Long gaps remain present in the output and keep NaN feature values.
+    """
     selected_cols = ['start_mtz', 'exists', *feature_cols]
     base: DataFrame = segs.loc[:, selected_cols].copy()
     gaps: DataFrame = detect_contiguous_gaps(base['exists'])
+
+    out = base.copy()
+
     chunks = split_by_long_gaps(base, gaps, long_gap_min_segs=long_gap_min_segs)
 
-    filled_chunks = []
     for chunk in chunks:
-        filled_chunks.append(
-            fill_short_gaps_per_column(chunk,
-                                       feature_cols,
-                                       'exists',
-                                       warn_gap_n_segs_threshold,
-                                       min_donor_n_segs,
-                                       max_distortion_pct,
-                                       random_state,
-                                       patient)
-        )
-    return filled_chunks
+        filled_chunk = fill_short_gaps_per_column(chunk,
+                                                  feature_cols,
+                                                  warn_gap_n_segs_threshold,
+                                                  min_donor_n_segs,
+                                                  max_distortion_pct,
+                                                  random_state,
+                                                  patient)
+        out.loc[filled_chunk.index, feature_cols] = filled_chunk[feature_cols]
+
+    return out
 
 
 def fill_ptnt_gaps_and_save(
@@ -182,35 +179,18 @@ def fill_ptnt_gaps_and_save(
 ):
     print(f'[{pdir.name}] Filling Feature Gaps...', flush=True)
     segs = pd.read_pickle(pdir.segments_table.pickle)
-    filled_chunks = fill_ptnt_gaps(segs,
-                                   long_gap_min_segs,
-                                   warn_gap_n_segs_threshold,
-                                   min_donor_n_segs,
-                                   max_distortion_pct,
-                                   random_state,
-                                   feature_cols,
-                                   pdir.name)
-
-    # Check for any NaN values
-    for i, chunk in enumerate(filled_chunks):
-        if chunk[feature_cols].isna().to_numpy().any():
-            raise ValueError(f'[{pdir.name}] NaN values found in chunk {i}')
+    filled_features = fill_ptnt_gaps(segs,
+                                     long_gap_min_segs,
+                                     warn_gap_n_segs_threshold,
+                                     min_donor_n_segs,
+                                     max_distortion_pct,
+                                     random_state,
+                                     feature_cols,
+                                     pdir.name)
 
     # Save results
-    shutil.rmtree(pdir.filled_features_dir)
-    pdir.filled_features_dir.mkdir(parents=True, exist_ok=True)
-    path = pdir.filled_feature_chunks
-
-    # Save as pickle in one file
-    with open(path.pickle, 'wb') as handle:
-        pickle.dump(filled_chunks, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    # Save as csv for viewing in one file per chunk
-    for i, chunk in enumerate(filled_chunks):
-        name = path.name.replace('chunks', f'chunk{i}') + '.csv'
-        chunk.to_csv(path.with_name(name), float_format='%.3f')
-
-    print(f'[{pdir.name}] Saved {len(filled_chunks)} chunks', flush=True)
+    save_dataframe_multiformat(filled_features, pdir.filled_features_for_segs, csv_kwargs={'float_format': '%.3f'})
+    print(f'[{pdir.name}] Saved filled features ({len(filled_features)} rows)', flush=True)
 
 
 def fill_gaps_for_ptnts(
