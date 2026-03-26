@@ -11,6 +11,7 @@ import pandas as pd
 from pandas import DataFrame, Series, Timedelta
 
 from config import PATHS, PatientDir, save_dataframe_multiformat
+from config.constants import LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING
 from config.intervals import SEGMENT
 from feature_extraction.extract_features import FeatureNames
 
@@ -195,8 +196,8 @@ def fill_ptnt_gaps_and_save(
 
 def fill_gaps_for_ptnts(
         pdirs: list[PatientDir],
-        long_gap_min_duration: Timedelta = Timedelta(days=14),  # From Honglui Yang 2024
-        warn_gap_threshold: Optional[Timedelta] = Timedelta(days=3),
+        long_gap_min_duration: Timedelta = LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING,
+        warn_gap_threshold: Optional[Timedelta] = LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING / 3,
         min_donor_n_segs: int = 100,
         max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,

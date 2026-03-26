@@ -4,6 +4,9 @@ import time
 from functools import wraps
 from pathlib import Path
 
+import numpy as np
+from pandas import Series, DataFrame
+
 
 def safe_float_to_int(num: float) -> int:
     if num != int(num):
@@ -116,3 +119,10 @@ def clean_mac_files(directory: Path):
                     logging.warning(f"Error removing {path}: {e}")
 
     logging.info(f"Removed {len(removed_files)} mac system files")
+
+
+def contains_nan(obj: DataFrame | Series | np.ndarray):
+    if isinstance(obj, DataFrame) or isinstance(obj, Series):
+        obj = obj.values
+    return np.isnan(obj).any()
+

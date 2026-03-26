@@ -35,7 +35,9 @@ def save_dataframe_multiformat(
         path: MultiPath,
         formats: tuple[str, ...] = ('csv', 'pickle'),
         save_index: bool = False,
-        make_parent_dir: bool = True):
+        make_parent_dir: bool = True,
+        csv_kwargs: dict = None,
+):
     """
     Save a pd.DataFrame in multiple formats (csv, pickle).
     :param formats: The formats to save the DataFrame in. The names must correspond to the properties of the ``MultiPath`` class.
@@ -51,7 +53,8 @@ def save_dataframe_multiformat(
             case 'pickle_visible':
                 df.to_pickle(path.pickle_visible)
             case 'csv':
-                df.to_csv(path.csv, index=save_index)
+                csv_kwargs = csv_kwargs or {}
+                df.to_csv(path.csv, index=save_index, **csv_kwargs)
             case 'ods':
                 df.to_excel(path.ods, index=save_index)
             case 'xlsx':
@@ -111,10 +114,7 @@ class PatientDir(type(Path())):
 
         # Cycles
         self.cycle_extraction_dir = Path(self, 'cycles')
-        self.filled_features_dir = Path(self.cycle_extraction_dir, 'filled_features')
-        self.filled_features_table = MultiPath(self.filled_features_dir, 'filled_features')
-
-
+        self.filled_features_for_segs = MultiPath(self.cycle_extraction_dir, 'filled_features_for_segs')
 
         return self
 
@@ -146,19 +146,24 @@ class Paths(type(Path())):
         self.patient_info_readable = Path(self.patient_info_dir, "patient_info_readable.csv")
         self.invalid_patients_dir = Path(self, "invalid_patients")
 
-        # model comparison
-        self.model_comparison_dir = Path(self, "model_comparison")
-        self.per_patient_comparison_table = MultiPath(self.model_comparison_dir, "per_patient")
-        self.per_model_comparison_table = MultiPath(self.model_comparison_dir, "per_model")
+        # model comparison, cycle extraction
+        self.statistical_results_dir = Path(self, "statistical_results")
+        self.per_patient_comparison_table = MultiPath(self.statistical_results_dir, "per_patient")
+        self.per_model_comparison_table = MultiPath(self.statistical_results_dir, "per_model")
+        self.cycle_extraction_results_table = MultiPath(self.statistical_results_dir, "cycle_extraction")
 
         return self
 
-    def patient_dirs(self, datasets: Optional[List[Dataset]] = None, include_invalid_ptnts: bool = False) -> List[
+    def patient_dirs(self, datasets: Optional[List[Dataset]] = None,
+                     include_invalid_ptnts: bool = False,
+                     include_fake_ptnts: bool = True,
+                     ) -> List[
         PatientDir]:
         """
         Return a list of patient directories of the given datasets
         :param datasets: The datasets to get patient dirs for (default: all)
         :param include_invalid_ptnts: Whether to include invalid patient dirs
+        :param include_fake_ptnts: Whether to include patients with "FAKE" in their name
         :returns: pdirs - a list of PatientDir objects
         """
         if datasets is None:
@@ -176,6 +181,9 @@ class Paths(type(Path())):
                     for pdir in sorted(dataset_path.iterdir()):
                         if pdir.is_dir():
                             pdirs.append(PatientDir(pdir, dataset=dataset))
+
+        if not include_fake_ptnts:
+            pdirs = [pdir for pdir in pdirs if "FAKE" not in pdir.name]
 
         return pdirs
 

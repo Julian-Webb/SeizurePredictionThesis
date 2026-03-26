@@ -101,7 +101,7 @@ def move_pdir(pdir: Path):
 def validate_patients(
         pdirs: Iterable[PatientDir],
         move_invalid_pdirs: bool,
-        leave_fake_ptnts: bool = False,
+        leave_fake_ptnts: bool = True,
 ) -> None:
     """
     Find valid seizures for all patients. Save the valid seizures info, and the patient timespan info to files.

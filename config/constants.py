@@ -1,4 +1,5 @@
 import pandas as pd
+from pandas import Timedelta
 
 # The sampling frequency of all EEG signals in the edf files
 SAMPLING_FREQUENCY_HZ = 207.0310546581987
@@ -9,7 +10,7 @@ N_CHANNELS = len(CHANNELS)
 
 # The shift used to go from a single marker to the estimated start
 # (as calculated in estimate_seizure_starts)
-single_marker_to_start_shift: pd.Timedelta | None = None
+single_marker_to_start_shift: Timedelta | None = None
 
 # The minimum number of valid seizures for a patient to be included in the analysis
 MIN_VALID_SEIZURES_PER_PATIENT = 10
@@ -33,3 +34,7 @@ MIN_SEGMENTS_PER_CLIP_RATIO = 0.875
 
 # The random state used for subsampling interictal segments and shuffling for the train data.
 RANDOM_STATE_FOR_TRAIN_DATA = 42
+
+# ---- Cycle Extraction ------------------------------------------------------------------------------------------------
+# How much time there must be between missing recording data to split the data into chunks, rather than filling it.
+LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING = Timedelta(days=14) # From Honglui Yang 2024

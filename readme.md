@@ -34,3 +34,5 @@ Various abbreviations throughout the code:
    2. clips
    3. event_based_metrics
    4. eval_models
+6. model_comparison.comparision_table
+7. cycle_extraction

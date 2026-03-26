@@ -5,6 +5,8 @@ import scipy.signal
 from scipy.signal import butter, sosfiltfilt
 from scipy.stats import norm
 
+from utils.utils import contains_nan
+
 
 def butter_bandpass_sos(a, b, fs=1.0, order=10, mode='f'):
     """
@@ -61,13 +63,13 @@ def butter_bandpass_sos(a, b, fs=1.0, order=10, mode='f'):
     low_norm = f_low / nyq
     high_norm = f_high / nyq
 
-    print(f"--- Butterworth Bandpass Filter ---")
-    print(f"Mode: {'Period' if mode == 'T' else 'Frequency'} input")
-    print(f"Sampling freq (fs): {fs} samples/day → Nyquist = {nyq:.4f} cycles/day")
-    print(f"Cutoff frequencies (cycles/day): {f_low:.6f} – {f_high:.6f}")
-    print(f"Normalized cutoff (0–1 Nyquist): {low_norm:.6f} – {high_norm:.6f}")
-    print(f"Total Filter Order: {order} (Prototype Order N={prototype_order_N})")
-    print("-----------------------------------")
+    # print(f"--- Butterworth Bandpass Filter ---")
+    # print(f"Mode: {'Period' if mode == 'T' else 'Frequency'} input")
+    # print(f"Sampling freq (fs): {fs} samples/day → Nyquist = {nyq:.4f} cycles/day")
+    # print(f"Cutoff frequencies (cycles/day): {f_low:.6f} – {f_high:.6f}")
+    # print(f"Normalized cutoff (0–1 Nyquist): {low_norm:.6f} – {high_norm:.6f}")
+    # print(f"Total Filter Order: {order} (Prototype Order N={prototype_order_N})")
+    # print("-----------------------------------")
 
     # --- 5. Sanity checks ---
     if low_norm <= 0 or high_norm >= 1 or low_norm >= high_norm:
@@ -139,6 +141,7 @@ def nc_filter(x, fs=1.0, range_circadian=0.33, multid_min=5 * 24, multid_max=50 
         A df containing the filtered signals:
         {'circadian': array, 'multidien': array}.
     """
+    if contains_nan(x): raise ValueError("x must not contain NaNs.")
     filtered_signals = pd.DataFrame()
 
     if 'circadian' in type_:
@@ -156,18 +159,19 @@ def nc_filter(x, fs=1.0, range_circadian=0.33, multid_min=5 * 24, multid_max=50 
         seizure_indices = np.array([])
 
     if figure:
-        plot_filtered(x, filtered_signals, range_circadian, multid_min, multid_max, seizure_indices)
+        plot_filtered(x, fs, filtered_signals, range_circadian, multid_min, multid_max, seizure_indices)
 
     return filtered_signals
 
 
-def plot_filtered(x, filtered_signals, range_circ, multid_min, multid_max, seizure_indices):
-    t, n = filtered_signals.shape
+def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, seizure_indices):
+    t, n_features = filtered_signals.shape
     # Create subplots: n+1 for original + n filtered signals
-    fig, axes = plt.subplots(n + 1, 1, figsize=(14, 2.2 * (n + 1)), sharex=True)
+    fig, axes = plt.subplots(n_features + 1, 1, figsize=(14, 2.2 * (n_features + 1)), sharex=True)
 
-    # X-axis: time in days (since fs=1.0 is samples/hour)
-    t = np.arange(t) / 24  # samples -> hours/24 = days
+    # X-axis: time in days
+    samples_per_day = fs * 24
+    t = np.arange(t) / samples_per_day
 
     # Plot original signal
     axes[0].plot(t, x, color='black', lw=0.25)
@@ -208,9 +212,34 @@ def plot_filtered(x, filtered_signals, range_circ, multid_min, multid_max, seizu
 
 def compute_plv(signal, seizure_indices, n_events):
     """Computes the phase locking value of events (seizures) to a signal"""
+    if contains_nan(signal): raise ValueError("signal contains NaN(s).")
+
     analytic_signal = scipy.signal.hilbert(signal)
     instantaneous_phase = np.angle(analytic_signal)
     event_phases = instantaneous_phase[seizure_indices]
+    mean_complex_vector = np.sum(np.exp(1j * event_phases)) / n_events
+    plv = np.abs(mean_complex_vector)
+    mean_angle = np.angle(mean_complex_vector)
+    mean_angle_deg = np.degrees(mean_angle) % 360
+
+    return plv, mean_angle, mean_angle_deg, event_phases
+
+
+def compute_plv_for_split_signal(signals: list[np.ndarray], szr_indices_list: list[np.ndarray]):
+    """Computes the phase locking value of events (seizures) to split signals"""
+    for i, sig in enumerate(signals):
+        if contains_nan(sig): raise ValueError(f"signal {i} contains NaN(s).")
+
+    # Process the signals
+    analytic_signals = [scipy.signal.hilbert(sig) for sig in signals]
+    instantaneous_phases = [np.angle(analytic_sig) for analytic_sig in analytic_signals]
+    event_phases_list = [inst_phase[szr_idxs] for inst_phase, szr_idxs in zip(instantaneous_phases, szr_indices_list)]
+
+    # Combine all extracted phases
+    event_phases = np.concatenate(event_phases_list)
+    n_events = len(event_phases)
+
+    # Compute overall PLV and mean angles
     mean_complex_vector = np.sum(np.exp(1j * event_phases)) / n_events
     plv = np.abs(mean_complex_vector)
     mean_angle = np.angle(mean_complex_vector)

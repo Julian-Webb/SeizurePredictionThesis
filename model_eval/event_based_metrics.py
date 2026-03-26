@@ -163,7 +163,7 @@ def event_based_metrics(
     8. The relative TIFW is the absolute TIFW / total recording duration.
     9. The relative number of seizures predicted is #seizures predicted / #total seizures
 
-    :param clips: DataFrame with columns '{model}_probability', 'end_time', 'valid' (optional)
+    :param clips: DataFrame with columns '{model}_probability', 'end_mtz', 'valid' (optional)
     :param edfs: The patient's EDF DataFrame
     :param szr_starts: The patient's seizure starts
     :param thresholds_per_model: If specified, will use these thresholds per model instead of all thresholds in clips.
@@ -179,7 +179,7 @@ def event_based_metrics(
                errors='ignore', inplace=True)
 
     #### Calculate all possible SPHs so that we can later select the processed SPHs per threshold
-    all_wts: Series = clips['end_time']
+    all_wts: Series = clips['end_mtz']
     all_sphs = DataFrame({'types': clips['types']})
     all_sphs['start'] = all_wts + intervention_iv.exact_dur
     all_sphs['end'] = all_sphs['start'] + sph_iv.exact_dur

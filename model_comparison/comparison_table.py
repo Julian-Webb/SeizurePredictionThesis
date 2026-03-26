@@ -152,9 +152,6 @@ def make_comparison_table_and_save(
 
 
 if __name__ == '__main__':
-    all_pdirs = PATHS.patient_dirs()
-    pdirs_ = [pdir for pdir in all_pdirs if "FAKE" not in pdir.name]
-    # Optional: Add FAKE patients to the end of the list
-    # pdirs_ += [pdir for pdir in all_pdirs if "FAKE" in pdir.name]
+    pdirs_ = PATHS.patient_dirs(include_fake_ptnts=False)
     make_comparison_table_and_save(pdirs_)
     print(f"Created comparison tables for {len(pdirs_)} patients.")

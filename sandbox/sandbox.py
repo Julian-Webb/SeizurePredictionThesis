@@ -1,57 +1,73 @@
-from pathlib import Path
-from config import PATHS
-from model_eval.calc_segment_probabilities import calc_ptnt_seg_probabilities
-from models.CNN import create_ptnt_cnn_and_save
-from utils import QueuedCall
-from models.ensemble import create_ptnt_ensemble_and_save
-from utils import run_queued_calls_on_gpus
-import numpy as np
-from sklearn.metrics import precision_recall_curve
+import logging
+import shutil
+
+import model_eval.calc_segment_probabilities
+import model_eval.clips
+import model_eval.eval_models
+import model_eval.event_based_metrics
+from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
+from config import Paths
+from config import PatientDir, PATHS
+from feature_extraction.extract_features import extract_features
+from preprocessing.filter_signals import filter_all_edfs
+from preprocessing.segment_tables import segment_tables
+from preprocessing.train_test_allocation import find_ptnt_splits
+from preprocessing.validate_patients import validate_patients
 
 
-def check_files_contained_in_both():
-    src = Path('/data/home/webb/seizure_annotations/STEP1_original_anns/toadd')
-    dst = Path('/data/home/webb/seizure_annotations/STEP1_original_anns/')
+def remove_unnecessary_files():
+    root = Paths('/data/home/webb/d/UNEEG_base')
+    for pdir in root.patient_dirs():
+        dirs_to_del = [
+            pdir.cycle_extraction_dir,
+            pdir.model_eval_dir,
+            pdir.models_dir,
+            pdir.predictions_dir,
+        ]
+        multipath_files_to_del = [
+            pdir.valid_edf_intervals,
+            pdir.invalid_edf_intervals,
+            pdir.segments_table,
+            pdir.train_test_split,
+            pdir.all_szr_starts_file,
+            pdir.valid_szr_starts_file,
+        ]
+        files_to_del = [pdir.segments_plot]
 
-    for src_pdir in sorted(list(src.iterdir())):
-        dst_pdir = dst / src_pdir.name
-        dst_files = [f.name for f in dst_pdir.iterdir()]
-        for file in src_pdir.iterdir():
-            if file.name in dst_files:
-                # print(f'✓ File contained: {file.parent.name}/{file.name}')
+        for d in dirs_to_del:
+            # print(d)
+            try:
+                shutil.rmtree(d)
+            except FileNotFoundError:
                 pass
-            else:
-                print(f'x File not in dst: {file.parent.name}/{file.name}')
+
+        for f in multipath_files_to_del:
+            # print(f)
+            f.csv.unlink(missing_ok=True)
+            f.pickle.unlink(missing_ok=True)
+
+        for f in files_to_del:
+            f.unlink(missing_ok=True)
 
 
-def metrics():
-    y_true = np.array([0, 0, 0, 1, 1, 1])
-    y_pred_proba = np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9])
-
-    precision_recall_curve(y_true, y_pred_proba)
-
-
-def train_models():
-    tasks = []
-    for pdir in PATHS.patient_dirs():
-        tasks.append(QueuedCall(func=create_ptnt_cnn_and_save, args=(pdir,), label=f"{pdir.name} - CNN"))
-        tasks.append(QueuedCall(func=create_ptnt_ensemble_and_save, args=(pdir,), label=f"{pdir.name} - FB-MLP"))
-
-    run_queued_calls_on_gpus(tasks=tasks, gpus=[1, 2, 3])
-
-
-def predictions():
-    pdirs = PATHS.patient_dirs()[1:]
-
-    tasks = []
-    for pdir in pdirs:
-        tasks.append(
-            QueuedCall(func=calc_ptnt_seg_probabilities, args=(pdir,), label=f'{pdir.name} - calc_seg_probabilities'))
-
-
-    run_queued_calls_on_gpus(tasks=tasks, gpus=[1, 2, 3])
+def process_ptnt(pdir: PatientDir):
+    logging.basicConfig(level=logging.INFO, format=f'[%(levelname)s] - %(message)s')
+    pdirs = [pdir]
+    drop_duplicates_and_localize(pdirs)
+    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=False)
+    # filter_all_edfs(pdirs)
+    segment_tables(pdirs)
+    find_ptnt_splits(pdirs)
+    extract_features(pdirs)
+    # model_eval.calc_segment_probabilities.main(pdirs, serial_processing=False)
+    model_eval.clips.main(pdirs)
+    model_eval.event_based_metrics.calc_metrics(pdirs)
+    model_eval.eval_models.main(pdirs)
 
 
 if __name__ == '__main__':
+    # remove_unnecessary_files()
+    pdir = PATHS.patient_dirs()[6]
+    print(pdir)
+    process_ptnt(pdir)
     pass
-    # predictions()

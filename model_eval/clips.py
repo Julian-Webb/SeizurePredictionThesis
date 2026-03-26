@@ -101,9 +101,10 @@ def make_ptnt_clips(
     # ==================================================================================================================
     clips = DataFrame({'start_seg': all_clip_starts, 'end_seg': all_clip_ends})
 
-    # Calculate end datetime
+    # Calculate start and end datetime
+    clips['start_mtz'] = segs.loc[clips['start_seg'], 'start_mtz'].values
     end_segs_start = segs.loc[clips['end_seg'], 'start_mtz'].values
-    clips['end_time'] = end_segs_start + SEGMENT.exact_dur
+    clips['end_mtz'] = end_segs_start + SEGMENT.exact_dur
 
     # Check if the clip is full (has all segs_per_clip "theoretical" segments (whether actual recordings exist or not))
     clips['segs_in_clip'] = clips['end_seg'] - clips['start_seg'] + 1
@@ -140,7 +141,7 @@ def make_ptnt_clips(
     clips['valid'] = clips['full'] & clips['sufficient_data']
 
     # Sort columns
-    clips = clips[['start_seg', 'end_seg', 'end_time', *list(probability_columns), 'preictal', 'types',
+    clips = clips[['start_seg', 'end_seg', 'start_mtz', 'end_mtz', *list(probability_columns), 'preictal', 'types',
                    'valid', 'segs_in_clip', 'full', 'n_existing', 'sufficient_data']]
 
     return clips
