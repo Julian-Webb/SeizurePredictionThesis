@@ -2,7 +2,7 @@ import logging
 import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import List, Tuple, NamedTuple
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -152,17 +152,18 @@ class Features:
         )
 
 
-class FileChunkInfo(NamedTuple):
-    chunk_id: int  # (Index)
-    file_path: Path
-    start_index: int
-    n_segs: int
-
-
-def _extract_chunk_features(chunk_info: FileChunkInfo) -> Tuple[int, ndarray]:
-    """Extract features for one continuous chunk of a file and return (chunk_id, features)."""
-    arr = Features(chunk_info.file_path, chunk_info.start_index, chunk_info.n_segs).to_array()
-    return chunk_info.chunk_id, arr
+def _extract_chunk_features(chunk_info: np.ndarray) -> Tuple[int, ndarray]:
+    """
+    Extract features for one continuous chunk of a file and return (chunk_id, features).
+    Parameters
+    ----------
+    chunk_info: np.ndarray
+        A tuple with the chunk_id, file_path, start_index, and number of segments in the chunk.
+    """
+    chunk_id, start_index, n_segs, file_path = chunk_info
+    print(f'{chunk_id} : {file_path.name}')
+    arr =  Features(file_path, start_index, n_segs).to_array()
+    return chunk_id, arr
 
 
 def iter_feature_results(chunk_infos: DataFrame, serial_processing: bool) -> List[Tuple[int, ndarray]]:
@@ -170,16 +171,16 @@ def iter_feature_results(chunk_infos: DataFrame, serial_processing: bool) -> Lis
     Parameters
     ----------
     chunk_infos: DataFrame
-        Chunk information per-row with columns: 'chunk_id', 'file_path', 'start_index', 'n_segs'
+        Chunk information per-row with columns: 'chunk_id', 'start_index', 'n_segs', 'file_path',
     """
-    iterables = chunk_infos.itertuples(index=False, name="FileChunkInfo")
+    # Change to numpy so that it can be pickled for multiprocessing and iterate through the rows
+    chunk_infos_numpy = chunk_infos.to_numpy() # shape = (n_chunks, 4)
 
     if serial_processing:
-        # noinspection PyTypeChecker
-        return [_extract_chunk_features(c) for c in iterables]
+        return [_extract_chunk_features(c) for c in chunk_infos_numpy]
     else:
         with ProcessPoolExecutor() as exe:
-            return list(exe.map(_extract_chunk_features, iterables, chunksize=512))
+            return list(exe.map(_extract_chunk_features, chunk_infos_numpy, chunksize=512))
 
 
 def find_continuous_file_chunk_id_for_segs(file_col: Series):
@@ -219,10 +220,10 @@ def extract_ptnt_features(segs: DataFrame, edf_dir: Path, serial_processing: boo
 
     # A chunk per row (index: chunk_id)
     chunk_infos = DataFrame({
+        'chunk_id': first_seg_in_chunk.index,
         'start_index': first_seg_in_chunk['start_index'],
-        'file_path': edf_dir / first_seg_in_chunk['file'],
         'n_segs': segs_chunked.size(),
-        'chunk_id': first_seg_in_chunk.index
+        'file_path': edf_dir / first_seg_in_chunk['file'],
     })
 
     # Compute Features and Assign to segs DataFrame
@@ -257,4 +258,4 @@ def run_feature_extraction(pdirs: List[PatientDir], serial_processing: bool = Fa
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
-    run_feature_extraction(PATHS.patient_dirs())
+    run_feature_extraction(PATHS.patient_dirs(), serial_processing=False)
