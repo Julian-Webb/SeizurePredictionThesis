@@ -1,24 +1,22 @@
 import logging
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from dataclasses import dataclass
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, NamedTuple
 
 import numpy as np
 import pandas as pd
 from numpy import ndarray
+from pandas import Series, DataFrame
 from scipy.integrate import simpson
 from scipy.signal import welch
 from statsmodels.tsa import stattools
 
-from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
 from config import PatientDir, PATHS
-from utils.edf_utils import load_segmented_sigs
 from config import save_dataframe_multiformat
-
-# How many files to process per file batch
-FILE_BATCH_SIZE: int = 128
+from config.constants import SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS
+from utils.edf_utils import load_segmented_sigs
+from utils.utils import timeit
 
 
 def autocorrelation_function_width(sig: ndarray) -> int:
@@ -106,16 +104,16 @@ class Features:
     bandpowers: ndarray. shape = (#segs, #chn, #bands)
     """
 
-    def __init__(self, file_path: Path, first_idx: int, n_segs: int):
+    def __init__(self, file_path: Path, start_index: int, n_segs: int):
         """
-        Extract features for all segments in an EDF file as a batch-operation.
-        :param first_idx: The index of the first segment start in the EDF file.
+        Extract features for all segments in a continuous chunk of an EDF file.
+        :param start_index: The index of the first segment's start in the EDF file.
         """
         st = time.perf_counter()
 
         # Read signals and segment them
         # Segmented signals with shape [#segments, #channels, #samples per seg]
-        ss = load_segmented_sigs(file_path, first_idx, n_segs)
+        ss = load_segmented_sigs(file_path, start_index, n_segs)
         # Compute Features
         self.corrcoefs = np.expand_dims(
             [np.corrcoef(ss[seg, 0, :], ss[seg, 1, :])[0, 1] for seg in range(n_segs)],
@@ -125,11 +123,6 @@ class Features:
         self.bandpowers = bandpowers_vectorized(ss, SAMPLING_FREQUENCY_HZ, SPECTRAL_BANDS)
 
         logging.debug(f"Features extracted in {time.perf_counter() - st:.3f} sec for : {file_path.name}")
-
-    @classmethod
-    def init_to_array(cls, file_path: Path, first_idx: int, n_segs: int):
-        """Initialize and directly return the features as an array"""
-        return cls(file_path, first_idx, n_segs).to_array()
 
     def to_array(self) -> ndarray:
         """
@@ -159,84 +152,109 @@ class Features:
         )
 
 
-@dataclass
-class FileInfo:
+class FileChunkInfo(NamedTuple):
+    chunk_id: int  # (Index)
     file_path: Path
-    first_idx: int
+    start_index: int
     n_segs: int
 
 
-def extract_file_batch_features(files_infos: List[FileInfo]):
-    logging.info(f"Batch-extracting features for {len(files_infos)} files")
-    st = time.perf_counter()
-
-    file_features = {}
-    for f in files_infos:
-        file_name = f.file_path.name
-        # Compute Features
-        file_features[file_name] = Features.init_to_array(f.file_path, f.first_idx, f.n_segs)
-
-    logging.info(f"Batch features extracted in {time.perf_counter() - st:.3f} sec for : {len(files_infos)} files")
-    return file_features
+def _extract_chunk_features(chunk_info: FileChunkInfo) -> Tuple[int, ndarray]:
+    """Extract features for one continuous chunk of a file and return (chunk_id, features)."""
+    arr = Features(chunk_info.file_path, chunk_info.start_index, chunk_info.n_segs).to_array()
+    return chunk_info.chunk_id, arr
 
 
-def extract_ptnt_features(pdir: PatientDir, serial_processing: bool = False):
-    logging.info(f"Extracting features for {pdir.name}")
-    start_time = time.perf_counter()
-    segs = pd.read_pickle(pdir.segments_table.pickle)
-
-    # Iterate through the existing segments based on their file
-    # Note: There are typically around 500-2000 EDFs per patient
+def iter_feature_results(chunk_infos: DataFrame, serial_processing: bool) -> List[Tuple[int, ndarray]]:
+    """Yield (chunk_id, feature_array) for each continuous chunk.
+    Parameters
+    ----------
+    chunk_infos: DataFrame
+        Chunk information per-row with columns: 'chunk_id', 'file_path', 'start_index', 'n_segs'
+    """
+    iterables = chunk_infos.itertuples(index=False, name="FileChunkInfo")
 
     if serial_processing:
-        for file_name, file_segs in segs.groupby('file', sort=False, dropna=True):
-            file_path = pdir.edf_dir / file_name
-            first_idx = file_segs.iloc[0]['start_index']
-            n_segs = file_segs.shape[0]
-            segs.loc[file_segs.index, FeatureNames.ALL_ORDERED] = Features.init_to_array(file_path, first_idx, n_segs)
-
+        # noinspection PyTypeChecker
+        return [_extract_chunk_features(c) for c in iterables]
     else:
-        # Retrieve file infos
-        files_infos = []
-        file_indices = {}
-        for file_name, file_segs in segs.groupby('file', sort=False, dropna=True):
-            file_path = pdir.edf_dir / file_name
-            first_idx = file_segs.iloc[0]['start_index']
-            n_segs = file_segs.shape[0]
-            files_infos.append(FileInfo(file_path, first_idx, n_segs))
-            file_indices[file_name] = file_segs.index
-
-        # Make batches
-        batches = [files_infos[i: i + FILE_BATCH_SIZE] for i in range(0, len(files_infos), FILE_BATCH_SIZE)]
-        logging.info(f"Created {len(batches)} batches for patient {pdir.name}")
-
-        # Compute Features in batches in parallel
         with ProcessPoolExecutor() as exe:
-            futures = [exe.submit(extract_file_batch_features, batch) for batch in batches]
+            return list(exe.map(_extract_chunk_features, iterables, chunksize=512))
 
-            # Update segs
-            for future in as_completed(futures):
-                batch_res = future.result()
-                for file_name, features_arr in batch_res.items():
-                    segs.loc[file_indices[file_name], FeatureNames.ALL_ORDERED] = features_arr
 
+def find_continuous_file_chunk_id_for_segs(file_col: Series):
+    """
+    Find continuous segments that belong to the same file (without NA gaps).
+    :param file_col: segs['file']
+    :return:
+    """
+    is_real = file_col.notna()
+    prev_is_real = is_real.shift(fill_value=False)
+    chunk_start = is_real & ((~prev_is_real) | (file_col != file_col.shift()))
+    chunk_id = chunk_start.cumsum()  # all rows get run ids
+    continuous_file_chunk_id = chunk_id.where(is_real)  # gaps -> NaN
+    continuous_file_chunk_id.name = 'chunk_id'
+    return continuous_file_chunk_id
+
+
+def extract_ptnt_features(segs: DataFrame, edf_dir: Path, serial_processing: bool = False):
+    """
+    Parameters
+    ----------
+    segs: DataFrame
+        pd.read_pickle(pdir.segments_table.pickle)
+    edf_dir: Path
+    serial_processing: bool
+
+    Returns
+    -------
+    segs: DataFrame
+        The original DataFrame with the new features.
+    """
+    continuous_file_chunk_id = find_continuous_file_chunk_id_for_segs(segs['file'])
+
+    # Extract only necessary information to pass to workers
+    segs_chunked = segs.groupby(continuous_file_chunk_id, sort=False, dropna=True)
+    first_seg_in_chunk = segs_chunked.first()
+
+    # A chunk per row (index: chunk_id)
+    chunk_infos = DataFrame({
+        'start_index': first_seg_in_chunk['start_index'],
+        'file_path': edf_dir / first_seg_in_chunk['file'],
+        'n_segs': segs_chunked.size(),
+        'chunk_id': first_seg_in_chunk.index
+    })
+
+    # Compute Features and Assign to segs DataFrame
+    segs.loc[:, FeatureNames.ALL_ORDERED] = np.nan
+    chunk_features = iter_feature_results(chunk_infos, serial_processing)
+    for chunk_id, features_arr in chunk_features:
+        indices = segs_chunked.indices[chunk_id]
+        segs.loc[indices, FeatureNames.ALL_ORDERED] = features_arr
+
+    return segs
+
+
+@timeit(kwarg_names=['pdir'])
+def extract_ptnt_features_and_save_from_pdir(pdir: PatientDir, serial_processing: bool = False):
+    logging.info(f"[{pdir.name}] Extracting features...")
+    segs = pd.read_pickle(pdir.segments_table.pickle)
+    segs = extract_ptnt_features(segs, pdir.edf_dir, serial_processing)
     save_dataframe_multiformat(segs, pdir.segments_table)
-    logging.info(f"Features extracted for {pdir.name} in {time.perf_counter() - start_time:.3f} sec.")
+    logging.info(f"[{pdir.name}] Finished feature Extraction...")
 
 
-def extract_features(pdirs: List[PatientDir], serial_processing: bool = False):
+@timeit
+def run_feature_extraction(pdirs: List[PatientDir], serial_processing: bool = False):
     """Extract the features for the segments of a patient."""
-    st = time.perf_counter()
     if serial_processing:
         for pdir in pdirs:
-            extract_ptnt_features(pdir, serial_processing)
+            extract_ptnt_features_and_save_from_pdir(pdir, serial_processing)
     else:
         with ProcessPoolExecutor() as exe:
-            exe.map(extract_ptnt_features, pdirs)
-
-    logging.info(f"[TIMING] Extracted features in {time.perf_counter() - st:.3f} sec")
+            list(exe.map(extract_ptnt_features_and_save_from_pdir, pdirs))
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
-    extract_features(PATHS.patient_dirs())
+    run_feature_extraction(PATHS.patient_dirs())

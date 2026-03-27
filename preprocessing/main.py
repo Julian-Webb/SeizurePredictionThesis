@@ -6,7 +6,7 @@ from preprocessing.filter_signals import filter_all_edfs
 from preprocessing.segment_tables import make_segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
-from feature_extraction.extract_features import extract_features
+from feature_extraction.extract_features import run_feature_extraction
 from utils.utils import FunctionTimer
 
 
@@ -46,7 +46,7 @@ def preprocessing(
 
         logging.info("Extracting features")
         with FunctionTimer('extract_features'):
-            extract_features(pdirs)
+            run_feature_extraction(pdirs)
 
 
 if __name__ == "__main__":

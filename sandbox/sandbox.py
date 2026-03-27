@@ -8,7 +8,7 @@ import model_eval.event_based_metrics
 from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
 from config import Paths
 from config import PatientDir, PATHS
-from feature_extraction.extract_features import extract_features
+from feature_extraction.extract_features import run_feature_extraction
 from preprocessing.filter_signals import filter_all_edfs
 from preprocessing.segment_tables import make_segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
@@ -58,7 +58,7 @@ def process_ptnt(pdir: PatientDir):
     # filter_all_edfs(pdirs)
     make_segment_tables(pdirs)
     find_ptnt_splits(pdirs)
-    extract_features(pdirs)
+    run_feature_extraction(pdirs)
     # model_eval.calc_segment_probabilities.main(pdirs, serial_processing=False)
     model_eval.clips.main(pdirs)
     model_eval.event_based_metrics.calc_metrics(pdirs)
