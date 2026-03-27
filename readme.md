@@ -27,12 +27,12 @@ Various abbreviations throughout the code:
     2. filter_signals
     3. segment_tables
     4. train_test_allocation
-3. feature_extraction.extract_features
-4. models.train_models
-5. model_eval
+    5. feature_extraction.extract_features
+3. models.train_models
+4. model_eval
    1. calc_segment_probabilities
    2. clips
    3. event_based_metrics
    4. eval_models
-6. model_comparison.comparision_table
-7. cycle_extraction
+5. model_comparison.comparision_table
+6. cycle_extraction
