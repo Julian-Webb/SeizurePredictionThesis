@@ -12,8 +12,6 @@ def model_eval(
     """
     Run all the model evaluation steps.
     """
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-
     with FunctionTimer("====== Calculating Segment Probabilities ======="):
         calc_segment_probabilities.main(pdirs, serial_processing=False, available_gpus=available_gpus)
 
@@ -28,6 +26,8 @@ def model_eval(
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
+
     model_eval(
         PATHS.patient_dirs(),
         available_gpus=[0, 1, 2, 3]

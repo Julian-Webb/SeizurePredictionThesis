@@ -1,10 +1,11 @@
-import logging
+from datetime import datetime
 
 from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
 from config import PATHS
 from model_eval.main import model_eval
 from models.train_models import train_models
 from preprocessing.main import preprocessing
+from utils.logging_config import configure_root_logging
 
 
 def main(
@@ -17,22 +18,31 @@ def main(
     if ask_confirm:
         input(f"Preprocessing for {PATHS.root}. Press enter to continue.")
 
-    def setup_logging():
-        logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(asctime)s: %(message)s",
-                            datefmt="%Y-%m-%d %H:%M:%S")
-    setup_logging()
+    run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    PATHS.logs_dir.mkdir(parents=True, exist_ok=True)
+
+    # Default logging for top-level orchestration and console output.
+    configure_root_logging()
 
     pdirs = PATHS.patient_dirs()
 
     # Clean Annotations
+    configure_root_logging(log_file=PATHS.logs_dir / f"clean_annotations_{run_name}.log")
     drop_duplicates_and_localize(pdirs)
 
-    preprocessing(ask_confirm=False, setup_logging=True)
+    # Preprocessing
+    configure_root_logging(log_file=PATHS.logs_dir / f"preprocessing_{run_name}.log")
+    preprocessing(ask_confirm=False, setup_logging=False)
 
+    # train_models sets up and manages its own logs.
+    configure_root_logging()
     train_models(pdirs, gpus=available_gpus, train_cnn=True, train_ensemble=True)
 
-    setup_logging() # just to make sure the logs aren't written to files any more
+    # Model Evaluation
+    configure_root_logging(log_file=PATHS.logs_dir / f"model_eval_{run_name}.log")
     model_eval(pdirs, available_gpus)
+
+    configure_root_logging()
 
 if __name__ == "__main__":
     main(

@@ -7,6 +7,7 @@ from preprocessing.segment_tables import make_segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
 from feature_extraction.extract_features import run_feature_extraction
+from utils.logging_config import configure_root_logging
 from utils.utils import FunctionTimer
 
 
@@ -16,10 +17,8 @@ def preprocessing(
 ):
     if setup_logging:
         logging_file = PATHS.logs_dir / f'preprocessing_{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}.log'
-        logging_file.parent.mkdir(exist_ok=True, parents=True)
         print(f"Logging to: {logging_file}")
-        logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(asctime)s: %(message)s",
-                            datefmt="%Y-%m-%d %H:%M:%S")
+        configure_root_logging(log_file=logging_file)
 
     logging.info("==== Preprocessing ====")
 
