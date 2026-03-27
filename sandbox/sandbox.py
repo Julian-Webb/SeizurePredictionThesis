@@ -10,7 +10,7 @@ from config import Paths
 from config import PatientDir, PATHS
 from feature_extraction.extract_features import extract_features
 from preprocessing.filter_signals import filter_all_edfs
-from preprocessing.segment_tables import segment_tables
+from preprocessing.segment_tables import make_segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
 
@@ -56,7 +56,7 @@ def process_ptnt(pdir: PatientDir):
     drop_duplicates_and_localize(pdirs)
     validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=False)
     # filter_all_edfs(pdirs)
-    segment_tables(pdirs)
+    make_segment_tables(pdirs)
     find_ptnt_splits(pdirs)
     extract_features(pdirs)
     # model_eval.calc_segment_probabilities.main(pdirs, serial_processing=False)

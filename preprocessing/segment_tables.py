@@ -15,18 +15,6 @@ from config import PatientDir, PATHS, save_dataframe_multiformat
 from utils.edf_utils import time_to_index
 
 
-def load_ptnt_timespan_info(pdir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
-    """
-    :return: start of the recordings, end of the recordings, timespan
-    """
-    ptnts_info = pd.read_pickle(PATHS.patient_info_exact.pickle)
-    dataset = pdir.parent.name
-    ptnt = pdir.name
-    ptnt_info = ptnts_info.loc[dataset, ptnt]
-    # noinspection PyTypeChecker
-    return ptnt_info['recordings_start'], ptnt_info['recordings_end'], ptnt_info['timespan']
-
-
 # noinspection PyUnresolvedReferences
 def find_existing_segs(valid_edf_intervals: DataFrame, edfs: DataFrame, segs: DataFrame) -> DataFrame:
     """In the segs DataFrame, fill in which segments exist in the valid EDF data."""
@@ -85,29 +73,56 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
     return segs
 
 
-def make_segs_table(pdir: PatientDir):
-    first_start, last_end, timespan = load_ptnt_timespan_info(pdir)
-
+def make_segs_table(
+        first_recording_start: Timestamp,
+        timespan: Timedelta,
+        valid_edf_intervals: DataFrame,
+        edfs: DataFrame,
+        valid_szrs: DataFrame,
+):
     # We floor here because we only want full segments
     n_segs = math.floor(timespan / SEGMENT.exact_dur)
-
-    segs = DataFrame(columns=['start_mtz', 'end_mtz', 'type', 'lead_szr', 'exists', 'file', 'start_index'],
-                     index=np.arange(n_segs))
+    segs = DataFrame(index=np.arange(n_segs),
+                     columns=['start_mtz', 'end_mtz', 'type', 'lead_szr', 'exists', 'file', 'start_index'])
 
     # The start is shifted by the duration of a segment per segment
-    segs['start_mtz'] = first_start + segs.index * SEGMENT.exact_dur
+    segs['start_mtz'] = first_recording_start + segs.index * SEGMENT.exact_dur
     segs['end_mtz'] = segs['start_mtz'] + SEGMENT.exact_dur
-
-    valid_intervals = pd.read_pickle(pdir.valid_edf_intervals.pickle)
-    edfs = pd.read_pickle(pdir.edf_files_table.pickle)
-    segs = find_existing_segs(valid_intervals, edfs, segs)
-    valid_szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)
+    segs = find_existing_segs(valid_edf_intervals, edfs, segs)
     segs = find_seg_type(segs, valid_szrs)
+
     return segs
 
 
-def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: str = None, figsize=(30, 8),
-              savepath: str = None,
+def load_ptnt_timespan_info(pdir: PatientDir) -> Tuple[Timestamp, Timestamp, Timedelta]:
+    """
+    :return: start of the recordings, end of the recordings, timespan
+    """
+    ptnts_info = pd.read_pickle(PATHS.patient_info_exact.pickle)
+    dataset = pdir.parent.name
+    ptnt = pdir.name
+    ptnt_info = ptnts_info.loc[dataset, ptnt]
+    # noinspection PyTypeChecker
+    return ptnt_info['recordings_start'], ptnt_info['recordings_end'], ptnt_info['timespan']
+
+
+def make_segs_table_from_pdir(pdir: PatientDir):
+    first_recording_start, _, timespan = load_ptnt_timespan_info(pdir)
+
+    return make_segs_table(
+        first_recording_start, timespan,
+        pd.read_pickle(pdir.valid_edf_intervals.pickle),
+        pd.read_pickle(pdir.edf_files_table.pickle),
+        pd.read_pickle(pdir.valid_szr_starts_file.pickle)
+    )
+
+
+def plot_segs(segs: DataFrame,
+              szrs: DataFrame,
+              edfs: DataFrame = None,
+              title: str = None,
+              figsize=(30, 8),
+              save_path: str = None,
               show: bool = True):
     types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, INTERVENTION.label, POSTICTAL.label, INTER_POST.label]
     type_to_y = {t: i for i, t in enumerate(types)}
@@ -161,8 +176,8 @@ def plot_segs(segs: DataFrame, szrs: DataFrame, edfs: DataFrame = None, title: s
     ax.grid(axis='x', linestyle='--', alpha=0.4)
     ax.legend(loc='upper left')
 
-    if savepath:
-        fig.savefig(savepath, bbox_inches='tight')
+    if save_path:
+        fig.savefig(save_path, bbox_inches='tight')
     if show:
         plt.show()
     plt.close(fig)
@@ -174,17 +189,17 @@ def make_segs_table_and_plot(pdir: PatientDir, from_preexisting_segs: bool = Fal
     if from_preexisting_segs:
         segs = pd.read_pickle(pdir.segments_table.pickle)
     else:
-        segs = make_segs_table(pdir)
+        segs = make_segs_table_from_pdir(pdir)
         save_dataframe_multiformat(segs.drop(columns=['end_mtz']), pdir.segments_table)
 
     # Make the plot
     szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)
     edfs = pd.read_pickle(pdir.edf_files_table.pickle)
 
-    plot_segs(segs, szrs, edfs, pdir.name, show=False, savepath=pdir.segments_plot)
+    plot_segs(segs, szrs, edfs, pdir.name, show=False, save_path=pdir.segments_plot)
 
 
-def segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
+def make_segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
             logging.info(f'Seg table for : {pdir.name}')
@@ -205,7 +220,7 @@ def segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    segment_tables(PATHS.patient_dirs())
+    make_segment_tables(PATHS.patient_dirs())
 
     # Just make plots
     # for pdir in PATHS.patient_dirs():

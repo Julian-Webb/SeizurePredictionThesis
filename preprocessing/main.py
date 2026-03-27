@@ -3,7 +3,7 @@ import logging
 
 from config import PATHS
 from preprocessing.filter_signals import filter_all_edfs
-from preprocessing.segment_tables import segment_tables
+from preprocessing.segment_tables import make_segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients
 from feature_extraction.extract_features import extract_features
@@ -38,7 +38,7 @@ def preprocessing(
 
         logging.info("===== Creating segment tables =====")
         with FunctionTimer('segment_tables'):
-            segment_tables(pdirs)
+            make_segment_tables(pdirs)
 
         logging.info("Splitting data into train and test")
         with FunctionTimer('split_train_test'):
