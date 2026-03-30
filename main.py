@@ -20,7 +20,10 @@ def main(
     Perform all steps of the data pipeline to process the data from a copy of UNEEG_base
     """
     if ask_confirm:
-        input(f"Preprocessing for {PATHS.root}. Press enter to continue.")
+        print(f"Preprocessing for {PATHS.root}. Patients:")
+        for pdir in pdirs:
+            print(f"  {pdir.name}")
+        input(f"Press enter to continue.")
 
     run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     PATHS.logs_dir.mkdir(parents=True, exist_ok=True)
