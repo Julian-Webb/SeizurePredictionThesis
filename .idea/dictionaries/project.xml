@@ -5,6 +5,7 @@
       <w>acfws</w>
       <w>corrcoef</w>
       <w>corrcoefs</w>
+      <w>ebms</w>
       <w>edfs</w>
       <w>esegs</w>
       <w>freqs</w>
@@ -22,6 +23,7 @@
       <w>sphs</w>
       <w>startdate</w>
       <w>szrs</w>
+      <w>threshs</w>
       <w>tifw</w>
       <w>uneeg</w>
       <w>uniclinic</w>

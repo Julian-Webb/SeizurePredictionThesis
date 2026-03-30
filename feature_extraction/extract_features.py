@@ -161,7 +161,7 @@ def _extract_chunk_features(chunk_info: np.ndarray) -> Tuple[int, ndarray]:
         A tuple with the chunk_id, file_path, start_index, and number of segments in the chunk.
     """
     chunk_id, start_index, n_segs, file_path = chunk_info
-    print(f'{chunk_id} : {file_path.name}')
+    logging.debug("%s, %s", chunk_id, file_path.name)
     arr =  Features(file_path, start_index, n_segs).to_array()
     return chunk_id, arr
 
@@ -242,7 +242,7 @@ def extract_ptnt_features_and_save_from_pdir(pdir: PatientDir, serial_processing
     segs = pd.read_pickle(pdir.segments_table.pickle)
     segs = extract_ptnt_features(segs, pdir.edf_dir, serial_processing)
     save_dataframe_multiformat(segs, pdir.segments_table)
-    logging.info(f"[{pdir.name}] Finished feature Extraction...")
+    logging.info(f"[{pdir.name}] Finished feature Extraction.")
 
 
 @timeit

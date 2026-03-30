@@ -119,7 +119,7 @@ def eval_ptnt(
         models: tuple[str] = ('CNN', 'ensemble'),
 ):
     """Evaluate both train and test splits for models."""
-    logging.info(f"==== Processing patient: {pdir.name}")
+    logging.info(f"[{pdir.name}] Evaluating models: {models}")
 
     clips_per_split = load_data_per_split(pdir)['clips']
 

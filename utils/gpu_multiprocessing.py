@@ -152,6 +152,11 @@ def _merge_gpu_logs_by_id(
             gpu_log_file = log_dir / f"gpu_{gpu_id}.log"
             if gpu_log_file.exists():
                 gpu_log_file.unlink()
+        # Clean up the run directory only if nothing else is in it.
+        try:
+            log_dir.rmdir()
+        except (FileNotFoundError, OSError):
+            pass
 
 
 def run_queued_calls_on_gpus(
@@ -172,7 +177,8 @@ def run_queued_calls_on_gpus(
             If ``False``, worker raises and exits on first failing task.
         log_dir: Directory for per-GPU logs. If ``None``, workers log to stdout.
         merged_log_file: If provided with ``log_dir``, writes one merged log ordered by GPU id.
-        keep_gpu_logs: Keep intermediate ``gpu_<id>.log`` files after merge.
+        keep_gpu_logs: Keep intermediate ``gpu_<id>.log`` files after merge. If ``False``,
+            per-GPU logs are deleted and ``log_dir`` is removed when it is empty.
     """
 
     gpus = list(gpus)

@@ -1,4 +1,7 @@
+import logging
 import pickle
+from datetime import datetime
+from pathlib import Path
 from typing import Iterable
 
 import numpy as np
@@ -21,7 +24,7 @@ def calc_ptnt_seg_probabilities(
     :param batch_size: Batch size for training with tensorflow (segments per batch).
      Needs to be small enough to not overallocate GPU memory, but large enough to be efficient.
     """
-    # print(f'{[pdir.name]} Making raw predictions...', flush=True)
+    logging.info(f'[{pdir.name}] Making raw predictions...')
     import tensorflow as tf  # Local import, so only GPUs available to this process are initialized
 
     specs_per_model = {
@@ -36,8 +39,8 @@ def calc_ptnt_seg_probabilities(
         model_path, data_type = specs_per_model[model_name]
         model = tf.keras.models.load_model(model_path)
 
-        print_prefix = f'[{pdir.name} - {model_name}]'
-        print(print_prefix, 'Loading data...', flush=True)
+        logging_prefix = f'[{pdir.name} - {model_name}]'
+        logging.info(f'{logging_prefix} Loading data...')
 
         with FunctionTimer(f'load_data for {pdir.name} - {data_type}'):
             data = load_data(
@@ -61,7 +64,7 @@ def calc_ptnt_seg_probabilities(
         model_probs = []
         for i in range(0, n_segs, batch_size):
             end = min(i + batch_size, n_segs)
-            print(print_prefix, f'Processing segments {i}-{end - 1} of {n_segs}...', flush=True)
+            logging.info(f'{logging_prefix} Processing segments {i}-{end - 1} of {n_segs}...')
 
             batch = data['x'][i:end]
             batch_probs = model.predict(batch)
@@ -74,25 +77,42 @@ def calc_ptnt_seg_probabilities(
 
     # Save segment probabilities
     save_dataframe_multiformat(seg_probs, pdir.segment_probabilities_table)
-    print(f'{[pdir.name]} Saved segment probabilities to {pdir.segment_probabilities_table}', flush=True)
+    logging.info(f'[{pdir.name}] Saved segment probabilities to {pdir.segment_probabilities_table}')
 
 
 def main(
         pdirs: list[PatientDir],
         serial_processing: bool,
         available_gpus: list[int] = None,
-):
+        merged_log_file: Path = None,
+) -> Path | None:
+    if merged_log_file is not None:
+        merged_log_file.parent.mkdir(parents=True, exist_ok=True)
+        logging.info("Writing merged model-eval log to %s", merged_log_file)
+
     if serial_processing:
         for pdir in pdirs:
             calc_ptnt_seg_probabilities(pdir)
+
     else:
+        run_log_dir = PATHS.logs_dir / f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}_calc_seg_probs_gpu_logs"
+        logging.info("Writing per-GPU seg prob logs to %s", run_log_dir)
+
         tasks = [
             QueuedCall(func=calc_ptnt_seg_probabilities, args=(pdir,), label=f'{pdir.name} - calc_seg_probabilities')
             for pdir in pdirs]
-        run_queued_calls_on_gpus(tasks=tasks, gpus=available_gpus)
+
+        run_queued_calls_on_gpus(
+            tasks=tasks,
+            gpus=available_gpus,
+            log_dir=run_log_dir,
+            merged_log_file=merged_log_file,
+            keep_gpu_logs=False,
+        )
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     main(
         PATHS.patient_dirs(),
         serial_processing=False,

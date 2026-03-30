@@ -45,3 +45,12 @@ def component_file_logging(log_file: Path | None, level: int = logging.INFO) -> 
     finally:
         root_logger.removeHandler(handler)
         handler.close()
+
+
+def log_raw_line(text: str) -> None:
+    root = logging.getLogger()
+    for handler in root.handlers:
+        stream = getattr(handler, "stream", None)
+        if stream is not None:
+            stream.write(text + "\n")
+            handler.flush()

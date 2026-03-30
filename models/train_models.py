@@ -19,21 +19,30 @@ def _train_ensemble_task(pdir: PatientDir) -> None:
     create_ptnt_ensemble_and_save(pdir)
 
 
-def train_models(pdirs: List[PatientDir], gpus: List[int], train_cnn: bool = True, train_ensemble: bool = True):
-    tasks = []
-    for pdir in pdirs:
-        if train_cnn:
-            tasks.append(QueuedCall(func=_train_cnn_task, args=(pdir,), label=f"{pdir.name} - CNN"))
-        if train_ensemble:
-            tasks.append(QueuedCall(func=_train_ensemble_task, args=(pdir,), label=f"{pdir.name} - ensemble"))
-
-    run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_log_dir = PATHS.logs_dir / f"train_models_{run_name}_gpu_logs"
-    merged_log_file = PATHS.logs_dir / f"train_models_{run_name}.log"
+def train_models(
+        pdirs: List[PatientDir],
+        gpus: List[int],
+        train_cnn: bool = True,
+        train_ensemble: bool = True,
+        run_name: str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+):
+    run_log_dir = PATHS.logs_dir / f"{run_name}_train_models_gpu_logs"
+    merged_log_file = PATHS.logs_dir / f"{run_name}_train_models.log"
 
     PATHS.logs_dir.mkdir(parents=True, exist_ok=True)
     logging.info("Writing per-GPU model-training logs to %s", run_log_dir)
     logging.info("Writing merged model-training log to %s", merged_log_file)
+
+    # Create tasks
+    # Add ensembles first, because they take longer to train. If not done this way, some GPUs will shut down while
+    # others have just started the long ensemble training process for the last patients
+    tasks = []
+    if train_ensemble:
+        for pdir in pdirs:
+            tasks.append(QueuedCall(func=_train_ensemble_task, args=(pdir,), label=f"{pdir.name} - ensemble"))
+    if train_cnn:
+        for pdir in pdirs:
+            tasks.append(QueuedCall(func=_train_cnn_task, args=(pdir,), label=f"{pdir.name} - CNN"))
 
     run_queued_calls_on_gpus(
         tasks=tasks,

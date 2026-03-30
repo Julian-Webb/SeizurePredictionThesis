@@ -138,7 +138,7 @@ def event_based_metrics(
         models: Iterable[str] = ("CNN", "ensemble"),
         intervention_iv: Interval = INTERVENTION,
         sph_iv: Interval = SPH,
-        logging_info: str = 'unknown patient',
+        logging_info: str = '[unknown patient - split]',
 ) -> Tuple[dict[str, DataFrame], dict[str, dict[float, dict[str, Any]]]]:
     """
     Takes a set of predictions and calculates the time in false warning (TIFW) and relative number of seizures predicted.
@@ -206,7 +206,7 @@ def event_based_metrics(
     intermediate_results_per_model = {}
 
     for model in models:
-        logging.info(f"{logging_info} Processing event-based metrics for model {model}...")
+        logging.info(f"{logging_info} [{model}] Processing event-based metrics...")
         prob_col = f'{model}_probability'
 
         # Use this model's thresholds if specified, otherwise use all unique thresholds in the clips for this model
@@ -220,7 +220,7 @@ def event_based_metrics(
         intermediate_results = {k: {} for k in ['szrs_predicted', 'sphs']}
 
         for thresh in model_thresholds:
-            logging.debug(f'Processing threshold {thresh}...')
+            logging.debug(f'{logging_info} [{model}] Processing threshold {thresh}...')
             # Select SPHs for this threshold
             y_pred = clips[prob_col] >= thresh
             sphs = all_sphs[y_pred]
@@ -327,7 +327,8 @@ def load_data_per_split(pdir: PatientDir):
 def calc_ptnt_split_metrics(args):
     """Process a single patient-split combination."""
     pdir, split, models = args
-    logging.info(f'Processing {pdir.name} - {split}')
+    logging_info = f'[{pdir.name} - {split}]'
+    logging.info(f'{logging_info} Calculating event based metrics...')
     per_split = load_data_per_split(pdir)
 
     threshs_per_model = {}
@@ -342,7 +343,7 @@ def calc_ptnt_split_metrics(args):
         szr_starts=per_split['szr_starts'][split],
         thresholds_per_model=threshs_per_model,
         models=models,
-        logging_info=f'[{pdir.name} - {split}]'
+        logging_info=logging_info
     )
 
     for model in models:
@@ -350,8 +351,10 @@ def calc_ptnt_split_metrics(args):
         save_dataframe_multiformat(ebms[model], MultiPath(results_dir, 'event_based_metrics'), save_index=True)
 
 
-def calc_metrics(pdirs: list[PatientDir], splits: tuple[str] = ('train', 'test'),
-                 models: tuple[str] = ('CNN', 'ensemble'), serial_processing: bool = False):
+def calc_metrics(pdirs: list[PatientDir],
+                 splits: tuple[str] = ('train', 'test'),
+                 models: tuple[str] = ('CNN', 'ensemble'),
+                 serial_processing: bool = False):
     if serial_processing:
         for pdir, split in product(pdirs, splits):
             calc_ptnt_split_metrics((pdir, split, models))
@@ -363,5 +366,5 @@ def calc_metrics(pdirs: list[PatientDir], splits: tuple[str] = ('train', 'test')
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    pdirs = PATHS.patient_dirs()
-    calc_metrics(pdirs, serial_processing=True)
+    pdirs_ = PATHS.patient_dirs()
+    calc_metrics(pdirs_, serial_processing=True)

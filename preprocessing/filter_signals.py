@@ -246,7 +246,7 @@ def _process_ptnt(pdir: PatientDir):
     logging.info(f'Done filtering patient EDFs: {pdir.name}')
 
 
-def filter_all_edfs(pdirs: list[PatientDir], serial_processing: bool = False):
+def filter_edfs_for_pdirs(pdirs: list[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
             _process_ptnt(pdir)
@@ -259,7 +259,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     pdirs = PATHS.patient_dirs()
 
-    filter_all_edfs(pdirs, serial_processing=False)
+    filter_edfs_for_pdirs(pdirs, serial_processing=False)
 
 
 if __name__ == '__main__': main()

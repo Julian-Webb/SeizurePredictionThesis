@@ -170,11 +170,11 @@ def main(
         pdirs: Iterable[PatientDir] = PATHS.patient_dirs()
 ):
     """Run clip generation for all patient directories in PATHS."""
-    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] - %(message)s')
-
     for pdir in pdirs:
-        logging.info(f'====== Processing {pdir.name}...')
+        logging.info(f'[{pdir.name}] Creating Clips ...')
         process_ptnt(pdir)
 
 
-if __name__ == '__main__':  main()
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] - %(message)s')
+    main()

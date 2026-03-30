@@ -9,7 +9,7 @@ from cleaning_annotations.localize_annotations import drop_duplicates_and_locali
 from config import Paths
 from config import PatientDir, PATHS
 from feature_extraction.extract_features import run_feature_extraction
-from preprocessing.filter_signals import filter_all_edfs
+from preprocessing.filter_signals import filter_edfs_for_pdirs
 from preprocessing.segment_tables import make_segment_tables
 from preprocessing.train_test_allocation import find_ptnt_splits
 from preprocessing.validate_patients import validate_patients

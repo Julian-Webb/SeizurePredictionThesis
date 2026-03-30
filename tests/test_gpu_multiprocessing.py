@@ -88,3 +88,4 @@ def test_run_queued_calls_on_gpus_validates_input():
     with pytest.raises(ValueError, match="`tasks` is empty"):
         run_queued_calls_on_gpus(tasks=[], gpus=[GPUS[0]])
 
+
