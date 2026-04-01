@@ -8,7 +8,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas import Series
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
@@ -20,7 +19,6 @@ from utils.utils import timeit
 def plot_threshold_metrics(
         y_true: np.ndarray,
         data_per_model: dict,
-        best_thresh_per_model: dict[str, float],
         title: str = '',
         output_path: Path = None,
 ):
@@ -39,6 +37,7 @@ def plot_threshold_metrics(
     for model, data in data_per_model.items():
         y_scores = data['y_scores']
         ebms = data['event_based_metrics']
+        best_thresh = data['best_thresh']
 
         #### Precision-Recall curve
         precision, recall, pr_thresholds = precision_recall_curve(y_true, y_scores)
@@ -53,7 +52,7 @@ def plot_threshold_metrics(
         line, = axes[0, 1].plot(pr_thresholds, f1_score, label=model)
         axes[0, 1].axvline(f1_max_thresh, linestyle='--', alpha=0.5, color=line.get_color())
         # Plot best thresh given
-        axes[0, 1].axvline(best_thresh_per_model[model], linestyle='--', alpha=0.5, color='k')
+        axes[0, 1].axvline(best_thresh, linestyle='--', alpha=0.5, color='k')
 
         #### ROC
         fpr, tpr, roc_thresholds = roc_curve(y_true, y_scores)
@@ -61,16 +60,16 @@ def plot_threshold_metrics(
         roc_disp = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc, name=model)
         roc_disp.plot(ax=axes[0, 2])
 
-        #### Event-based sensitivity vs. Time in Correct Warning (TICW)
-        ticw = 1 - ebms['rel_tifw']
-        line, = axes[1, 0].plot(ebms['rel_szrs_predicted'].values, ticw.values, label=model)
+        #### Event-based sensitivity vs. 1 - Time in False Warning (TIFW)
+        tifw_inv = 1 - ebms['rel_tifw']
+        line, = axes[1, 0].plot(ebms['rel_szrs_predicted'].values, tifw_inv.values, label=model)
         # Mark the point that corresponds to the best threshold
-        bt = best_thresh_per_model[model]
-        axes[1, 0].scatter(ebms['rel_szrs_predicted'].loc[bt], ticw.loc[bt], marker='x', color=line.get_color())
+        axes[1, 0].scatter(ebms['rel_szrs_predicted'].loc[best_thresh], tifw_inv.loc[best_thresh], marker='x',
+                           color=line.get_color())
 
         #### Event-based f1 score vs. thresholds
         line, = axes[1, 1].plot(ebms['event_based_f1'], label=model)
-        axes[1, 1].axvline(best_thresh_per_model[model], linestyle='--', alpha=0.5, color=line.get_color())
+        axes[1, 1].axvline(best_thresh, linestyle='--', alpha=0.5, color=line.get_color())
 
     #### Settings per axis
     axes[0, 0].set_title('Precision vs. Recall')
@@ -86,9 +85,9 @@ def plot_threshold_metrics(
     axes[0, 2].plot([0, 1], [0, 1], 'k--', alpha=0.3, label='Random Classifier')
 
     axes[1, 0].set(
-        title='Event-based sensitivity vs. Relative Time in Correct Warning (TICW)',
+        title='Event-based sensitivity vs. 1 - Relative Time in False Warning (TIFW)',
         xlabel='Event-based sensitivity',
-        ylabel='Relative Time in Correct Warning',
+        ylabel=' 1 -Relative Time in False Warning',
     )
 
     axes[1, 1].set(
@@ -120,32 +119,22 @@ def eval_ptnt(
 ):
     """Evaluate both train and test splits for models."""
     logging.info(f"[{pdir.name}] Evaluating models: {models}")
-
     clips_per_split = load_data_per_split(pdir)['clips']
 
-    #### Retrieve Event-based metrics (ebms), which we optimize the threshold for
-    ebms_per_split = {}  # keys: (split, model, metric)
-    for split, split_clips in clips_per_split.items():  # split_clips: clips for this data split
-        ebms_per_split[split] = {
-            model: pd.read_pickle(pickle_path(pdir.model_eval_dir / split / model / 'event_based_metrics')) for
-            model in models
-        }
-
-    # Calculate the optimal threshold
-    best_thresh_per_model = {}
-    for model in models:
-        scores: Series = ebms_per_split['train'][model]['event_based_f1']
-        best_thresh_per_model[model] = scores.idxmax()
-
-    # Save data, including various metrics for the optimal threshold
+    # Iterate through splits and models to process
     for split, split_clips in clips_per_split.items():
+        data_per_model = {}  # for plotting
+        y_true = split_clips['preictal'].values
+
         for model in models:
-            best_thresh = best_thresh_per_model[model]
+            # Retrieve Event-based metrics (ebms)
+            ebms = pd.read_pickle(pickle_path(pdir.model_eval_dir / split / model / 'event_based_metrics'))
+            # Optimize the threshold
+            best_thresh = ebms['event_based_f1'].idxmax()
+
             y_scores = split_clips[f'{model}_probability']
             y_pred = y_scores >= best_thresh
-            y_true = split_clips['preictal'].values
 
-            ebms = ebms_per_split[split][model]
             metrics_to_save = pd.Series({
                 'model': model,
                 'data_split': split,
@@ -161,27 +150,19 @@ def eval_ptnt(
                 'roc_auc': roc_auc_score(y_true, y_scores),
             }, name=pdir.name)
 
-            results_dir = ensure_results_dir(pdir, split, model)
-            save_dataframe_multiformat(metrics_to_save, MultiPath(results_dir, 'metrics'), save_index=True)
+            model_results_dir = ensure_results_dir(pdir, split, model)
+            save_dataframe_multiformat(metrics_to_save, MultiPath(model_results_dir, 'metrics'), save_index=True)
 
-    # Plot various metrics
-    for split, split_clips in clips_per_split.items():
-        results_dir = ensure_results_dir(pdir, split)
+            data_per_model[model] = {'y_scores': y_scores.values, 'event_based_metrics': ebms,
+                                     'best_thresh': best_thresh}
 
-        data_per_model = {}
-        for model in models:
-            data_per_model[model] = {
-                # Extract predicted probabilities per clip (y_scores)
-                'y_scores': split_clips[f'{model}_probability'].values,
-                'event_based_metrics': ebms_per_split[split][model],
-            }
-
+        # Plot various metrics
+        split_results_dir = ensure_results_dir(pdir, split)
         plot_threshold_metrics(
-            y_true=split_clips['preictal'].values,
-            data_per_model=data_per_model,
-            best_thresh_per_model=best_thresh_per_model,
+            y_true,
+            data_per_model,
             title=f'{pdir.name} - {split}',
-            output_path=results_dir / f'metrics_plot.png'
+            output_path=split_results_dir / f'metrics_plot.png'
         )
 
 
