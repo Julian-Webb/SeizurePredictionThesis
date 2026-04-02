@@ -1,5 +1,4 @@
 import multiprocessing
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -7,34 +6,9 @@ from pandas import Timedelta, DataFrame
 
 from config import PatientDir, PATHS, save_dataframe_multiformat
 from config.intervals import CLIP
+from cycle_extraction.cycle_extraction_for_segments import map_events_to_interval_index, split_dataframe_by_nan_gaps
 from cycle_functions import nc_filter, compute_plv_for_split_signal
 from feature_extraction.extract_features import FeatureNames
-
-
-def map_szrs_to_interval_index(szrs: np.ndarray,
-                               interval_starts: np.ndarray,
-                               interval_ends: np.ndarray):
-    """
-    Map seizures to the interval index.
-    :param szrs: Seizure timestamps (1D array).
-    :param interval_starts: Start timestamps for non-overlapping intervals (1D array).
-    :param interval_ends: End timestamps for non-overlapping intervals (1D array).
-    :return: Interval index per seizure as ndarray (-1 if no interval contains it).
-    """
-    # Reshape for broadcasting: (n_seizures, 1) and (1, n_intervals)
-    szr_values = szrs[:, np.newaxis]
-    starts_broadcast = interval_starts[np.newaxis, :]
-    ends_broadcast = interval_ends[np.newaxis, :]
-
-    # Check if seizure is in interval: start <= seizure < end
-    in_interval = (starts_broadcast <= szr_values) & (szr_values < ends_broadcast)
-
-    # Find the interval index for each seizure (-1 if not found)
-    interval_indices = np.where(in_interval.any(axis=1),
-                                in_interval.argmax(axis=1),
-                                -1)
-
-    return interval_indices
 
 
 def average_seg_features_per_clip(seg_features: DataFrame, clips: DataFrame):
@@ -57,20 +31,9 @@ def average_seg_features_per_clip(seg_features: DataFrame, clips: DataFrame):
     return clips
 
 
-def split_dataframe_by_nan_gaps(df: DataFrame, relevant_cols: Optional[list[str]] = None):
-    cols = relevant_cols or df.columns
-    # gap row = all features NA
-    gaps = df[cols].isna().all(axis=1)
-    # Assign group IDs to groups of continuous gaps/existing data
-    group_id = gaps.ne(gaps.shift(fill_value=False)).cumsum()
-    # Include chunks that aren't NA
-    chunks = [chunk for _, chunk in df.groupby(group_id) if not chunk[cols].isna().to_numpy().all()]
-    return chunks
-
-
-def cycle_extraction_for_ptnt(
+def cycle_extraction_by_clips_for_ptnt(
         pdir: PatientDir,
-        feature_names: list[str] = FeatureNames.CYCLES,
+        feature_names: list[str] = FeatureNames.ALL_ORDERED,
 ):
     print(f'[{pdir.name}] Cycle Extraction...')
 
@@ -85,7 +48,7 @@ def cycle_extraction_for_ptnt(
     chunked_clips = split_dataframe_by_nan_gaps(clips, feature_names)
 
     # Filter the features
-    # todo problem: the clips don't all have the same length, so there's no correct sampling length...
+    # problem: the clips don't all have the same length, so there's no correct sampling length...
     clips_per_hour = Timedelta(hours=1) / CLIP.exact_dur
 
     # Create filtered DataFrame per chunk. Reset the index per chunk.
@@ -93,8 +56,8 @@ def cycle_extraction_for_ptnt(
     for chunk in chunked_clips:
         filt_chunk = chunk[['start_mtz', 'end_mtz']].reset_index(drop=True)
         for feat_name in feature_names:
-            filt_chunk[feat_name] = nc_filter(chunk[feat_name].values, fs=clips_per_hour, type_='multidien',
-                                              figure=False)
+            filt_chunk[feat_name] = nc_filter(chunk[feat_name].values, fs=clips_per_hour, types=['multidien'],
+                                              figure=False)['multidien']
         filtered_chunks.append(filt_chunk)
 
     # Assign seizures to chunks and get their relative indices in the chunks
@@ -107,7 +70,7 @@ def cycle_extraction_for_ptnt(
         chunk_end = ends[-1]
 
         szrs_in_chunk = szrs[(chunk_start <= szrs) & (szrs <= chunk_end)].values
-        szr_indices = map_szrs_to_interval_index(szrs_in_chunk, starts, ends)
+        szr_indices = map_events_to_interval_index(szrs_in_chunk, starts, ends)
         szr_indices_per_chunk.append(szr_indices)
         total_szrs_in_chunks += len(szrs_in_chunk)
 
@@ -129,10 +92,10 @@ def cycle_extraction_for_ptnt(
 def cycle_extraction_for_ptnts(pdirs: list[PatientDir] = PATHS.patient_dirs(), serial_processing: bool = False):
     # Compute Metrics
     if serial_processing:
-        results = [cycle_extraction_for_ptnt(pdir) for pdir in pdirs]
+        results = [cycle_extraction_by_clips_for_ptnt(pdir) for pdir in pdirs]
     else:
         with multiprocessing.Pool() as pool:
-            results = pool.map(cycle_extraction_for_ptnt, pdirs)
+            results = pool.map(cycle_extraction_by_clips_for_ptnt, pdirs)
 
     # noinspection PyUnboundLocalVariable
     per_patient = {pdir.name: res for pdir, res in zip(pdirs, results)}

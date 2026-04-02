@@ -83,7 +83,6 @@ class FeatureNames:
     ]
     ALL_ORDERED = CORRCOEF + ACFW + VAR + BANDPOWERS
     ENSEMBLE = CORRCOEF + BANDPOWERS  # Features for the ensemble model
-    CYCLES = ACFW + VAR
 
 
 class Features:

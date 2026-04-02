@@ -8,12 +8,44 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
 from config import PatientDir, PATHS, MultiPath, save_dataframe_multiformat, pickle_path
 from model_eval.event_based_metrics import load_data_per_split, ensure_results_dir
 from utils.utils import timeit
+
+
+def hanley_mcneil_test(N1, N2, auc):
+    """
+    Hanley-McNeil method for ROC-AUC significance/better than chance classification performance.
+    """
+    # for chance predictor
+    a = 0.5
+    q1 = a / (2 - a)
+    q2 = 2 * a * a / (1 + a)
+
+    if not isinstance(N1, (list, tuple, np.ndarray)):
+        n1 = N1
+        n2 = N2
+        std_auc = np.sqrt((a * (1 - a) + (n1 - 1) * (q1 - a * a) + (n2 - 1) * (q2 - a * a)) / (n1 * n2))
+        p = norm.sf(auc, loc=a, scale=std_auc)
+
+        if auc < 0.5 and p < 0.5:
+            p = 1 - p
+    else:
+        # auc=auc.flatten()
+        p = []
+        for n1, n2, auc_ in zip(N1, N2, auc):
+            std_auc = np.sqrt((a * (1 - a) + (n1 - 1) * (q1 - a * a) + (n2 - 1) * (q2 - a * a)) / (n1 * n2))
+            p_ = norm.sf(auc_, loc=a, scale=std_auc)
+
+            if auc_ < 0.5 and p_ < 0.5:
+                p_ = 1 - p_
+                p.append(p_)
+        p = np.array(p)
+    return p
 
 
 def plot_threshold_metrics(

@@ -38,3 +38,6 @@ RANDOM_STATE_FOR_TRAIN_DATA = 42
 # ---- Cycle Extraction ------------------------------------------------------------------------------------------------
 # How much time there must be between missing recording data to split the data into chunks, rather than filling it.
 LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING = Timedelta(days=14) # From Honglui Yang 2024
+
+# Up to which quantile a feature will not be clipped.
+UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING = 0.99999

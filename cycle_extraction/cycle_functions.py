@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import scipy.signal
 from scipy.signal import butter, sosfiltfilt
-from scipy.stats import norm
 
 from utils.utils import contains_nan
 
@@ -99,13 +98,15 @@ def nc_filter_circadian(x, range=0.33, fs=1.0, order=10):
 
 
 def nc_filter_multidien(x, min_period=5 * 24, max_period=50 * 24, fs=1.0, order=10):
+    if contains_nan(x): raise ValueError("x must not contain NaNs.")
+
     sos, _ = butter_bandpass_sos(min_period, max_period, fs=fs, order=order, mode='T')
     filtered_signal = apply_nc_filter(x, sos)
     return filtered_signal
 
 
 def nc_filter(x, fs=1.0, range_circadian=0.33, multid_min=5 * 24, multid_max=50 * 24, order=10,
-              type_=('circadian', 'multidien'), figure=True, label=None):
+              types=('circadian', 'multidien'), figure=False, event_indices: np.ndarray = np.array([])):
     """
     Applies separate NON-CAUSAL bandpass filters for the circadian and multidien ranges
     and optionally generates a visualization of the results.
@@ -125,46 +126,97 @@ def nc_filter(x, fs=1.0, range_circadian=0.33, multid_min=5 * 24, multid_max=50 
         Defaults are 120 hours (5 days) and 1200 hours (50 days).
     order : int, optional
         The TOTAL filter order. Must be even. Default is 10.
-    type_: tuple, optional
+    types: tuple, optional
         The type of periodicity.
     figure : bool, optional
         If True, generates and displays a plot of the original and filtered signals.
         Default is True.
-    label : array_like, optional
-        An array of binary or categorical labels (e.g., seizure markers) corresponding
-        to the time points in `x`. Non-zero values are treated as event markers.
-        Must have the same length as `x`. Default is None (no markers).
+    event_indices : array_like, optional
+        An array of indices corresponding to ``x`` which represent events (e.g. seizures).
 
     Returns
     -------
-    filtered_signals : DataFrame
-        A df containing the filtered signals:
-        {'circadian': array, 'multidien': array}.
+    filtered_signals : dict
+        A df containing the filtered signals and plot:
+        {'circadian': array, 'multidien': array, 'figure': matplotlib.pyplot.figure}.
     """
     if contains_nan(x): raise ValueError("x must not contain NaNs.")
+    res = {}
     filtered_signals = pd.DataFrame()
 
-    if 'circadian' in type_:
-        filtered_signals['circadian'] = nc_filter_circadian(x, range=range_circadian, fs=fs, order=order)
-    if 'multidien' in type_:
-        filtered_signals['multidien'] = nc_filter_multidien(x, min_period=multid_min, max_period=multid_max, fs=fs,
-                                                            order=order)
-
-    if label is not None:
-        label = np.asarray(label)
-        if len(label) != len(x):
-            raise ValueError("label must have the same length as x.")
-        seizure_indices = np.where(label != 0)[0]
-    else:
-        seizure_indices = np.array([])
+    if 'circadian' in types:
+        circ = nc_filter_circadian(x, range=range_circadian, fs=fs, order=order)
+        filtered_signals['circadian'], res['circadian'] = circ, circ
+    if 'multidien' in types:
+        md = nc_filter_multidien(x, min_period=multid_min, max_period=multid_max, fs=fs, order=order)
+        filtered_signals['multidien'], res['multidien'] = md, md
 
     if figure:
-        plot_filtered(x, fs, filtered_signals, range_circadian, multid_min, multid_max, seizure_indices)
+        res['figure'] = plot_filtered(x, fs, filtered_signals, range_circadian, multid_min, multid_max, event_indices)
 
-    return filtered_signals
+    return res
 
 
-def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, seizure_indices):
+def plot_filtered_feature(
+        original_sig: np.ndarray,
+        filtered_sig: np.ndarray,
+        samples_per_hour: float,
+        time: np.ndarray = None,
+        events: dict[str, np.ndarray] = None,
+):
+    """
+
+    Parameters
+    ----------
+    original_sig
+    filtered_sig
+    samples_per_hour
+    time
+    events
+        dict with event name as keys and event indices as values
+
+    Returns
+    -------
+
+    """
+    if time is None:
+        samples_per_day = samples_per_hour * 24
+        time = np.arange(len(original_sig)) / samples_per_day
+        x_label = "Time (days)"
+    else:
+        x_label = "Time"
+
+    fig, axes = plt.subplots(2, 1, sharex=True, figsize=(14, 8))
+    axes[-1].set_xlabel(x_label)
+
+    axes[0].set_title("Original Signal")
+    axes[0].plot(time, original_sig, color='k', lw=0.25)
+
+    axes[1].set_title("Filtered Signal")
+    axes[1].plot(time, filtered_sig, color='k')
+
+    # Plot event markers
+    if events is not None:
+        for e_name, e_idxs in events.items():
+            for ax, sig in zip(axes, [original_sig, filtered_sig]):
+                xs, ys = time[e_idxs], sig[e_idxs]
+                label = f'{e_name} (n={len(e_idxs)})'
+
+                if e_name == 'seizures':
+                    for i, x in enumerate(xs):
+                        label = label if i == 0 else '_nolegend_'  # Make legend entry only appear once
+                        ax.axvline(x, label=label, color="r", alpha=0.7)
+                else:
+                    ax.scatter(xs, ys, label=label, s=10, zorder=3, alpha=0.7, marker='x')
+
+                ax.grid(True, alpha=0.3)
+
+        axes[0].legend(loc='upper left')
+
+    return fig
+
+
+def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, event_indices):
     t, n_features = filtered_signals.shape
     # Create subplots: n+1 for original + n filtered signals
     fig, axes = plt.subplots(n_features + 1, 1, figsize=(14, 2.2 * (n_features + 1)), sharex=True)
@@ -178,9 +230,9 @@ def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, s
     axes[0].set_title("Original Signal")
 
     # Plot seizure markers on original signal
-    if len(seizure_indices) > 0:
-        axes[0].scatter(t[seizure_indices], x[seizure_indices],
-                        color='red', s=10, label=f'Seizures (n={len(seizure_indices)})', zorder=3)
+    if len(event_indices) > 0:
+        axes[0].scatter(t[event_indices], x[event_indices],
+                        s=10, label=f'Seizures (n={len(event_indices)})', zorder=3)
         axes[0].legend(loc='upper right', fontsize=8)
 
     # Plot each filtered signal
@@ -195,28 +247,25 @@ def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, s
         axes[i].plot(t, y, lw=1.0, label=name)
 
         # Title conversion: 1/cf is the period in hours. Divide by 24 to get period in days.
-        axes[i].set_title(f"{title}")
+        axes[i].set_title(title)
         axes[i].grid(True, alpha=0.3)
 
         # Seizure markers
-        if len(seizure_indices) > 0:
+        if len(event_indices) > 0:
             # Use the filtered signal's value for the scatter marker
-            axes[i].scatter(t[seizure_indices], y[seizure_indices],
-                            color='red', s=10, zorder=3)
+            axes[i].scatter(t[event_indices], y[event_indices], color='red', s=10, zorder=3)
 
     axes[-1].set_xlabel("Time (days)")
-    plt.tight_layout()
-    plt.show()
-    return
+    return fig
 
 
-def compute_plv(signal, seizure_indices, n_events):
-    """Computes the phase locking value of events (seizures) to a signal"""
+def compute_plv(signal, event_indices, n_events):
+    """Computes the phase locking value of events (e.g., seizures) to a signal"""
     if contains_nan(signal): raise ValueError("signal contains NaN(s).")
 
     analytic_signal = scipy.signal.hilbert(signal)
     instantaneous_phase = np.angle(analytic_signal)
-    event_phases = instantaneous_phase[seizure_indices]
+    event_phases = instantaneous_phase[event_indices]
     mean_complex_vector = np.sum(np.exp(1j * event_phases)) / n_events
     plv = np.abs(mean_complex_vector)
     mean_angle = np.angle(mean_complex_vector)
@@ -225,15 +274,16 @@ def compute_plv(signal, seizure_indices, n_events):
     return plv, mean_angle, mean_angle_deg, event_phases
 
 
-def compute_plv_for_split_signal(signals: list[np.ndarray], szr_indices_list: list[np.ndarray]):
-    """Computes the phase locking value of events (seizures) to split signals"""
-    for i, sig in enumerate(signals):
+def compute_plv_for_split_signal(signals_per_chunk: list[np.ndarray], event_indices_per_chunk: list[np.ndarray]):
+    """Computes the phase locking value of events (e.g., seizures) to split signals"""
+    for i, sig in enumerate(signals_per_chunk):
         if contains_nan(sig): raise ValueError(f"signal {i} contains NaN(s).")
 
     # Process the signals
-    analytic_signals = [scipy.signal.hilbert(sig) for sig in signals]
+    analytic_signals = [scipy.signal.hilbert(sig) for sig in signals_per_chunk]
     instantaneous_phases = [np.angle(analytic_sig) for analytic_sig in analytic_signals]
-    event_phases_list = [inst_phase[szr_idxs] for inst_phase, szr_idxs in zip(instantaneous_phases, szr_indices_list)]
+    event_phases_list = [inst_phase[event_idxs] for inst_phase, event_idxs in
+                         zip(instantaneous_phases, event_indices_per_chunk)]
 
     # Combine all extracted phases
     event_phases = np.concatenate(event_phases_list)
@@ -322,34 +372,3 @@ def plot_single_phase_histogram(event_phases, plv, mean_angle, p_value,
     plt.show()
 
     return fig, ax
-
-
-def hanley_mcneil_test(N1, N2, auc):
-    """
-    Hanley-McNeil method for ROC-AUC significance/better than chance classification performance.
-    """
-    # for chance predictor
-    a = 0.5
-    q1 = a / (2 - a)
-    q2 = 2 * a * a / (1 + a)
-
-    if not isinstance(N1, (list, tuple, np.ndarray)):
-        n1 = N1
-        n2 = N2
-        std_auc = np.sqrt((a * (1 - a) + (n1 - 1) * (q1 - a * a) + (n2 - 1) * (q2 - a * a)) / (n1 * n2))
-        p = norm.sf(auc, loc=a, scale=std_auc)
-
-        if auc < 0.5 and p < 0.5:
-            p = 1 - p
-    else:
-        # auc=auc.flatten()
-        p = []
-        for n1, n2, auc_ in zip(N1, N2, auc):
-            std_auc = np.sqrt((a * (1 - a) + (n1 - 1) * (q1 - a * a) + (n2 - 1) * (q2 - a * a)) / (n1 * n2))
-            p_ = norm.sf(auc_, loc=a, scale=std_auc)
-
-            if auc_ < 0.5 and p_ < 0.5:
-                p_ = 1 - p_
-                p.append(p_)
-        p = np.array(p)
-    return p

@@ -36,3 +36,5 @@ Various abbreviations throughout the code:
    4. eval_models
 5. model_comparison.comparision_table
 6. cycle_extraction
+   1. fill_feature_gaps
+   2. cycle_extraction_for_segments

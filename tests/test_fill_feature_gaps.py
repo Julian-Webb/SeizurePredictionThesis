@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 from cycle_extraction.fill_feature_gaps import fill_ptnt_gaps, fill_short_gaps_per_column
-# todo fix this file
 
 def test_min_donor_window_changes_sampling_pool():
     idx = np.arange(0, 11)
@@ -73,14 +72,13 @@ def test_invalid_parameters_raise_value_error():
         assert 'max_distortion_pct' in str(e)
 
 
-def test_fill_short_gaps_no_missing_rows_sets_filled_false():
+def test_fill_short_gaps_no_missing_rows_keeps_structure_unchanged():
     df = pd.DataFrame({'exists': [True, True, True], 'feat': [1.0, 2.0, 3.0]}, index=[0, 1, 2])
 
     out = fill_short_gaps_per_column(df, ['feat'], max_distortion_pct=0.0, random_state=1)
 
-    assert 'exists' not in out.columns
-    assert 'filled' in out.columns
-    assert not out['filled'].any()
+    assert list(out.columns) == ['exists', 'feat']
+    assert out.equals(df)
 
 
 def test_fill_ptnt_gaps_reintegrates_chunks_and_keeps_long_gaps_nan():
@@ -105,15 +103,15 @@ def test_fill_ptnt_gaps_reintegrates_chunks_and_keeps_long_gaps_nan():
 
     assert isinstance(out, pd.DataFrame)
     assert out.index.equals(df.index)
-    assert 'exists' not in out.columns
-    assert 'filled' in out.columns
+    assert 'exists' in out.columns
+    assert 'filled' not in out.columns
 
     # Short gap at index 2 is filled.
-    assert bool(out.loc[2, 'filled'])
+    assert not bool(out.loc[2, 'exists'])
     assert not pd.isna(out.loc[2, 'feat'])
 
     # Long gap at indices 5-7 remains in structure and stays NaN.
-    assert not out.loc[5:7, 'filled'].any()
+    assert (~out.loc[5:7, 'exists']).all()
     assert out.loc[5:7, 'feat'].isna().all()
 
 

@@ -115,6 +115,8 @@ class PatientDir(type(Path())):
         # Cycles
         self.cycle_extraction_dir = Path(self, 'cycles')
         self.filled_features_for_segs = MultiPath(self.cycle_extraction_dir, 'filled_features_for_segs')
+        self.cycle_extraction_results_table = MultiPath(self.cycle_extraction_dir, 'cycle_extraction_results')
+        self.filtered_feature_plots_dir = Path(self.cycle_extraction_dir, 'filtered_feature_plots')
 
         return self
 

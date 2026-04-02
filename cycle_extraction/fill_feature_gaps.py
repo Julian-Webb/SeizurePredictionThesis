@@ -141,7 +141,7 @@ def fill_ptnt_gaps(
         min_donor_n_segs: int = 100,
         max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
-        feature_cols: list[str] = FeatureNames.CYCLES,
+        feature_cols: list[str] = FeatureNames.ALL_ORDERED,
         patient: str = 'unknown patient',
 ) -> DataFrame:
     """Fill short gaps per chunk and reintegrate into one dataframe.
@@ -176,7 +176,7 @@ def fill_ptnt_gaps_and_save(
         min_donor_n_segs: int = 100,
         max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
-        feature_cols: list[str] = FeatureNames.CYCLES,
+        feature_cols: list[str] = FeatureNames.ALL_ORDERED,
 ):
     print(f'[{pdir.name}] Filling Feature Gaps...', flush=True)
     segs = pd.read_pickle(pdir.segments_table.pickle)
@@ -201,7 +201,7 @@ def fill_gaps_for_ptnts(
         min_donor_n_segs: int = 100,
         max_distortion_pct: float = 0.05,
         random_state: Optional[int] = None,
-        feature_cols: list[str] = FeatureNames.CYCLES,
+        feature_cols: list[str] = FeatureNames.ALL_ORDERED,
         serial_processing: bool = False,
 ):
     """Fill gaps in all segments of all patients."""
