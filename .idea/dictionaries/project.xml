@@ -1,6 +1,8 @@
 <component name="ProjectDictionaryState">
   <dictionary name="project">
     <words>
+      <w>Benjamini</w>
+      <w>Hochberg</w>
       <w>acfw</w>
       <w>acfws</w>
       <w>corrcoef</w>
@@ -14,6 +16,8 @@
       <w>maintz</w>
       <w>multid</w>
       <w>multidien</w>
+      <w>ncols</w>
+      <w>nrows</w>
       <w>nsegs</w>
       <w>patientcode</w>
       <w>pdirs</w>

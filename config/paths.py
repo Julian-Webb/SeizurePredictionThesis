@@ -113,10 +113,11 @@ class PatientDir(type(Path())):
         self.model_eval_dir = Path(self, 'model_evaluation')
 
         # Cycles
-        self.cycle_extraction_dir = Path(self, 'cycles')
+        self.cycle_extraction_dir = Path(self, 'cycle_extraction')
         self.filled_features_for_segs = MultiPath(self.cycle_extraction_dir, 'filled_features_for_segs')
-        self.cycle_extraction_results_table = MultiPath(self.cycle_extraction_dir, 'cycle_extraction_results')
+        self.cycle_extraction_results_table = MultiPath(self.cycle_extraction_dir, 'cycle_extraction_metrics')
         self.filtered_feature_plots_dir = Path(self.cycle_extraction_dir, 'filtered_feature_plots')
+        self.circular_histograms_dir = Path(self.cycle_extraction_dir, 'circular_histograms')
 
         return self
 

@@ -194,7 +194,7 @@ def fill_ptnt_gaps_and_save(
     print(f'[{pdir.name}] Saved filled features ({len(filled_features)} rows)', flush=True)
 
 
-def fill_gaps_for_ptnts(
+def fill_gaps_for_pdirs(
         pdirs: list[PatientDir],
         long_gap_min_duration: Timedelta = LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING,
         warn_gap_threshold: Optional[Timedelta] = LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING / 3,
@@ -224,4 +224,4 @@ def fill_gaps_for_ptnts(
 
 if __name__ == '__main__':
     pdirs_ = PATHS.patient_dirs()
-    fill_gaps_for_ptnts(pdirs_, serial_processing=False)
+    fill_gaps_for_pdirs(pdirs_, serial_processing=False)

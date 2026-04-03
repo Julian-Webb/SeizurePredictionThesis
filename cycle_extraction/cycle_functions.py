@@ -1,5 +1,8 @@
+from math import ceil
+
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy import pi
 import pandas as pd
 import scipy.signal
 from scipy.signal import butter, sosfiltfilt
@@ -43,7 +46,7 @@ def butter_bandpass_sos(a, b, fs=1.0, order=10, mode='f'):
 
     # For a bandpass filter, the scipy.butter 'N' parameter is the
     # prototype order, which is half the total desired order.
-    prototype_order_N = order // 2
+    prototype_order_n = order // 2
 
     # --- 2. Convert to frequency domain if periods are given ---
     if mode == 'T':
@@ -67,7 +70,7 @@ def butter_bandpass_sos(a, b, fs=1.0, order=10, mode='f'):
     # print(f"Sampling freq (fs): {fs} samples/day → Nyquist = {nyq:.4f} cycles/day")
     # print(f"Cutoff frequencies (cycles/day): {f_low:.6f} – {f_high:.6f}")
     # print(f"Normalized cutoff (0–1 Nyquist): {low_norm:.6f} – {high_norm:.6f}")
-    # print(f"Total Filter Order: {order} (Prototype Order N={prototype_order_N})")
+    # print(f"Total Filter Order: {order} (Prototype Order N={prototype_order_n})")
     # print("-----------------------------------")
 
     # --- 5. Sanity checks ---
@@ -75,8 +78,8 @@ def butter_bandpass_sos(a, b, fs=1.0, order=10, mode='f'):
         raise ValueError("Invalid normalized frequencies — check fs and input values.")
 
     # --- 6. Design Butterworth filter ---
-    # Pass the correct prototype_order_N
-    sos = butter(prototype_order_N, [low_norm, high_norm], btype='bandpass', output='sos')
+    # Pass the correct prototype_order_n
+    sos = butter(prototype_order_n, [low_norm, high_norm], btype='bandpass', output='sos')
 
     return sos, (low_norm, high_norm)
 
@@ -86,18 +89,18 @@ def apply_nc_filter(data, sos):
     return sosfiltfilt(sos, data)
 
 
-def nc_filter_circadian(x, range=0.33, fs=1.0, order=10):
+def nc_filter_circadian(x, range_=0.33, fs=1.0, order=10):
     cf = 1 / 24
     # like code from Proix 2021, although Baud 2018 (in whom Proix refers to) describes +-33% in period
-    low_cutoff = cf * (1 - range)
+    low_cutoff = cf * (1 - range_)
     # Karoly 2021 refers to +-33% in freq, but does +-33% in period, then converts to freq
-    high_cutoff = cf * (1 + range)
+    high_cutoff = cf * (1 + range_)
     sos, _ = butter_bandpass_sos(low_cutoff, high_cutoff, fs=fs, order=order, mode='f')
     filtered_signal = apply_nc_filter(x, sos)
     return filtered_signal
 
 
-def nc_filter_multidien(x, min_period=5 * 24, max_period=50 * 24, fs=1.0, order=10):
+def nc_filter_multidien(x, min_period=5 * 24.0, max_period=50 * 24.0, fs=1.0, order=10):
     if contains_nan(x): raise ValueError("x must not contain NaNs.")
 
     sos, _ = butter_bandpass_sos(min_period, max_period, fs=fs, order=order, mode='T')
@@ -105,8 +108,17 @@ def nc_filter_multidien(x, min_period=5 * 24, max_period=50 * 24, fs=1.0, order=
     return filtered_signal
 
 
-def nc_filter(x, fs=1.0, range_circadian=0.33, multid_min=5 * 24, multid_max=50 * 24, order=10,
-              types=('circadian', 'multidien'), figure=False, event_indices: np.ndarray = np.array([])):
+def nc_filter(
+        x,
+        fs=1.0,
+        range_circadian=0.33,
+        multid_min=5 * 24,
+        multid_max=50 * 24,
+        order=10,
+        types=('circadian', 'multidien'),
+        figure=False,
+        event_indices: np.ndarray = np.array([])
+):
     """
     Applies separate NON-CAUSAL bandpass filters for the circadian and multidien ranges
     and optionally generates a visualization of the results.
@@ -145,7 +157,7 @@ def nc_filter(x, fs=1.0, range_circadian=0.33, multid_min=5 * 24, multid_max=50 
     filtered_signals = pd.DataFrame()
 
     if 'circadian' in types:
-        circ = nc_filter_circadian(x, range=range_circadian, fs=fs, order=order)
+        circ = nc_filter_circadian(x, range_=range_circadian, fs=fs, order=order)
         filtered_signals['circadian'], res['circadian'] = circ, circ
     if 'multidien' in types:
         md = nc_filter_multidien(x, min_period=multid_min, max_period=multid_max, fs=fs, order=order)
@@ -219,7 +231,7 @@ def plot_filtered_feature(
 def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, event_indices):
     t, n_features = filtered_signals.shape
     # Create subplots: n+1 for original + n filtered signals
-    fig, axes = plt.subplots(n_features + 1, 1, figsize=(14, 2.2 * (n_features + 1)), sharex=True)
+    fig, axes = plt.subplots(n_features + 1, 1, figsize=(14, 2.2 * (n_features + 1)), sharex=True, squeeze=False)
 
     # X-axis: time in days
     samples_per_day = fs * 24
@@ -239,8 +251,10 @@ def plot_filtered(x, fs, filtered_signals, range_circ, multid_min, multid_max, e
     for i, name in enumerate(filtered_signals.columns, 1):
         if name == 'circadian':
             title = f"Circadian Band (Central T ≈ {24} hours ± {range_circ * 100}%)"
-        if name == 'multidien':
+        elif name == 'multidien':
             title = f"Multidien Band (T: {multid_min / 24}–{multid_max / 24} days)"
+        else:
+            raise ValueError(f"Invalid name: {name}")
 
         y = filtered_signals[name]
 
@@ -314,61 +328,147 @@ def rayleigh_test(n_events, plv):
     return p_value, z_stat
 
 
-def plot_single_phase_histogram(event_phases, plv, mean_angle, p_value,
-                                title_text="Phase Distribution of Seizure Occurrences"):
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-
-    n_bins = 24
-    bin_edges = np.linspace(-np.pi, np.pi, n_bins + 1)
+def plot_phase_histogram_for_single_feature(
+        ax,
+        event_phases,
+        plv,
+        mean_angle,
+        n_bins=24,
+        show_x_ticks: frozenset[str] = frozenset({'top', 'right', 'bottom', 'left'}),
+        max_y_ticks: int = 6,
+):
+    # Get bins and counts per bin
+    bin_edges = np.linspace(-pi, pi, n_bins + 1)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     bin_width = bin_edges[1] - bin_edges[0]
-    mean_angle_deg = np.degrees(mean_angle) % 360
 
     counts, _ = np.histogram(event_phases, bins=bin_edges)
 
-    bars = ax.bar(bin_centers, counts, width=bin_width, bottom=0.0,
-                  color='#1f77b4', alpha=0.6, edgecolor='k', linewidth=1)
+    # Plot the histogram values in a polar fashion
+    ax.bar(bin_centers, counts, width=bin_width, bottom=0.0, color='#1f77b4', alpha=0.6, edgecolor='k', linewidth=1)
 
     max_count = np.max(counts) if len(counts) > 0 else 1
+    ax.set_ylim(0, max_count)
+
+    # Show an arrow for the mean angle.
+    # Disable shrink so PLV=1 reaches the exact outer radius.
     scaled_plv_length = plv * max_count
+    if scaled_plv_length > 0:
+        ax.annotate('',
+                    xy=(mean_angle, scaled_plv_length),
+                    xytext=(mean_angle, 0.0),
+                    arrowprops=dict(edgecolor='r', facecolor='r', arrowstyle='-|>', lw=2,
+                                    mutation_scale=20, shrinkA=0, shrinkB=0),
+                    annotation_clip=False)
 
-    ax.annotate('',
-                xy=(mean_angle, scaled_plv_length),
-                xytext=(0, 0),
-                arrowprops=dict(edgecolor='r', facecolor='r', arrowstyle='-|>', lw=2, mutation_scale=20))
+    ax.set_theta_zero_location("N")  # Set 0° to the top
+    ax.set_theta_direction(-1)  # Make clockwise
 
-    ax.plot([], [], color='r', linestyle='-', markersize=5,
-            label=(f'Mean Phase Angle = {mean_angle_deg:.1f}°'
-                   f'\nPLV = {plv:.2f}'
-                   f'\np = {p_value:.4f}'))
-
-    ax.set_theta_zero_location("N")
-    ax.set_theta_direction(-1)
-
-    ax.set_ylim(0, max_count * 1.2)
-
-    tick_values = np.arange(0, int(max_count) + 1, 2)
+    # Make circular y-ticks.
+    max_y_ticks = max(2, int(max_y_ticks))
+    step = max(1, int(np.ceil(max_count / (max_y_ticks - 1))))
+    tick_values = np.arange(0, max_count + 1, step)
     ax.set_yticks(tick_values)
 
-    ax.set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2])
-    ax.set_xticklabels(['0°', '90°', '180°', '270°'], fontsize=12)
+    # Make x-ticks: 0, 45, 90, ... 315 degrees
+    x_tick_angles = [k * pi / 4 for k in range(8)]
+    x_tick_labels = [
+        '0°' if 'top' in show_x_ticks else '',
+        '45°' if 'top_right' in show_x_ticks else '',
+        'Falling' if 'right' in show_x_ticks else '',
+        '135°' if 'bottom_right' in show_x_ticks else '',
+        '180°' if 'bottom' in show_x_ticks else '',
+        '225°' if 'bottom_left' in show_x_ticks else '',
+        'Rising' if 'left' in show_x_ticks else '',
+        '315°' if 'top_left' in show_x_ticks else '',
+    ]
+    ax.set_xticks(x_tick_angles, x_tick_labels, fontsize=12, color='grey')
 
-    # --- Add 'Falling' and 'Rising' text on the outside curvature ---
-    text_radius = max_count * 1.05
+    # Keep Falling/Rising as real tick labels and enforce rotation by tick index on each draw.
+    # Tick order is [0, 45, 90, 135, 180, 225, 270, 315].
+    def _apply_falling_rising_tick_rotation(_event=None):
+        for i, tick in enumerate(ax.xaxis.get_major_ticks()):
+            lbl = tick.label1
+            if i in {2, 6}:  # 90° and 270°
+                lbl.set_rotation(90)
+                lbl.set_rotation_mode('default')
+                lbl.set_transform_rotates_text(True)
+            else:
+                lbl.set_rotation(0)
+            lbl.set_ha('center')
+            lbl.set_va('center')
 
-    # 90 degrees (pi/2) is the center of the 0 to 180 falling side
-    ax.text(np.pi / 2, text_radius, 'Falling', ha='center', va='center',
-            rotation=-90, fontsize=14, color='darkred', weight='bold')
+    _apply_falling_rising_tick_rotation()
+    ax.figure.canvas.mpl_connect('draw_event', _apply_falling_rising_tick_rotation)
 
-    # 270 degrees (3*pi/2) is the center of the 180 to 360 rising side
-    ax.text(3 * np.pi / 2, text_radius, 'Rising', ha='center', va='center',
-            rotation=90, fontsize=14, color='darkgreen', weight='bold')
+    # # --- Add 'Falling' and 'Rising' text on the outside curvature ---
+    # text_radius = max_count * 1.05
+    #
+    # # 90 degrees (pi/2) is the center of the 0 to 180 falling side
+    # ax.text(pi / 2, text_radius, 'Falling', ha='center', va='center',
+    #         rotation=-90, fontsize=14, color='darkred', weight='bold')
+    #
+    # # 270 degrees (3*pi/2) is the center of the 180 to 360 rising side
+    # ax.text(3 * pi / 2, text_radius, 'Rising', ha='center', va='center',
+    #         rotation=90, fontsize=14, color='darkgreen', weight='bold')
 
-    # Changed to ax.set_title to apply to the specific subplot
-    ax.set_title(title_text, fontsize=14, y=1.1)
-    ax.legend(loc='lower right', bbox_to_anchor=(1.3, 0.1))
+    return ax
 
-    plt.tight_layout(pad=1.5, h_pad=1.5, w_pad=0.5)
-    plt.show()
 
-    return fig, ax
+# noinspection PyDefaultArgument
+def plot_phase_histogram_for_all_features(
+        event_phases_per_feat: dict[str, np.ndarray],
+        plv_per_feat: dict[str, float],
+        mean_angle_per_feat: dict[str, float],
+        p_value_bh_per_feat: dict[str, float],
+        n_bins=24,
+        ncols=5,
+        max_n_y_ticks: int = 6,
+        subplots_kwargs: dict = {'figsize': (15, 10)},
+):
+    n_feats = len(event_phases_per_feat)
+    nrows = ceil(n_feats / ncols)
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw={'projection': 'polar'}, **subplots_kwargs)
+
+    # Plot on one axis per feature.
+    feats = event_phases_per_feat.keys()
+    for feat_i, feat in enumerate(feats):
+        row, col = divmod(feat_i, ncols)
+        ax = axes[row, col]
+
+        # Configure x ticks
+        top_row = row == 0
+        bottom_row = row == nrows - 1
+        left_col = col == 0
+        right_col = col == ncols - 1
+
+        show_x_ticks = frozenset(
+            side for cond, side in (
+                (top_row, "top"),
+                (right_col, "right"),
+                (bottom_row, "bottom"),
+                (left_col, "left"),
+                (top_row and right_col, "top_right"),
+                (bottom_row and right_col, "bottom_right"),
+                (bottom_row and left_col, "bottom_left"),
+                (top_row and left_col, "top_left"),
+            )
+            if cond
+        )
+
+        plv = plv_per_feat[feat]
+        mean_angle = mean_angle_per_feat[feat]
+        mean_angle_deg = np.degrees(mean_angle) % 360
+        p_value_bh = p_value_bh_per_feat[feat]
+
+        plot_phase_histogram_for_single_feature(ax, event_phases_per_feat[feat], plv, mean_angle, n_bins, show_x_ticks,
+                                                max_n_y_ticks)
+
+        ax.set_title(feat, fontsize=14, y=1.1)
+        # Add statistics info
+        info = f'Mean Angle: {mean_angle_deg:.1f}°\np BH: {p_value_bh:.4f}\nPLV: {plv:.2f}'
+        ax.annotate(info, xy=(0.02, 0.98), xycoords='axes fraction',
+                    fontsize=8, ha='left', )
+
+    return fig

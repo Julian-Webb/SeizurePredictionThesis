@@ -36,10 +36,12 @@ class TestCycleExtraction(unittest.TestCase):
             "feature_1": np.random.rand(n_segs),
             "feature_2": np.random.rand(n_segs),
         })
+        n_features = 2
 
         event_timestamps = {"events_1": np.array(["2026-01-02 12:00:00"], dtype="datetime64")}
-        metrics, filtered_features = cycle_extraction_for_ptnt(seg_features, event_timestamps,
-                                                               feature_names=["feature_1", "feature_2"])
+        n_event_types = len(event_timestamps)
+        metrics, filtered_features, event_phases_per_type_per_feat = \
+            cycle_extraction_for_ptnt(seg_features, event_timestamps, feature_names=["feature_1", "feature_2"])
 
         # Check metrics structure
         self.assertFalse(metrics.empty)
@@ -51,3 +53,8 @@ class TestCycleExtraction(unittest.TestCase):
         self.assertEqual(len(filtered_features), len(seg_features))
         self.assertIn("feature_1", filtered_features.columns)
         self.assertIn("feature_2", filtered_features.columns)
+
+        # Check Event Phases
+        self.assertEqual(len(event_phases_per_type_per_feat), n_event_types)
+        for event_type, event_phases_per_feat in event_phases_per_type_per_feat.items():
+            self.assertEqual(len(event_phases_per_feat), n_features, f"Wrong number of event phases for {event_type}")
