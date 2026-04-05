@@ -4,8 +4,8 @@ Assumptions:
 - `segs` index is monotonic and represents sequential segment numbers.
 - Clips are aligned to intervention starts (post-preictal) to avoid mixed preictal/other clips.
 """
-
 import logging
+import multiprocessing
 from typing import Iterable
 
 import numpy as np
@@ -15,27 +15,35 @@ from pandas import DataFrame
 from config import save_dataframe_multiformat, PatientDir, PATHS
 from config.constants import MIN_SEGMENTS_PER_CLIP_RATIO
 from config.intervals import SEGMENTS_PER_CLIP, SEGMENT
-from utils.utils import safe_float_to_int, timeit
+from utils.utils import safe_float_to_int
 
 
-@timeit
-def make_ptnt_clips(
+def map_segs_to_clips(seg_index: pd.Index, all_clip_starts: np.ndarray):
+    """Map segments to clips.
+    Returns
+    -------
+    clip_id - For each segment, the index of the clip that contains it.
+
+    """
+    clip_id = np.searchsorted(all_clip_starts, seg_index, side='right') - 1
+    return clip_id
+
+
+def create_clips_for_ptnt(
         segs: DataFrame,
-        probability_columns: Iterable[str] = tuple(),
         segs_per_clip: int = SEGMENTS_PER_CLIP,
         min_segs_per_clip_ratio: float = MIN_SEGMENTS_PER_CLIP_RATIO,
 ):
     """Create clips from a segment table.
 
-    Args:
-        segs: DataFrame with at least `type` and `exists` columns and a sequential index.
-        probability_columns: Segment-level probability column names to aggregate by mean.
-        segs_per_clip: Target number of segments per clip.
-        min_segs_per_clip_ratio: Fraction of segments that must exist for a clip to be valid.
+        Args:
+            segs: DataFrame with at least `start_mtz`, `type` and `exists` columns and a sequential index.
+            segs_per_clip: Target number of segments per clip.
+            min_segs_per_clip_ratio: Fraction of segments that must exist for a clip to be valid.
 
-    Returns:
-        DataFrame with clip boundaries and aggregated properties.
-    """
+        Returns:
+            DataFrame with clip boundaries and aggregated properties.
+        """
     min_segs_per_clip = safe_float_to_int(segs_per_clip * min_segs_per_clip_ratio)  # inclusive
     segs = segs.copy()
 
@@ -112,18 +120,11 @@ def make_ptnt_clips(
 
     # Assign each segment to the clip that contains it.
     # For each segment, find the rightmost clip start <= segment index
-    segs['clip_id'] = np.searchsorted(all_clip_starts, segs.index, side='right') - 1
-
-    # Calculate properties for segments in a clip
-    grouped_segs = segs.groupby('clip_id')
-    agg = grouped_segs.agg(
+    clip_id = map_segs_to_clips(segs.index, clips['start_seg'].values)
+    agg = segs.groupby(clip_id).agg(
         n_existing=('exists', 'sum'),
         types=('type', lambda x: sorted(set(x))),
     )
-    # Calculate probabilities for clips
-    for prob_col in probability_columns:
-        # NA values are skipped by default
-        agg[prob_col] = grouped_segs[prob_col].mean()
 
     # Merge clip properties back into clips DataFrame
     clips = clips.join(agg)
@@ -141,40 +142,32 @@ def make_ptnt_clips(
     clips['valid'] = clips['full'] & clips['sufficient_data']
 
     # Sort columns
-    clips = clips[['start_seg', 'end_seg', 'start_mtz', 'end_mtz', *list(probability_columns), 'preictal', 'types',
+    clips = clips[['start_seg', 'end_seg', 'start_mtz', 'end_mtz', 'preictal', 'types',
                    'valid', 'segs_in_clip', 'full', 'n_existing', 'sufficient_data']]
 
     return clips
 
 
-def process_ptnt(
-        pdir: PatientDir,
-        models: Iterable[str] = ('ensemble', 'CNN'),
-):
+def create_clips_for_pdir(pdir: PatientDir):
     """Load a patient's segments, compute clips, and save the clip table."""
-    segs = pd.read_pickle(pdir.segments_table.pickle)
-    segs = segs[['start_mtz', 'type', 'exists']]
-
-    probability_columns = []
-    seg_probs = pd.read_pickle(pdir.segment_probabilities_table.pickle)
-    for model in models:
-        probability_column = f'{model}_probability'
-        segs[probability_column] = seg_probs[model]
-        probability_columns.append(probability_column)
-
-    clips = make_ptnt_clips(segs, probability_columns)
+    logging.info(f'[{pdir.name}] 🎬 Creating Clips ...')
+    segs = pd.read_pickle(pdir.segments_table.pickle)[['start_mtz', 'type', 'exists']]
+    clips = create_clips_for_ptnt(segs)
     save_dataframe_multiformat(clips, pdir.clips_table)
+    logging.info(f'[{pdir.name}] ✅ Completed Clip Creation.')
 
 
-def main(
-        pdirs: Iterable[PatientDir] = PATHS.patient_dirs()
-):
-    """Run clip generation for all patient directories in PATHS."""
-    for pdir in pdirs:
-        logging.info(f'[{pdir.name}] Creating Clips ...')
-        process_ptnt(pdir)
+
+def create_clips_for_pdirs(pdirs: Iterable[PatientDir], serial_processing: bool = False):
+    if serial_processing:
+        for pdir in pdirs:
+            create_clips_for_pdir(pdir)
+    else:
+        with multiprocessing.Pool() as pool:
+            pool.map(create_clips_for_pdir, pdirs)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] - %(message)s')
-    main()
+    pdirs_ = PATHS.patient_dirs()
+    create_clips_for_pdirs(pdirs_)

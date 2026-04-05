@@ -40,7 +40,7 @@ def cycle_extraction_by_clips_for_ptnt(
     # Load data and discard irrelevant columns
     szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz']
     seg_features = pd.read_pickle(pdir.filled_features_for_segs.pickle)
-    clips = pd.read_pickle(pdir.clips_table.pickle)[['start_seg', 'end_seg', 'start_mtz', 'end_mtz']].copy()
+    clips = pd.read_pickle(pdir.clip_scores_table.pickle)[['start_seg', 'end_seg', 'start_mtz', 'end_mtz']].copy()
 
     # Average seg features per clip
     clips = average_seg_features_per_clip(seg_features[feature_names], clips)

@@ -190,10 +190,10 @@ def cycle_extraction_for_ptnt(
     return metrics, seg_feats_filt, event_phases_per_type_per_feat
 
 
-def get_false_positives_from_clips(clips: DataFrame, thresh: float, probability_col: str):
+def get_false_positives_from_clips(clips: DataFrame, thresh: float, score_col: str):
     c = clips[clips['valid']]
     negative_label = ~c['preictal']
-    positive_pred = c[probability_col] >= thresh
+    positive_pred = c[score_col] >= thresh
     fp_clips = c[negative_label & positive_pred]
     fp_timestamps = fp_clips['end_mtz']
     return fp_timestamps.to_numpy()
@@ -274,7 +274,7 @@ def cycle_extraction_and_plot_for_pdir(
     event_timestamps = {'seizures': szrs}
     for model in models:
         best_thresh = pd.read_pickle(pickle_path(pdir.model_eval_dir / 'test' / model / 'metrics'))['best_threshold']
-        event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(clips, best_thresh, f'{model}_probability')
+        event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(clips, best_thresh, f'{model}_score')
 
     metrics, seg_feats_filt, event_phases_per_type_per_feat = \
         cycle_extraction_for_ptnt(seg_feats, event_timestamps, upper_quantile_bound_for_clipping, feature_names,

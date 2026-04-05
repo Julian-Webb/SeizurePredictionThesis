@@ -6,7 +6,7 @@ import pandas as pd
 from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, PREICTAL, INTER_PRE, INTERVENTION, POSTICTAL, INTER_POST, INTERICTAL
 # Now import the module under test
-from preprocessing import segment_tables
+from preprocessing import create_segments
 from utils.edf_utils import time_to_index
 
 
@@ -31,7 +31,7 @@ class TestSegmentTables(unittest.TestCase):
         segs['file'] = None
         segs['start_index'] = None
 
-        res = segment_tables.find_existing_segs(valid_edf_intervals, edfs, segs.copy())
+        res = create_segments.find_existing_segs(valid_edf_intervals, edfs, segs.copy())
 
         # First three segments should exist
         self.assertTrue(res.loc[0, 'exists'])
@@ -72,7 +72,7 @@ class TestSegmentTables(unittest.TestCase):
         segs['type'] = np.nan
         segs['lead_szr'] = np.nan
 
-        res = segment_tables.find_seg_type(segs.copy(), szrs)
+        res = create_segments.find_seg_type(segs.copy(), szrs)
 
         # Compute exact interval boundaries used in find_seg_type
         t0 = iv_start
@@ -115,7 +115,7 @@ class TestSegmentTables(unittest.TestCase):
             else:
                 self.assertTrue(res.loc[i, 'lead_szr'])
 
-    def test_make_segs_table_produces_expected_columns_and_types(self):
+    def test_make_segs_for_ptnt_produces_expected_columns_and_types(self):
         # Minimal working inputs to call make_segs_table
         first_recording_start = pd.Timestamp('2020-01-01 00:00:00')
         timespan = pd.Timedelta(minutes=2)
@@ -129,7 +129,7 @@ class TestSegmentTables(unittest.TestCase):
         # Single seizure somewhere inside
         valid_szrs = pd.DataFrame([{'start_mtz': first_recording_start + pd.Timedelta(seconds=60), 'lead': False}])
 
-        segs = segment_tables.make_segs_table(first_recording_start, timespan, valid_edf_intervals, edfs, valid_szrs)
+        segs = create_segments.make_segs_for_ptnt(first_recording_start, timespan, valid_edf_intervals, edfs, valid_szrs)
 
         # Basic sanity checks
         self.assertIn('start_mtz', segs.columns)
@@ -145,7 +145,7 @@ class TestSegmentTables(unittest.TestCase):
         szrs = pd.DataFrame([{'start_mtz': pd.Timestamp('2020-01-01 00:01:00'), 'lead': False}])
 
         # Should not raise
-        segment_tables.plot_segs(segs, szrs, edfs=None, title='test', show=False)
+        create_segments.plot_segs(segs, szrs, edfs=None, title='test', show=False)
 
 
 if __name__ == '__main__':

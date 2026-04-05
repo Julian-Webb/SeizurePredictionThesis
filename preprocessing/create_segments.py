@@ -73,7 +73,7 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
     return segs
 
 
-def make_segs_table(
+def make_segs_for_ptnt(
         first_recording_start: Timestamp,
         timespan: Timedelta,
         valid_edf_intervals: DataFrame,
@@ -106,10 +106,10 @@ def load_ptnt_timespan_info(pdir: PatientDir) -> Tuple[Timestamp, Timestamp, Tim
     return ptnt_info['recordings_start'], ptnt_info['recordings_end'], ptnt_info['timespan']
 
 
-def make_segs_table_from_pdir(pdir: PatientDir):
+def make_segs_for_pdir(pdir: PatientDir):
     first_recording_start, _, timespan = load_ptnt_timespan_info(pdir)
 
-    return make_segs_table(
+    return make_segs_for_ptnt(
         first_recording_start, timespan,
         pd.read_pickle(pdir.valid_edf_intervals.pickle),
         pd.read_pickle(pdir.edf_files_table.pickle),
@@ -183,13 +183,13 @@ def plot_segs(segs: DataFrame,
     plt.close(fig)
 
 
-def make_segs_table_and_plot(pdir: PatientDir, from_preexisting_segs: bool = False):
+def make_segs_and_plot_for_pdir(pdir: PatientDir, from_preexisting_segs: bool = False):
     # Make segs table and save it to csv
     logging.info(f"Processing {pdir.name}")
     if from_preexisting_segs:
         segs = pd.read_pickle(pdir.segments_table.pickle)
     else:
-        segs = make_segs_table_from_pdir(pdir)
+        segs = make_segs_for_pdir(pdir)
         save_dataframe_multiformat(segs.drop(columns=['end_mtz']), pdir.segments_table)
 
     # Make the plot
@@ -199,16 +199,16 @@ def make_segs_table_and_plot(pdir: PatientDir, from_preexisting_segs: bool = Fal
     plot_segs(segs, szrs, edfs, pdir.name, show=False, save_path=pdir.segments_plot)
 
 
-def make_segment_tables(pdirs: List[PatientDir], serial_processing: bool = False):
+def create_segs_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
             logging.info(f'Seg table for : {pdir.name}')
-            make_segs_table_and_plot(pdir)
+            make_segs_and_plot_for_pdir(pdir)
     else:
         max_workers = min(len(pdirs), multiprocessing.cpu_count())
         logging.info(f"Using {max_workers} max workers")
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(make_segs_table_and_plot, pt): pt for pt in pdirs}
+            futures = {executor.submit(make_segs_and_plot_for_pdir, pt): pt for pt in pdirs}
             for fut in as_completed(futures):
                 pdir = futures[fut]
                 try:
@@ -220,8 +220,8 @@ def make_segment_tables(pdirs: List[PatientDir], serial_processing: bool = False
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    make_segment_tables(PATHS.patient_dirs())
+    create_segs_for_pdirs(PATHS.patient_dirs())
 
     # Just make plots
-    # for pdir in PATHS.patient_dirs():
-    #     make_segs_table_and_plot(pdir, True)
+    for pdir in PATHS.patient_dirs():
+        make_segs_and_plot_for_pdir(pdir, True)

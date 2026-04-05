@@ -1,18 +1,7 @@
-import logging
 import shutil
 
-import model_eval.calc_segment_probabilities
-import model_eval.clips
-import model_eval.eval_models
-import model_eval.event_based_metrics
-from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
+from config import PATHS
 from config import Paths
-from config import PatientDir, PATHS
-from feature_extraction.extract_features import run_feature_extraction
-from preprocessing.filter_signals import filter_edfs_for_pdirs
-from preprocessing.segment_tables import make_segment_tables
-from preprocessing.train_test_allocation import find_ptnt_splits
-from preprocessing.validate_patients import validate_patients
 
 
 def remove_unnecessary_files():
@@ -22,7 +11,7 @@ def remove_unnecessary_files():
             pdir.cycle_extraction_dir,
             pdir.model_eval_dir,
             pdir.models_dir,
-            pdir.predictions_dir,
+            pdir.predicted_scores_dir,
         ]
         multipath_files_to_del = [
             pdir.valid_edf_intervals,
@@ -50,24 +39,10 @@ def remove_unnecessary_files():
             f.unlink(missing_ok=True)
 
 
-def process_ptnt(pdir: PatientDir):
-    logging.basicConfig(level=logging.INFO, format=f'[%(levelname)s] - %(message)s')
-    pdirs = [pdir]
-    drop_duplicates_and_localize(pdirs)
-    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=False)
-    # filter_all_edfs(pdirs)
-    make_segment_tables(pdirs)
-    find_ptnt_splits(pdirs)
-    run_feature_extraction(pdirs)
-    # model_eval.calc_segment_probabilities.main(pdirs, serial_processing=False)
-    model_eval.clips.main(pdirs)
-    model_eval.event_based_metrics.calc_metrics(pdirs)
-    model_eval.eval_models.main(pdirs)
 
 
 if __name__ == '__main__':
     # remove_unnecessary_files()
     pdir = PATHS.patient_dirs()[6]
     print(pdir)
-    process_ptnt(pdir)
     pass

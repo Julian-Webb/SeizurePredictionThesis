@@ -163,7 +163,7 @@ def event_based_metrics(
     8. The relative TIFW is the absolute TIFW / total recording duration.
     9. The relative number of seizures predicted is #seizures predicted / #total seizures
 
-    :param clips: DataFrame with columns '{model}_probability', 'end_mtz', 'valid' (optional)
+    :param clips: DataFrame with columns '{model}_score', 'end_mtz', 'valid' (optional)
     :param edfs: The patient's EDF DataFrame
     :param szr_starts: The patient's seizure starts
     :param thresholds_per_model: If specified, will use these thresholds per model instead of all thresholds in clips.
@@ -207,11 +207,11 @@ def event_based_metrics(
 
     for model in models:
         logging.info(f"{logging_info} [{model}] Processing event-based metrics...")
-        prob_col = f'{model}_probability'
+        score_col = f'{model}_score'
 
         # Use this model's thresholds if specified, otherwise use all unique thresholds in the clips for this model
         if thresholds_per_model is None:
-            model_thresholds = np.sort(clips[prob_col].unique())
+            model_thresholds = np.sort(clips[score_col].unique())
         else:
             model_thresholds = thresholds_per_model[model]
 
@@ -222,7 +222,7 @@ def event_based_metrics(
         for thresh in model_thresholds:
             logging.debug(f'{logging_info} [{model}] Processing threshold {thresh}...')
             # Select SPHs for this threshold
-            y_pred = clips[prob_col] >= thresh
+            y_pred = clips[score_col] >= thresh
             sphs = all_sphs[y_pred]
 
             # Check which seizures were predicted
@@ -283,7 +283,7 @@ def load_data_per_split(pdir: PatientDir):
     """
     :return: data per split (type[edfs, clips, szr_starts], split[train, test])
     """
-    clips = pd.read_pickle(pdir.clips_table.pickle)
+    clips = pd.read_pickle(pdir.clip_scores_table.pickle)
     szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
     edfs = pd.read_pickle(pdir.edf_files_table.pickle)
     split_dt, split_idx = pd.read_pickle(pdir.train_test_split.pickle).values
@@ -333,7 +333,7 @@ def calc_ptnt_split_metrics(args):
 
     threshs_per_model = {}
     for model in models:
-        all_threshs = per_split['clips']['train'][f'{model}_probability'].unique()
+        all_threshs = per_split['clips']['train'][f'{model}_score'].unique()
         threshs_per_model[model] = subselect_thresholds(all_threshs)
 
     # noinspection PyTypeChecker

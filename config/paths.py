@@ -93,6 +93,7 @@ class PatientDir(type(Path())):
 
         ### Preprocessing
         self.segments_table = MultiPath(self, 'segments')
+        self.clips_table = MultiPath(self, 'clips')
         self.segments_plot = Path(self, 'segments_plot.png')
         self.train_test_split = MultiPath(self, 'train_test_split')
 
@@ -105,9 +106,9 @@ class PatientDir(type(Path())):
         self.mlp_history = MultiPath(self.models_dir, 'FB_MLP_training_history')
 
         ### Predictions
-        self.predictions_dir = Path(self, 'predictions')
-        self.segment_probabilities_table = MultiPath(self.predictions_dir, 'segment_probabilities')
-        self.clips_table = MultiPath(self.predictions_dir, 'clips')
+        self.predicted_scores_dir = Path(self, 'predicted_scores')
+        self.segment_scores_table = MultiPath(self.predicted_scores_dir, 'segment_scores')
+        self.clip_scores_table = MultiPath(self.predicted_scores_dir, 'clip_scores')
 
         # Model Evaluation
         self.model_eval_dir = Path(self, 'model_evaluation')

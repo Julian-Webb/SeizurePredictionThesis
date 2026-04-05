@@ -25,15 +25,15 @@ Various abbreviations throughout the code:
 2. preprocessing
     1. validate_patients
     2. filter_signals
-    3. segment_tables
-    4. train_test_allocation
-    5. feature_extraction.extract_features
+    3. create_segments
+    4. create_clips
+    5. dataset_partitioning
+    6. feature_extraction.extract_features
 3. models.train_models
 4. model_eval
-   1. calc_segment_probabilities
-   2. clips
-   3. event_based_metrics
-   4. eval_models
+   1. calc_scores
+   2. event_based_metrics
+   3. eval_models
 5. model_comparison.comparision_table
 6. cycle_extraction
    1. fill_feature_gaps

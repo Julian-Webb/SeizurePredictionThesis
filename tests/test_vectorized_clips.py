@@ -3,12 +3,9 @@ Test script to validate the vectorized clip generation produces correct results.
 Note: this test is AI generated and somewhat lackluster
 """
 import numpy as np
-import pandas as pd
 from pandas import DataFrame
 
-from config.constants import MIN_SEGMENTS_PER_CLIP_RATIO
 from config.intervals import SEGMENTS_PER_CLIP
-from utils.utils import safe_float_to_int
 
 
 def test_clip_generation():
@@ -30,10 +27,10 @@ def test_clip_generation():
     print(f"Preictal segments: {segs[segs['type'] == 'preictal'].index.tolist()}")
 
     # Import the function
-    from model_eval.clips import make_ptnt_clips
+    from preprocessing.create_clips import create_clips_for_ptnt
 
     # Run the vectorized version
-    clips_df = make_ptnt_clips(segs)
+    clips_df = create_clips_for_ptnt(segs)
 
     print(f"\nGenerated {len(clips_df)} clips")
     print("\nFirst 10 clips:")

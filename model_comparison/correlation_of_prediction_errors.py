@@ -84,8 +84,8 @@ def correlation_of_prediction_errors_from_pdir(
 ):
     clips = load_data_per_split(pdir)['clips'][split]
 
-    pi = clips['ensemble_probability'].values
-    pj = clips['CNN_probability'].values
+    pi = clips['ensemble_score'].values
+    pj = clips['CNN_score'].values
     y_true = clips['preictal'].values
     return correlation_of_prediction_errors(pi, pj, y_true)
 

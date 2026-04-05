@@ -164,7 +164,7 @@ def eval_ptnt(
             # Optimize the threshold
             best_thresh = ebms['event_based_f1'].idxmax()
 
-            y_scores = split_clips[f'{model}_probability']
+            y_scores = split_clips[f'{model}_score']
             y_pred = y_scores >= best_thresh
 
             metrics_to_save = pd.Series({
