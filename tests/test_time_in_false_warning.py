@@ -58,8 +58,11 @@ class TestTimeInFalseWarning(unittest.TestCase):
             return DataFrame(rows)
 
         base_df = ivs_to_df(base_ivs)
-        subtract_df = ivs_to_df(subtract_ivs)
         expected_df = ivs_to_df(expected_ivs)
 
-        res = subtract_intervals(base_df, subtract_df)
+        subtract_iv = P.empty()
+        for iv in subtract_ivs:
+            subtract_iv |= iv
+
+        res = subtract_intervals(base_df, subtract_iv)
         self.assertTrue(res.equals(expected_df))

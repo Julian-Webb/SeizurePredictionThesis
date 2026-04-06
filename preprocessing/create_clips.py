@@ -34,16 +34,19 @@ def create_clips_for_ptnt(
         segs_per_clip: int = SEGMENTS_PER_CLIP,
         min_segs_per_clip_ratio: float = MIN_SEGMENTS_PER_CLIP_RATIO,
 ):
-    """Create clips from a segment table.
+    """
+    Create clips from a segment table.
 
-        Args:
-            segs: DataFrame with at least `start_mtz`, `type` and `exists` columns and a sequential index.
-            segs_per_clip: Target number of segments per clip.
-            min_segs_per_clip_ratio: Fraction of segments that must exist for a clip to be valid.
+    Parameters
+    ----------
+        segs: DataFrame with at least `start_mtz`, `type` and `exists` columns and a sequential index.
+        segs_per_clip: Target number of segments per clip.
+        min_segs_per_clip_ratio: Fraction of segments that must exist for a clip to be valid.
 
-        Returns:
-            DataFrame with clip boundaries and aggregated properties.
-        """
+    Returns
+    -------
+        DataFrame with clip boundaries and aggregated properties.
+    """
     min_segs_per_clip = safe_float_to_int(segs_per_clip * min_segs_per_clip_ratio)  # inclusive
     segs = segs.copy()
 
@@ -155,7 +158,6 @@ def create_clips_for_pdir(pdir: PatientDir):
     clips = create_clips_for_ptnt(segs)
     save_dataframe_multiformat(clips, pdir.clips_table)
     logging.info(f'[{pdir.name}] ✅ Completed Clip Creation.')
-
 
 
 def create_clips_for_pdirs(pdirs: Iterable[PatientDir], serial_processing: bool = False):
