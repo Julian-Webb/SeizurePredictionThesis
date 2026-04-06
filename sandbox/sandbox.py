@@ -17,7 +17,7 @@ def remove_unnecessary_files():
             pdir.valid_edf_intervals,
             pdir.invalid_edf_intervals,
             pdir.segments_table,
-            pdir.train_test_split,
+            pdir.dataset_partition,
             pdir.all_szr_starts_file,
             pdir.valid_szr_starts_file,
         ]

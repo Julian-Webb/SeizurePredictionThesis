@@ -10,13 +10,13 @@ from config.constants import MIN_VALID_SEIZURES_PER_PATIENT, MIN_RATIO_RECORDED_
 from config import PATHS, PatientDir, save_dataframe_multiformat
 
 
-def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
+def ptnt_valid_szrs(all_szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     """:return: valid_szrs, szrs, ptnt_szr_info"""
     # find the time difference of a seizure to the *previous* one
-    if szrs.empty:
-        return szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': 0, 'enough_valid_seizures': False}
+    if all_szrs.empty:
+        return all_szrs, all_szrs, {'total_seizures': len(all_szrs), 'valid_seizures': 0, 'enough_valid_seizures': False}
 
-    diff = szrs['start_mtz'].diff()
+    diff = all_szrs['start_mtz'].diff()
 
     min_diff = intervals.PREICTAL.exact_dur + intervals.INTERVENTION.exact_dur
     valid = diff > min_diff
@@ -25,11 +25,12 @@ def ptnt_valid_szrs(szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     n_valid = valid.value_counts()[True]
     enough_valid_szrs = n_valid >= MIN_VALID_SEIZURES_PER_PATIENT
 
-    valid_szrs = szrs[valid]
-    szrs['valid'] = valid
+    # todo valid seizure index isn't reset. I might want to do this and save the all_szrs index in a separate column
+    valid_szrs = all_szrs[valid]
+    all_szrs['valid'] = valid
 
     # noinspection PyTypeChecker
-    return valid_szrs, szrs, {'total_seizures': len(szrs), 'valid_seizures': n_valid,
+    return valid_szrs, all_szrs, {'total_seizures': len(all_szrs), 'valid_seizures': n_valid,
                               'enough_valid_seizures': enough_valid_szrs}
 
 
@@ -112,19 +113,19 @@ def validate_patients(
 
     for pdir in pdirs:
         try:
-            szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)
+            all_szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)
         except FileNotFoundError:
             logging.warning(f'All seizure starts file not found for {pdir.name}')
-            szrs = DataFrame()
+            all_szrs = DataFrame()
 
-        valid_szrs, szrs, ptnt_szr_info = ptnt_valid_szrs(szrs)
+        valid_szrs, all_szrs, ptnt_szr_info = ptnt_valid_szrs(all_szrs)
         valid_szrs = find_lead_szrs(valid_szrs)
 
         if 'valid' in valid_szrs.columns:
             valid_szrs.drop(columns=['valid'], inplace=True)
         if not valid_szrs.empty:
             save_dataframe_multiformat(valid_szrs, pdir.valid_szr_starts_file)
-        save_dataframe_multiformat(szrs, pdir.all_szr_starts_file)
+        save_dataframe_multiformat(all_szrs, pdir.all_szr_starts_file)
 
         try:
             edfs = pd.read_pickle(pdir.edf_files_table.pickle)

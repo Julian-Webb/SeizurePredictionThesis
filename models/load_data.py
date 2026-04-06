@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Timestamp
 from pyedflib import EdfReader
 
 from config import PATHS
@@ -55,7 +55,7 @@ def load_data(
         subsample_shuffle_and_subselect_types: bool,
         train: bool = False,
         test: bool = False,
-        split_idx: int = None,
+        test_start_mtz: Timestamp = None,
         edf_dir: Path = None,
         feature_names: list[str] = FeatureNames.ALL_ORDERED,
         random_state: int = None,
@@ -70,8 +70,8 @@ def load_data(
         * shuffle segments
     :param train: Whether to load training data
     :param test: Whether to load testing data
-    :param split_idx: The segment index of the split between train and test data, if train and test are not both True.
-    ``pd.read_pickle(pdir.train_test_split.pickle).segment_index``
+    :param test_start_mtz: The `Timestamp` where the test set starts. Only needed if train and test are not both True.
+    ``pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test']``
     :param edf_dir: The patient's edf_dir, if type_ is 'eeg'.
     :param feature_names: The names of the features to load, if type_ is 'features'.
     :param random_state: Optional random state for subsampling and shuffling
@@ -86,19 +86,18 @@ def load_data(
         raise ValueError(f'Parameter type_ must be either "features" or "eeg", but is {type_}')
     if type_ == 'eeg' and edf_dir is None:
         raise ValueError('If type_ is "eeg", specify edf_dir')
-    if train != test:  # train or test, but not both
-        if split_idx is None:
-            raise ValueError('If train and test are not both True, specify split_idx')
-        if split_idx not in segs.index or not segs.index.is_monotonic_increasing:
-            raise RuntimeError("split_idx does not correspond to segment index; check train_test_split contents")
+    if train != test and test_start_mtz is None:  # train or test, but not both
+        raise ValueError('If train and test are not both True, specify test_start_mtz')
+    if not segs.index.is_monotonic_increasing:
+        raise RuntimeError("segs index should be monotonic increasing, but is not.")
 
     segs = segs.copy()
 
     # Select train / test data or keep both, depending on args
     if train and not test:
-        segs = segs[segs.index < split_idx]
+        segs = segs[segs['start_mtz'] < test_start_mtz]
     elif test and not train:
-        segs = segs[segs.index >= split_idx]
+        segs = segs[segs['start_mtz'] >= test_start_mtz]
 
     # Select only existing segs for further processing
     segs = segs[segs['exists']].drop(columns=['exists'])
@@ -147,13 +146,12 @@ def load_data(
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     pdir = PATHS.patient_dirs()[0]
-
     res = load_data(
         segs=pd.read_pickle(pdir.segments_table.pickle),
         type_='features',
         train=True,
         test=False,
         subsample_shuffle_and_subselect_types=True,
-        split_idx=pd.read_pickle(pdir.train_test_split.pickle).segment_index,
+        test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test'],
         edf_dir=pdir.edf_dir,
     )

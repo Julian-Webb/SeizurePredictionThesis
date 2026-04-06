@@ -286,22 +286,23 @@ def load_data_per_split(pdir: PatientDir):
     clips = pd.read_pickle(pdir.clip_scores_table.pickle)
     szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
     edfs = pd.read_pickle(pdir.edf_files_table.pickle)
-    split_dt, split_idx = pd.read_pickle(pdir.train_test_split.pickle).values
+    partition = pd.read_pickle(pdir.dataset_partition.pickle)
+    test_start_mtz = partition.loc['start_mtz', 'test']
 
     #### Select correct EDFs per split and split the EDF that contain the split (if any)
     edfs = edfs[['file_name', 'start_mtz', 'end_mtz']].copy()
 
     # Select train and test EDFs that don't contain the split
-    train_edfs = edfs[edfs['end_mtz'] <= split_dt].copy()
-    test_edfs = edfs[split_dt <= edfs['start_mtz']].copy()
+    train_edfs = edfs[edfs['end_mtz'] <= test_start_mtz].copy()
+    test_edfs = edfs[test_start_mtz <= edfs['start_mtz']].copy()
 
     # Split the EDF that spans the boundary (if any)
-    spans_split = (edfs['start_mtz'] < split_dt) & (edfs['end_mtz'] > split_dt)
+    spans_split = (edfs['start_mtz'] < test_start_mtz) & (edfs['end_mtz'] > test_start_mtz)
     if spans_split.any():
         idx = spans_split.idxmax()
         edf = edfs.loc[idx]
         before, after = edf.copy(), edf.copy()
-        before['end_mtz'], after['start_mtz'] = split_dt, split_dt
+        before['end_mtz'], after['start_mtz'] = test_start_mtz, test_start_mtz
         train_edfs = pd.concat([train_edfs, DataFrame(before).T])
         test_edfs = pd.concat([DataFrame(after).T, test_edfs])
 
@@ -313,12 +314,12 @@ def load_data_per_split(pdir: PatientDir):
     per_split = {
         'edfs': {'train': train_edfs, 'test': test_edfs},
         'clips': {
-            'train': clips[clips['start_seg'] <= split_idx],
-            'test': clips[clips['start_seg'] > split_idx],
+            'train': clips[clips['start_mtz'] < test_start_mtz],
+            'test': clips[clips['start_mtz'] >= test_start_mtz],
         },
         'szr_starts': {
-            'train': szr_starts[szr_starts <= split_dt],
-            'test': szr_starts[szr_starts > split_dt],
+            'train': szr_starts[szr_starts < test_start_mtz],
+            'test': szr_starts[szr_starts >= test_start_mtz],
         }
     }
     return per_split

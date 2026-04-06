@@ -95,7 +95,7 @@ class PatientDir(type(Path())):
         self.segments_table = MultiPath(self, 'segments')
         self.clips_table = MultiPath(self, 'clips')
         self.segments_plot = Path(self, 'segments_plot.png')
-        self.train_test_split = MultiPath(self, 'train_test_split')
+        self.dataset_partition = MultiPath(self, 'dataset_partition')
 
         ### ML models
         self.models_dir = Path(self, 'models')

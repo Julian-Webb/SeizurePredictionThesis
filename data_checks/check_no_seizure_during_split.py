@@ -8,10 +8,11 @@ pdirs = PATHS.patient_dirs()
 for pdir in pdirs:
     segs = pd.read_pickle(pdir.segments_table.pickle)
     szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)
-    split_idx = pd.read_pickle(pdir.train_test_split.pickle).segment_index
+    partition = pd.read_pickle(pdir.dataset_partition.pickle)
+    first_test_seg_idx = partition.loc['first_idx_segs', 'test']
 
     print(pdir.name)
-    split_seg: Series = segs.loc[split_idx]
+    split_seg: Series = segs.loc[first_test_seg_idx]
     type_ = split_seg['type']
 
     if type_ == 'interictal':

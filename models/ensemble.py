@@ -112,13 +112,12 @@ def create_ptnt_mlp_ensemble(
         feature_names: list[str] = FeatureNames.ENSEMBLE,
 ):
     segs = pd.read_pickle(pdir.segments_table.pickle)
-    split_idx = pd.read_pickle(pdir.train_test_split.pickle).segment_index
 
     load_data_partial = partial(load_data,
                                 segs=segs,
                                 type_='features',
                                 train=True,
-                                split_idx=split_idx,
+                                test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test'],
                                 feature_names=feature_names)
 
     # Fit z-score normalizer on the features of the entire train set
