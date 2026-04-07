@@ -276,7 +276,7 @@ def cycle_extraction_and_plot_for_pdir(
     # Get the false positive timestamps for each model
     event_timestamps = {'seizures': szrs}
     for model in models:
-        best_thresh = pd.read_pickle(pickle_path(pdir.model_eval_dir / 'test' / model / 'metrics'))['best_threshold']
+        best_thresh = pd.read_pickle(pdir.model_eval_dir('test', model).metrics_table.pickle)['best_threshold']
         event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(clips, best_thresh, f'{model}_score')
 
     metrics, seg_feats_filt, event_phases_per_type_per_feat = \

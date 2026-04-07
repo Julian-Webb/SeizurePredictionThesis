@@ -1,7 +1,7 @@
 import unittest
 import portion as P
 from pandas import DataFrame, Timestamp
-from model_eval.event_based_metrics import subtract_intervals
+from model_eval.event_based_metrics_deprecated import subtract_intervals
 
 class TestTimeInFalseWarning(unittest.TestCase):
     def test_subtract_intervals(self):

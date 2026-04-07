@@ -27,10 +27,10 @@ def model_eval(
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_model_eval.log")
 
     with FunctionTimer('Computing Event-Based Metrics'):
-        event_based_metrics.calc_metrics(pdirs)
+        event_based_metrics.event_based_metrics_for_pdirs(pdirs)
 
     with FunctionTimer('Evaluating Models'):
-        eval_models.main(pdirs)
+        eval_models.eval_models_for_pdirs(pdirs)
 
 
 if __name__ == '__main__':

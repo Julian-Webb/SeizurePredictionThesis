@@ -13,8 +13,7 @@ from scipy.stats import norm
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
-from config import PatientDir, PATHS, MultiPath, save_dataframe_multiformat, pickle_path
-from model_eval.event_based_metrics import ensure_results_dir
+from config import PatientDir, PATHS, save_dataframe_multiformat, pickle_path
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 
@@ -98,9 +97,9 @@ def plot_threshold_metrics(
 
         #### Event-based sensitivity vs. 1 - Time in False Warning (TIFW)
         tifw_inv = 1 - ebms['rel_tifw']
-        line, = axes[1, 0].plot(ebms['rel_szrs_predicted'].values, tifw_inv.values, label=model)
+        line, = axes[1, 0].plot(ebms['rel_szrs_pred'].values, tifw_inv.values, label=model)
         # Mark the point that corresponds to the best threshold
-        axes[1, 0].scatter(ebms['rel_szrs_predicted'].loc[best_thresh], tifw_inv.loc[best_thresh], marker='x',
+        axes[1, 0].scatter(ebms['rel_szrs_pred'].loc[best_thresh], tifw_inv.loc[best_thresh], marker='x',
                            color=line.get_color())
 
         #### Event-based f1 score vs. thresholds
@@ -149,7 +148,7 @@ def plot_threshold_metrics(
 
 
 @timeit(kwarg_names=['pdir'])
-def eval_ptnt(
+def eval_models_for_pdir(
         pdir: PatientDir,
         models: tuple[str] = ('CNN', 'ensemble'),
 ):
@@ -165,10 +164,9 @@ def eval_ptnt(
         y_true = split_clips['preictal'].values
 
         for model in models:
-            # Retrieve Event-based metrics (ebms)
-            ebms = pd.read_pickle(pickle_path(pdir.model_eval_dir / split / model / 'event_based_metrics'))
-            # Optimize the threshold
-            best_thresh = ebms['event_based_f1'].idxmax()
+            model_subdir = pdir.model_eval_subdir(split, model)
+            ebms = pd.read_pickle(model_subdir.ebm_table.pickle)  # Retrieve Event-based metrics (ebms)
+            best_thresh = ebms['event_based_f1'].idxmax()  # Optimize the threshold
 
             y_scores = split_clips[f'{model}_score']
             y_pred: Series = y_scores >= best_thresh
@@ -176,8 +174,8 @@ def eval_ptnt(
             # todo check this with Sot - the results are super sketchy
             # Hanley-McNeil test for ROC-AUC significance/better than chance classification performance.
             roc_auc = roc_auc_score(y_true, y_scores)
-            n_pos = y_pred.sum()
-            n_neg = (~y_pred).sum()
+            n_pos = y_true.sum()
+            n_neg = (~y_true).sum()
             p_hanley_mcneil = hanley_mcneil_test(n_pos, n_neg, roc_auc)
             print(f'p_hanley_mcneil: {p_hanley_mcneil:.5f} [{pdir.name} {split} {model}] ')
 
@@ -189,7 +187,7 @@ def eval_ptnt(
                 'non_preictal_clips': int(len(y_true) - y_true.sum()),
                 'best_threshold': best_thresh,
                 'rel_tifw': ebms['rel_tifw'].loc[best_thresh],
-                'rel_szrs_predicted': ebms['rel_szrs_predicted'].loc[best_thresh],
+                'rel_szrs_pred': ebms['rel_szrs_pred'].loc[best_thresh],
                 'event_based_f1': ebms['event_based_f1'].loc[best_thresh],
                 'precision': precision_score(y_true, y_pred),
                 'recall': recall_score(y_true, y_pred),
@@ -197,38 +195,35 @@ def eval_ptnt(
                 'p_hanley_mcneil': p_hanley_mcneil,
             }, name=pdir.name)
 
-            model_results_dir = ensure_results_dir(pdir, split, model)
-            save_dataframe_multiformat(metrics_to_save, MultiPath(model_results_dir, 'metrics'), save_index=True)
-
+            save_dataframe_multiformat(metrics_to_save, model_subdir.metrics_table, save_index=True)
             data_per_model[model] = {'y_scores': y_scores.values, 'event_based_metrics': ebms,
                                      'best_thresh': best_thresh}
 
         # Plot various metrics
-        split_results_dir = ensure_results_dir(pdir, split)
         plot_threshold_metrics(
             y_true,
             data_per_model,
             title=f'{pdir.name} - {split}',
-            output_path=split_results_dir / f'metrics_plot.png'
+            output_path=pdir.model_eval_subdir(split).metrics_plot,
         )
 
 
-def main(
+def eval_models_for_pdirs(
         pdirs: list[PatientDir] = PATHS.patient_dirs(),
         serial_processing: bool = False,
 ):
     """Evaluate every provided patient directory."""
     if serial_processing:
         for pdir in pdirs:
-            eval_ptnt(pdir)
+            eval_models_for_pdir(pdir)
     else:
         with multiprocessing.Pool() as p:
-            p.map(eval_ptnt, pdirs)
+            p.map(eval_models_for_pdir, pdirs)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    main(
+    eval_models_for_pdirs(
         pdirs=PATHS.patient_dirs(),
         serial_processing=False,
     )

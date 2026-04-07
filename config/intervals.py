@@ -59,9 +59,10 @@ SPH = Interval.init_non_seg(PREICTAL.approx_dur, SEGMENT, 'SPH')
 # How much of an offset from a previous szr is necessary for a szr to not be a lead szr
 LEAD = INTER_PRE + PREICTAL + INTERVENTION
 
-CLIPS_PER_PREICTAL_INTERVAL = safe_float_to_int(PREICTAL.n_samples / CLIP.n_samples)
-SEGMENTS_PER_PREICTAL_INTERVAL = safe_float_to_int(PREICTAL.n_samples / SEGMENT.n_samples)
 SEGMENTS_PER_CLIP = safe_float_to_int(CLIP.n_samples / SEGMENT.n_samples)
+SEGMENTS_PER_PREICTAL_INTERVAL = safe_float_to_int(PREICTAL.n_samples / SEGMENT.n_samples)
+CLIPS_PER_PREICTAL_INTERVAL = safe_float_to_int(PREICTAL.n_samples / CLIP.n_samples)
+CLIPS_PER_SPH = safe_float_to_int(SPH.n_samples / CLIP.n_samples)
 
 if __name__ == "__main__":
     for name in ["SEGMENT", "CLIP", "INTER_PRE", "PREICTAL", "INTERVENTION", "POSTICTAL", "INTER_POST", "LEAD"]:
@@ -72,6 +73,7 @@ if __name__ == "__main__":
         print(f'n_samples : {iv.n_samples}')
         print()
 
-    print(f'CLIPS_PER_PREICTAL_INTERVAL: {CLIPS_PER_PREICTAL_INTERVAL}')
-    print(f'SEGMENTS_PER_PREICTAL_INTERVAL: {SEGMENTS_PER_PREICTAL_INTERVAL}')
     print(f'SEGMENTS_PER_CLIP: {SEGMENTS_PER_CLIP}')
+    print(f'SEGMENTS_PER_PREICTAL_INTERVAL: {SEGMENTS_PER_PREICTAL_INTERVAL}')
+    print(f'CLIPS_PER_PREICTAL_INTERVAL: {CLIPS_PER_PREICTAL_INTERVAL}')
+    print(f'CLIPS_PER_SPH: {CLIPS_PER_SPH}')
