@@ -40,9 +40,33 @@ def remove_unnecessary_files():
 
 
 
+def view_patient_info():
+    import pandas as pd
+    pi = pd.read_pickle(PATHS.patient_info_exact.pickle)
+    return
+
+
+def rename_probability():
+    import pandas as pd
+    from config import PATHS, MultiPath, save_dataframe_multiformat
+
+    pdirs = PATHS.patient_dirs()
+    for pdir in pdirs:
+        print(pdir.name)
+        seg_scores = pd.read_pickle(pdir.segment_scores_table.pickle)
+        seg_scores.rename(columns={'ensemble': 'ensemble_score', 'CNN': 'CNN_score'}, inplace=True)
+        save_dataframe_multiformat(seg_scores, pdir.segment_scores_table)
+
+        clip_scores = pd.read_pickle(pdir.clip_scores_table.pickle)
+        clip_scores.rename(columns={'ensemble_probability': 'ensemble_score', 'CNN_probability': 'CNN_score'},
+                           inplace=True)
+        save_dataframe_multiformat(clip_scores, pdir.clip_scores_table)
+
 
 if __name__ == '__main__':
     # remove_unnecessary_files()
+    # view_patient_info()
+    rename_probability()
     pdir = PATHS.patient_dirs()[6]
     print(pdir)
     pass

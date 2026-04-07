@@ -142,7 +142,7 @@ def make_comparison_table_and_save(
                        )
 
     # Save DataFrames
-    PATHS.model_comparison_dir.mkdir(parents=True, exist_ok=True)
+    PATHS.statistical_results_dir.mkdir(parents=True, exist_ok=True)
 
     per_model.to_pickle(PATHS.per_model_comparison_table.pickle)
     _save_styled_excel(per_model_styled, per_model, PATHS.per_model_comparison_table.xlsx, autosize_data=False)

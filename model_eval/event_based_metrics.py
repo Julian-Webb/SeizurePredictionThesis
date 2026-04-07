@@ -15,6 +15,7 @@ from pandas import DataFrame, Timedelta, Series
 
 from config.intervals import Interval, INTERVENTION, SPH
 from config import PATHS, PatientDir, MultiPath, save_dataframe_multiformat
+from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 
 SUBSELECT_THRESHOLDS_GRANULARITY: float = 0.005
@@ -127,7 +128,7 @@ def safe_dataframe_concat(objs: list, concat_kwargs) -> DataFrame:
         return DataFrame(objs[0])
 
 
-# todo it's possible to seizures to not be predicted at the beginning of the test set, because we're not including the clips that would detect it (1:05h before the split)
+# todo it's possible to seizures to not be predicted at the beginning of the test set, because we're not including the clips that would predict it (1:05h before the split)
 # todo The TIFW can never equal 1 because we're using the total recording time. The duration that should be in warning should be subtracted.
 @timeit(kwarg_names=['logging_info'])
 def event_based_metrics(
@@ -279,17 +280,14 @@ def event_based_metrics(
     return metrics_per_model, intermediate_results_per_model
 
 
-def load_data_per_split(pdir: PatientDir):
+def _load_data_per_split(pdir: PatientDir):
     """
     :return: data per split (type[edfs, clips, szr_starts], split[train, test])
     """
-    clips = pd.read_pickle(pdir.clip_scores_table.pickle)
-    szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
+    #### Select correct EDFs per split and split the EDF that contain the split (if any)
     edfs = pd.read_pickle(pdir.edf_files_table.pickle)
     partition = pd.read_pickle(pdir.dataset_partition.pickle)
     test_start_mtz = partition.loc['start_mtz', 'test']
-
-    #### Select correct EDFs per split and split the EDF that contain the split (if any)
     edfs = edfs[['file_name', 'start_mtz', 'end_mtz']].copy()
 
     # Select train and test EDFs that don't contain the split
@@ -309,14 +307,15 @@ def load_data_per_split(pdir: PatientDir):
     for split, edfs in (['train', train_edfs], ['test', test_edfs]):
         edfs['duration'] = edfs['end_mtz'] - edfs['start_mtz']
 
-    clips = clips[clips['valid']]
+    # Get clip scores and szr starts
+    clip_scores = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), test_start_mtz=test_start_mtz)
+    clip_scores = clip_scores[clip_scores['valid']]
+
+    szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
 
     per_split = {
         'edfs': {'train': train_edfs, 'test': test_edfs},
-        'clips': {
-            'train': clips[clips['start_mtz'] < test_start_mtz],
-            'test': clips[clips['start_mtz'] >= test_start_mtz],
-        },
+        'clips': clip_scores,
         'szr_starts': {
             'train': szr_starts[szr_starts < test_start_mtz],
             'test': szr_starts[szr_starts >= test_start_mtz],
@@ -330,7 +329,7 @@ def calc_ptnt_split_metrics(args):
     pdir, split, models = args
     logging_info = f'[{pdir.name} - {split}]'
     logging.info(f'{logging_info} Calculating event based metrics...')
-    per_split = load_data_per_split(pdir)
+    per_split = _load_data_per_split(pdir)
 
     threshs_per_model = {}
     for model in models:

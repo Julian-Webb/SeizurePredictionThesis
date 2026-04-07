@@ -202,7 +202,6 @@ def make_segs_and_plot_for_pdir(pdir: PatientDir, from_preexisting_segs: bool = 
 def create_segs_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
-            logging.info(f'Seg table for : {pdir.name}')
             make_segs_and_plot_for_pdir(pdir)
     else:
         max_workers = min(len(pdirs), multiprocessing.cpu_count())
@@ -223,5 +222,5 @@ if __name__ == '__main__':
     create_segs_for_pdirs(PATHS.patient_dirs())
 
     # Just make plots
-    for pdir in PATHS.patient_dirs():
-        make_segs_and_plot_for_pdir(pdir, True)
+    # for pdir_ in PATHS.patient_dirs():
+    #     make_segs_and_plot_for_pdir(pdir_, True)

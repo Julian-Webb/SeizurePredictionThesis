@@ -13,7 +13,8 @@ from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRec
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
 from config import PatientDir, PATHS, MultiPath, save_dataframe_multiformat, pickle_path
-from model_eval.event_based_metrics import load_data_per_split, ensure_results_dir
+from model_eval.event_based_metrics import ensure_results_dir
+from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 
 
@@ -151,10 +152,11 @@ def eval_ptnt(
 ):
     """Evaluate both train and test splits for models."""
     logging.info(f"[{pdir.name}] Evaluating models: {models}")
-    clips_per_split = load_data_per_split(pdir)['clips']
+    clip_scores_per_split = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)
+    clip_scores_per_split = clip_scores_per_split[clip_scores_per_split['valid']]
 
     # Iterate through splits and models to process
-    for split, split_clips in clips_per_split.items():
+    for split, split_clips in clip_scores_per_split.items():
         data_per_model = {}  # for plotting
         y_true = split_clips['preictal'].values
 

@@ -20,7 +20,7 @@ class Interval:
         # Because the sample frequency is a decimal fraction, the clip and segment lengths will be based on it, so that
         # slices correspond to full indexes
         # The number of points (=samples) in a segment
-        n_samples = round(approx_dur.seconds * sfreq)
+        n_samples = round(approx_dur.total_seconds() * sfreq)
         exact_dur = Timedelta(seconds=n_samples / sfreq)
         return Interval(approx_dur, exact_dur, n_samples, label)
 

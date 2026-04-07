@@ -16,7 +16,6 @@ from cycle_extraction import compute_plv_for_split_signal, rayleigh_test
 from cycle_extraction.cycle_functions import nc_filter_multidien, plot_filtered_feature, \
     plot_phase_histogram_for_all_features
 from feature_extraction.extract_features import FeatureNames
-from model_eval.event_based_metrics import load_data_per_split
 
 
 def map_events_to_interval_index(events: np.ndarray,
@@ -261,9 +260,13 @@ def cycle_extraction_and_plot_for_pdir(
     logging.info(f'[{pdir.name}] 🚀 Starting Cycle Extraction...')
 
     # Load test data and discard irrelevant columns
-    per_split = load_data_per_split(pdir)
-    szrs = per_split['szr_starts']['test']
-    clips = per_split['clips']['test']
+    partition = pd.read_pickle(pdir.partition_file.pickle)
+    test_start_mtz = partition.loc['start_mtz', 'test']
+    szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values # todo all/valid seizures?
+    szrs = szrs[szrs > test_start_mtz]
+    test_first_clip_idx = partition.loc['first_clip_idx', 'test']
+    clips = pd.read_pickle(pdir.clips_file.pickle)[test_first_clip_idx:]
+    clips = clips[clips['valid']]
 
     # Get features for just test set
     first_test_seg_idx = clips.iloc[0]['start_seg']

@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
+
 from config import PatientDir, PATHS
-from model_eval.event_based_metrics import load_data_per_split
+from preprocessing.dataset_partitioning import partition_dataframe
 
 
 def weighted_mean(w, z) -> float:
@@ -82,11 +83,11 @@ def correlation_of_prediction_errors_from_pdir(
         pdir: PatientDir,
         split: str,
 ):
-    clips = load_data_per_split(pdir)['clips'][split]
-
-    pi = clips['ensemble_score'].values
-    pj = clips['CNN_score'].values
-    y_true = clips['preictal'].values
+    split_clips = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)[split]
+    split_clips = split_clips[split_clips['valid']]
+    pi = split_clips['ensemble_score'].values
+    pj = split_clips['CNN_score'].values
+    y_true = split_clips['preictal'].values
     return correlation_of_prediction_errors(pi, pj, y_true)
 
 

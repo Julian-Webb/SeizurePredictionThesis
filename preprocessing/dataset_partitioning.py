@@ -10,6 +10,36 @@ from config.constants import RATIO_OF_TIMESPAN_FOR_TRAINING
 from config.intervals import INTERICTAL, CLIP
 
 
+def partition_dataframe(
+        df: DataFrame,
+        pdir: PatientDir = None,
+        test_start_mtz: Timestamp = None,
+        start_col: str = 'start_mtz'
+):
+    """
+    Partition a DataFrame into train and test sets based on the start time of the test set.
+
+    Parameters
+    ----------
+    df
+    pdir
+    test_start_mtz
+        The start time of the test set. If None, it will be read from the patient's partition file.
+    start_col
+
+    Returns
+    -------
+    dict with keys 'train' and 'test'
+    """
+    if test_start_mtz is None:
+        if pdir is None:
+            raise ValueError('Either pdir or test_start_mtz must be specified.')
+        test_start_mtz = pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test']
+    train = df[df[start_col] < test_start_mtz]
+    test = df[df[start_col] >= test_start_mtz]
+    return {'train': train, 'test': test}
+
+
 def find_split_for_ptnt(clips: DataFrame, segs: DataFrame, all_szrs: DataFrame, valid_szrs: DataFrame):
     """
     Computes the time point where the test set starts and builds a DataFrame with information about the partition based

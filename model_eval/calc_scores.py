@@ -142,7 +142,7 @@ def calc_scores_for_pdirs(
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    pdirs_ = PATHS.patient_dirs()[0:1]
+    pdirs_ = PATHS.patient_dirs()
     calc_scores_for_pdirs(
         pdirs_,
         serial_processing=True,
