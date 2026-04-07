@@ -8,6 +8,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas import Series
 from scipy.stats import norm
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
@@ -18,6 +19,8 @@ from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 
 
+# todo not sure if this code is doing what it should.
+# todo shouldn't samples be independent for this test?
 def hanley_mcneil_test(N1, N2, auc):
     """
     Hanley-McNeil method for ROC-AUC significance/better than chance classification performance.
@@ -152,8 +155,9 @@ def eval_ptnt(
 ):
     """Evaluate both train and test splits for models."""
     logging.info(f"[{pdir.name}] Evaluating models: {models}")
-    clip_scores_per_split = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)
-    clip_scores_per_split = clip_scores_per_split[clip_scores_per_split['valid']]
+    clip_scores = pd.read_pickle(pdir.clip_scores_table.pickle)
+    clip_scores = clip_scores[clip_scores['valid']]
+    clip_scores_per_split = partition_dataframe(clip_scores, pdir)
 
     # Iterate through splits and models to process
     for split, split_clips in clip_scores_per_split.items():
@@ -167,7 +171,15 @@ def eval_ptnt(
             best_thresh = ebms['event_based_f1'].idxmax()
 
             y_scores = split_clips[f'{model}_score']
-            y_pred = y_scores >= best_thresh
+            y_pred: Series = y_scores >= best_thresh
+
+            # todo check this with Sot - the results are super sketchy
+            # Hanley-McNeil test for ROC-AUC significance/better than chance classification performance.
+            roc_auc = roc_auc_score(y_true, y_scores)
+            n_pos = y_pred.sum()
+            n_neg = (~y_pred).sum()
+            p_hanley_mcneil = hanley_mcneil_test(n_pos, n_neg, roc_auc)
+            print(f'p_hanley_mcneil: {p_hanley_mcneil:.5f} [{pdir.name} {split} {model}] ')
 
             metrics_to_save = pd.Series({
                 'model': model,
@@ -181,7 +193,8 @@ def eval_ptnt(
                 'event_based_f1': ebms['event_based_f1'].loc[best_thresh],
                 'precision': precision_score(y_true, y_pred),
                 'recall': recall_score(y_true, y_pred),
-                'roc_auc': roc_auc_score(y_true, y_scores),
+                'roc_auc': roc_auc,
+                'p_hanley_mcneil': p_hanley_mcneil,
             }, name=pdir.name)
 
             model_results_dir = ensure_results_dir(pdir, split, model)

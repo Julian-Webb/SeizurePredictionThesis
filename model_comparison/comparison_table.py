@@ -119,20 +119,25 @@ def make_comparison_table_and_save(
 
     # Style per_model
     metric_level = per_model.columns.get_level_values('metric')
-    best_threshold_cols = per_model.columns[metric_level == 'best_threshold']
-    rel_tifw_cols = per_model.columns[metric_level == 'rel_tifw']
-    regular_cols = per_model.columns[(metric_level != 'best_threshold') & (metric_level != 'rel_tifw')]
+
+    neutral_metrics = {'best_threshold'}
+    lower_better_metrics = {'rel_tifw', 'p_hanley_mcneil'}
+    higher_better_metrics = set(metric_level) - neutral_metrics - lower_better_metrics
+
+    neutral_cols = per_model.columns[metric_level.isin(neutral_metrics)]
+    lower_better_cols = per_model.columns[metric_level.isin(lower_better_metrics)]
+    higher_better_cols = per_model.columns[metric_level.isin(higher_better_metrics)]
 
     per_model_styled = per_model.style
-    if len(regular_cols) > 0:
+    if len(higher_better_cols) > 0:
         per_model_styled = per_model_styled.background_gradient(cmap='RdYlGn', vmin=0, vmax=1, axis=None,
-                                                                subset=regular_cols)
-    if len(best_threshold_cols) > 0:
+                                                                subset=higher_better_cols)
+    if len(neutral_cols) > 0:
         per_model_styled = per_model_styled.background_gradient(cmap='Blues', vmin=0, vmax=1, axis=None,
-                                                                subset=best_threshold_cols)
-    if len(rel_tifw_cols) > 0:
+                                                                subset=neutral_cols)
+    if len(lower_better_cols) > 0:
         per_model_styled = per_model_styled.background_gradient(cmap='RdYlGn_r', vmin=0, vmax=1, axis=None,
-                                                                subset=rel_tifw_cols)
+                                                                subset=lower_better_cols)
 
     # Style per_ptnt
     per_ptnt_styled = (per_ptnt.style

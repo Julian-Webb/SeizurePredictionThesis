@@ -242,7 +242,6 @@ def event_based_metrics(
 
             # Merge correct and incorrect SPHs separately and subtract missing intervals
             def process_sphs(sphs_: DataFrame) -> DataFrame:
-
                 merged = merge_intervals(sphs_[['start', 'end']])
                 remaining = subtract_intervals(merged, missing_ivs)
                 remaining['duration'] = remaining['end'] - remaining['start']
@@ -308,8 +307,9 @@ def _load_data_per_split(pdir: PatientDir):
         edfs['duration'] = edfs['end_mtz'] - edfs['start_mtz']
 
     # Get clip scores and szr starts
-    clip_scores = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), test_start_mtz=test_start_mtz)
+    clip_scores = pd.read_pickle(pdir.clip_scores_table.pickle)
     clip_scores = clip_scores[clip_scores['valid']]
+    clip_scores = partition_dataframe(clip_scores, test_start_mtz=test_start_mtz)
 
     szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
 
