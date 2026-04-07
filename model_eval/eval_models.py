@@ -13,8 +13,7 @@ from scipy.stats import norm
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
-from config import PatientDir, PATHS, MultiPath, save_dataframe_multiformat, pickle_path
-from model_eval.event_based_metrics import ensure_results_dir
+from config import PatientDir, PATHS, save_dataframe_multiformat, pickle_path
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 
@@ -197,19 +196,18 @@ def eval_ptnt(
                 'p_hanley_mcneil': p_hanley_mcneil,
             }, name=pdir.name)
 
-            model_results_dir = ensure_results_dir(pdir, split, model)
-            save_dataframe_multiformat(metrics_to_save, MultiPath(model_results_dir, 'metrics'), save_index=True)
+            path = pdir.model_eval_dir(split, model).metrics_table
+            save_dataframe_multiformat(metrics_to_save, path, save_index=True)
 
             data_per_model[model] = {'y_scores': y_scores.values, 'event_based_metrics': ebms,
                                      'best_thresh': best_thresh}
 
         # Plot various metrics
-        split_results_dir = ensure_results_dir(pdir, split)
         plot_threshold_metrics(
             y_true,
             data_per_model,
             title=f'{pdir.name} - {split}',
-            output_path=split_results_dir / f'metrics_plot.png'
+            output_path=pdir.model_eval_subdir(split).metrics_plot,
         )
 
 

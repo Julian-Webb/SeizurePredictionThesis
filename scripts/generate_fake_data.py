@@ -8,7 +8,7 @@ from pyedflib import highlevel
 
 import model_eval.calc_scores
 import model_eval.eval_models
-import model_eval.event_based_metrics
+import model_eval.event_based_metrics_deprecated
 from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
 from config import PatientDir, PATHS, Dataset
 from config.constants import SAMPLING_FREQUENCY_HZ, N_CHANNELS, CHANNELS

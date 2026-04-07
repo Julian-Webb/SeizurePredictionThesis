@@ -1,4 +1,7 @@
-"""This file represents the directory and file structure of the project."""
+"""
+This file represents the directory and file structure of the project.
+Uses type(Path()) to get the correct class based on the operating system
+"""
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union
@@ -63,7 +66,29 @@ def save_dataframe_multiformat(
                 raise ValueError(f"Unknown format: {f}")
 
 
-# Use type(Path()) to get the correct class based on the operating system
+class ModelEvalSubdir(type(Path())):
+    def __new__(cls, *args, **kwargs):
+        """
+        Represents the directory and file structure of a patient's model evaluation dir.
+
+        Parameters
+        ----------
+        for_single_model, bool
+            Must specify!
+        """
+        for_single_model: bool = bool(kwargs.pop('for_single_model'))
+        self = super().__new__(cls, *args, *kwargs)
+
+        if for_single_model:
+            self.metrics_table = MultiPath(self, 'metrics')
+            self.ebm_table = MultiPath(self, 'event_based_metrics')
+            self.szr_pred_table = MultiPath(self, 'szrs_predicted')
+        else:  # It's for a split and both models
+            self.metrics_plot = Path(self, 'metrics_plot.pdf')
+
+        return self
+
+
 class PatientDir(type(Path())):
     def __new__(cls, *args, **kwargs):
         """Represents the directory and file structure of a patient"""
@@ -122,6 +147,14 @@ class PatientDir(type(Path())):
 
         return self
 
+    def model_eval_subdir(self, split: str, model: Optional[str] = None) -> ModelEvalSubdir:
+        path = self.model_eval_dir / split
+        for_single_model = model is not None
+        if for_single_model:
+            path /= model
+        path.mkdir(parents=True, exist_ok=True)
+        return ModelEvalSubdir(path, for_single_model=for_single_model)
+
 
 class Paths(type(Path())):
     def __new__(cls, *args, **kwargs):
@@ -158,11 +191,11 @@ class Paths(type(Path())):
 
         return self
 
-    def patient_dirs(self, datasets: Optional[List[Dataset]] = None,
-                     include_invalid_ptnts: bool = False,
-                     include_fake_ptnts: bool = True,
-                     ) -> List[
-        PatientDir]:
+    def patient_dirs(
+            self, datasets: Optional[List[Dataset]] = None,
+            include_invalid_ptnts: bool = False,
+            include_fake_ptnts: bool = True,
+    ) -> List[PatientDir]:
         """
         Return a list of patient directories of the given datasets
         :param datasets: The datasets to get patient dirs for (default: all)

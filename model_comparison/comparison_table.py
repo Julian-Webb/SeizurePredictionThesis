@@ -1,9 +1,8 @@
 import pandas as pd
 from pandas import DataFrame, MultiIndex, Series
 
-from config import PatientDir, PATHS, pickle_path
+from config import PatientDir, PATHS
 from model_comparison.correlation_of_prediction_errors import correlation_of_prediction_errors_from_pdir
-from model_eval.event_based_metrics import ensure_results_dir
 
 PER_PTNT_METRIC_NAMES = ['total_clips', 'preictal_clips', 'non_preictal_clips']
 SPLITS = ['train', 'test']
@@ -40,8 +39,7 @@ def _load_ptnt_metrics(pdir: PatientDir, split: str, model: str) -> tuple[Series
     Load and partition the saved metrics for a given patient, split, and model.
     :return: (per_patient metrics, per_model metrics)
     """
-    res_dir = ensure_results_dir(pdir, split, model)
-    m: Series = pd.read_pickle(pickle_path(res_dir / 'metrics'))
+    m: Series = pd.read_pickle(pdir.model_eval_dir(split, model).metrics_table)
     m = m.drop(['model', 'data_split'])
     # Split into per patient and per model metrics
     per_ptnt = m[PER_PTNT_METRIC_NAMES].astype(int)
