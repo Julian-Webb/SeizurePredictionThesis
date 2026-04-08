@@ -50,6 +50,7 @@ def main(
     configure_root_logging()
     model_eval(pdirs, available_gpus, run_name=run_name)
 
+    # Cycle Extraction
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_cycle_extraction.log")
     cycle_extraction(pdirs, ask_confirm=False)
 

@@ -260,12 +260,12 @@ def cycle_extraction_and_plot_for_pdir(
     logging.info(f'[{pdir.name}] 🚀 Starting Cycle Extraction...')
 
     # Load test data and discard irrelevant columns
-    partition = pd.read_pickle(pdir.partition_file.pickle)
+    partition = pd.read_pickle(pdir.dataset_partition.pickle)
     test_start_mtz = partition.loc['start_mtz', 'test']
     szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values
     szrs = szrs[szrs > test_start_mtz]
-    test_first_clip_idx = partition.loc['first_clip_idx', 'test']
-    clips = pd.read_pickle(pdir.clips_file.pickle)[test_first_clip_idx:]
+    test_first_idx_clip = partition.loc['first_idx_clips', 'test']
+    clips = pd.read_pickle(pdir.clip_scores_table.pickle)[test_first_idx_clip:]
     clips = clips[clips['valid']]
 
     # Get features for just test set
@@ -276,7 +276,7 @@ def cycle_extraction_and_plot_for_pdir(
     # Get the false positive timestamps for each model
     event_timestamps = {'seizures': szrs}
     for model in models:
-        best_thresh = pd.read_pickle(pdir.model_eval_dir('test', model).metrics_table.pickle)['best_threshold']
+        best_thresh = pd.read_pickle(pdir.model_eval_subdir('test', model).metrics_table.pickle)['best_threshold']
         event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(clips, best_thresh, f'{model}_score')
 
     metrics, seg_feats_filt, event_phases_per_type_per_feat = \
