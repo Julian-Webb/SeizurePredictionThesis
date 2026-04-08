@@ -41,6 +41,9 @@ class Interval:
                             self.n_samples + other.n_samples)
         return NotImplemented
 
+    def __repr__(self):
+        return f"{self.label} Interval(approx_dur={self.approx_dur}, exact_dur={self.exact_dur}, n_samples={self.n_samples})"
+
 
 SEGMENT = Interval.init_seg(Timedelta(seconds=15))
 CLIP = Interval.init_non_seg(Timedelta(minutes=10), SEGMENT)

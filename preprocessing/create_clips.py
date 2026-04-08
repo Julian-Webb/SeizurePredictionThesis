@@ -15,6 +15,7 @@ from pandas import DataFrame
 from config import save_dataframe_multiformat, PatientDir, PATHS
 from config.constants import MIN_SEGMENTS_PER_CLIP_RATIO
 from config.intervals import SEGMENTS_PER_CLIP, SEGMENT
+from preprocessing.create_segments import assert_window_type_matches_sph
 from utils.utils import safe_float_to_int
 
 
@@ -156,6 +157,11 @@ def create_clips_for_pdir(pdir: PatientDir):
     logging.info(f'[{pdir.name}] 🎬 Creating Clips ...')
     segs = pd.read_pickle(pdir.segments_table.pickle)[['start_mtz', 'type', 'exists']]
     clips = create_clips_for_ptnt(segs)
+
+    assert_window_type_matches_sph(win_ends=clips['end_mtz'],
+                                   is_preictal=clips['preictal'],
+                                   szr_starts=pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values)
+
     save_dataframe_multiformat(clips, pdir.clips_table)
     logging.info(f'[{pdir.name}] ✅ Completed Clip Creation.')
 

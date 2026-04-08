@@ -82,23 +82,25 @@ class TestSegmentTables(unittest.TestCase):
         t4 = t3 + POSTICTAL.exact_dur
         t5 = t4 + INTER_POST.exact_dur
 
-        # Build expected labels and lead flags for each generated segment
+        # Build expected labels and lead flags for each generated segment.
+        # Segment typing is based on segment END timestamps.
         expected_labels = []
         expected_lead = []
         for s in starts:
-            if t0 <= s < t1:
+            seg_end = s + SEGMENT.exact_dur
+            if t0 < seg_end <= t1:
                 expected_labels.append(INTER_PRE.label)
                 expected_lead.append(True)
-            elif t1 <= s < t2:
+            elif t1 < seg_end <= t2:
                 expected_labels.append(PREICTAL.label)
                 expected_lead.append(True)
-            elif t2 <= s < t3:
+            elif t2 < seg_end <= t3:
                 expected_labels.append(INTERVENTION.label)
                 expected_lead.append(True)
-            elif t3 <= s < t4:
+            elif t3 < seg_end <= t4:
                 expected_labels.append(POSTICTAL.label)
                 expected_lead.append(True)
-            elif t4 <= s < t5:
+            elif t4 < seg_end <= t5:
                 expected_labels.append(INTER_POST.label)
                 expected_lead.append(True)
             else:

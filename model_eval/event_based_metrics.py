@@ -9,6 +9,7 @@ from pandas import DataFrame, Series, Timedelta
 
 from config import PatientDir, PATHS, save_dataframe_multiformat
 from config.intervals import INTERVENTION, SPH
+from preprocessing.create_segments import check_szrs_in_sphs
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import FunctionTimer
 
@@ -19,15 +20,13 @@ def check_szrs_predicted(
 ):
     # For the true positive clips, check which seizures were predicted.
     tps = preictal_clips[preictal_clips['y_pred']]
-    sph_starts, sph_ends = tps['sph_start'].values, tps['sph_end'].values
 
     # Matrix that shows which SPHs contain which seizures (n_szrs, n_clips)
-    in_sph = (sph_starts <= szr_starts[:, None]) & (szr_starts[:, None] <= sph_ends)
+    in_sph = check_szrs_in_sphs(tps['sph_start'].values, tps['sph_end'].values, szr_starts)
 
-    # For debugging - # todo move to clip creation
-    # preictal_clip_has_szr = in_sph.any(axis=0)  # for debugging - should be true for all
-    # preictal_clips['has_szr'] = preictal_clip_has_szr    # For debugging
-    # assert preictal_clip_has_szr.all(), "All preictal clip's SPH should contain a seizure, but some don't."  # todo the last ones in a preictal interval never do
+    # Sanity check: All preictal clip's SPH should contain a seizure
+    preictal_clip_has_szr = in_sph.any(axis=0)
+    assert preictal_clip_has_szr.all(), "All preictal clip's SPH should contain a seizure, but some don't."
 
     szr_pred = Series(in_sph.any(axis=1), index=szr_starts, name='predicted')
     return szr_pred

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import math
 import multiprocessing
@@ -7,11 +9,12 @@ from typing import Tuple, List
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas import DataFrame, Timestamp, Timedelta
+from numpy.typing import NDArray
+from pandas import DataFrame, Timestamp, Timedelta, Series
 
-from config.constants import SAMPLING_FREQUENCY_HZ
-from config.intervals import SEGMENT, INTERVENTION, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL
 from config import PatientDir, PATHS, save_dataframe_multiformat
+from config.constants import SAMPLING_FREQUENCY_HZ
+from config.intervals import SEGMENT, INTERVENTION, PREICTAL, INTER_PRE, POSTICTAL, INTER_POST, INTERICTAL, SPH
 from utils.edf_utils import time_to_index
 
 
@@ -64,13 +67,45 @@ def find_seg_type(segs: DataFrame, szrs: DataFrame) -> DataFrame:
         #  possibly postictal. However, it will naturally be overwritten by the next seizure, since they are in order.
         for iv in ivs:
             iv_end = iv_start + iv.exact_dur
-            # Find segs in this interval
-            in_iv_mask = (iv_start <= segs['start_mtz']) & (segs['start_mtz'] < iv_end)
+            # Find segs in this interval:
+            # base it on the end, since the SPH is predicted from the end of clips, which is the end of it's last seg
+            in_iv_mask = (iv_start < segs['end_mtz']) & (segs['end_mtz'] <= iv_end)
             segs.loc[in_iv_mask, 'type'] = iv.label
             segs.loc[in_iv_mask, 'lead_szr'] = szr['lead']
             iv_start = iv_end
     segs['type'] = segs['type'].fillna(INTERICTAL.label)
     return segs
+
+
+def check_szrs_in_sphs(sph_starts: np.ndarray, sph_ends: np.ndarray, szr_starts: np.ndarray):
+    """Return a matrix that shows which SPHs contain which seizures (n_szrs, n_windows)"""
+    szr_in_sph = (sph_starts <= szr_starts[:, None]) & (szr_starts[:, None] <= sph_ends)
+    return szr_in_sph
+
+
+def assert_window_type_matches_sph(
+        win_ends: Series[pd.Timestamp],
+        is_preictal: Series[bool],
+        szr_starts: NDArray[np.datetime64],
+        intervention_duration: Timedelta = INTERVENTION.exact_dur,
+        sph_duration: Timedelta = SPH.exact_dur,
+):
+    sph_starts = win_ends + intervention_duration
+    sph_ends = sph_starts + sph_duration
+    sphs = DataFrame({'start': sph_starts, 'end': sph_ends}, index=win_ends.index)
+
+    preict = sphs[is_preictal]
+    nonpre = sphs[~is_preictal]
+
+    if len(szr_starts) == 0:
+        assert len(preict) == 0, 'Found preictal windows although there are no seizures.'
+
+    preict_szr_in_sph = check_szrs_in_sphs(preict['start'].values, preict['end'].values, szr_starts)
+    preict_sph_has_szr = preict_szr_in_sph.any(axis=0)  # Whether there's any seizure in each preictal window's SPH
+    assert preict_sph_has_szr.all(), "Not all preictal window's SPH contains a seizure."
+
+    nonpre_szr_in_sph = check_szrs_in_sphs(nonpre['start'].values, nonpre['end'].values, szr_starts)
+    assert not nonpre_szr_in_sph.any(), "There are seizures in non-preictal windows' SPH."
 
 
 def make_segs_for_ptnt(
@@ -90,6 +125,8 @@ def make_segs_for_ptnt(
     segs['end_mtz'] = segs['start_mtz'] + SEGMENT.exact_dur
     segs = find_existing_segs(valid_edf_intervals, edfs, segs)
     segs = find_seg_type(segs, valid_szrs)
+
+    assert_window_type_matches_sph(segs['end_mtz'], segs['type'] == PREICTAL.label, valid_szrs['start_mtz'].to_numpy())
 
     return segs
 
@@ -219,7 +256,10 @@ def create_segs_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = Fal
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    create_segs_for_pdirs(PATHS.patient_dirs())
+    create_segs_for_pdirs(
+        PATHS.patient_dirs(),
+        serial_processing=False,
+    )
 
     # Just make plots
     # for pdir_ in PATHS.patient_dirs():

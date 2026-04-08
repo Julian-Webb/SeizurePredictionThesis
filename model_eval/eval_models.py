@@ -177,7 +177,6 @@ def eval_models_for_pdir(
             n_pos = y_true.sum()
             n_neg = (~y_true).sum()
             p_hanley_mcneil = hanley_mcneil_test(n_pos, n_neg, roc_auc)
-            print(f'p_hanley_mcneil: {p_hanley_mcneil:.5f} [{pdir.name} {split} {model}] ')
 
             metrics_to_save = pd.Series({
                 'model': model,
