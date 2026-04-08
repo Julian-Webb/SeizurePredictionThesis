@@ -262,7 +262,7 @@ def cycle_extraction_and_plot_for_pdir(
     # Load test data and discard irrelevant columns
     partition = pd.read_pickle(pdir.partition_file.pickle)
     test_start_mtz = partition.loc['start_mtz', 'test']
-    szrs = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values # todo all/valid seizures?
+    szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values
     szrs = szrs[szrs > test_start_mtz]
     test_first_clip_idx = partition.loc['first_clip_idx', 'test']
     clips = pd.read_pickle(pdir.clips_file.pickle)[test_first_clip_idx:]

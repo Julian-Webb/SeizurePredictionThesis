@@ -300,7 +300,7 @@ def _load_data_per_split(pdir: PatientDir):
     clip_scores = clip_scores[clip_scores['valid']]
     clip_scores = partition_dataframe(clip_scores, test_start_mtz=test_start_mtz)
 
-    szr_starts = pd.read_pickle(pdir.all_szr_starts_file.pickle)['start_mtz'].values
+    szr_starts = pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values
 
     per_split = {
         'edfs': {'train': train_edfs, 'test': test_edfs},
