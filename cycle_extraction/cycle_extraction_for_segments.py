@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from pandas import DataFrame, Timedelta
 from scipy.stats import false_discovery_control
 
-from config import PatientDir, PATHS, pickle_path, save_dataframe_multiformat
+from config import PatientDir, PATHS, save_dataframe_multiformat
 from config.constants import UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING
 from config.intervals import SEGMENT
 from cycle_extraction import compute_plv_for_split_signal, rayleigh_test

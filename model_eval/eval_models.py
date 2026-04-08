@@ -13,7 +13,7 @@ from scipy.stats import norm
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, PrecisionRecallDisplay, \
     RocCurveDisplay, precision_score, recall_score, roc_auc_score
 
-from config import PatientDir, PATHS, save_dataframe_multiformat, pickle_path
+from config import PatientDir, PATHS, save_dataframe_multiformat
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 

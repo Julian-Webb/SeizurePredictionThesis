@@ -2,10 +2,8 @@
 Calculate event-based metrics: Time in False Warning and Seizures predicted.
 """
 import logging
-
 from concurrent.futures import ProcessPoolExecutor
 from itertools import product
-from pathlib import Path
 from typing import Iterable, Optional, Any, Tuple
 
 import numpy as np
@@ -13,8 +11,8 @@ import pandas as pd
 import portion as P
 from pandas import DataFrame, Timedelta, Series
 
+from config import PATHS, PatientDir, save_dataframe_multiformat
 from config.intervals import Interval, INTERVENTION, SPH
-from config import PATHS, PatientDir, MultiPath, save_dataframe_multiformat
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 

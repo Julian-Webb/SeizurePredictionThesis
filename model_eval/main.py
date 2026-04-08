@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 from config import PatientDir, PATHS
-from model_eval import calc_scores, event_based_metrics_deprecated, eval_models
+from model_eval import calc_scores, event_based_metrics, eval_models
 from utils.logging_config import configure_root_logging
 from utils.utils import FunctionTimer
 

@@ -48,7 +48,7 @@ def view_patient_info():
 
 def rename_probability():
     import pandas as pd
-    from config import PATHS, MultiPath, save_dataframe_multiformat
+    from config import PATHS, save_dataframe_multiformat
 
     pdirs = PATHS.patient_dirs()
     for pdir in pdirs:
