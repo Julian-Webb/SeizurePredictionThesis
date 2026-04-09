@@ -238,7 +238,7 @@ def filter_ptnt_edfs(pdir: PatientDir):
     return {'valid': pd.DataFrame(valid_ivs), 'invalid': pd.DataFrame(invalid_ivs)}
 
 
-def _process_ptnt(pdir: PatientDir):
+def filter_edfs_for_pdir(pdir: PatientDir):
     logging.info(f'Filtering patient EDFs: {pdir.name}')
     ivs = filter_ptnt_edfs(pdir)
     save_dataframe_multiformat(ivs['valid'], pdir.valid_edf_intervals)
@@ -249,10 +249,10 @@ def _process_ptnt(pdir: PatientDir):
 def filter_edfs_for_pdirs(pdirs: list[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
-            _process_ptnt(pdir)
+            filter_edfs_for_pdir(pdir)
     else:
         with multiprocessing.Pool() as pool:
-            pool.map(_process_ptnt, pdirs)
+            pool.map(filter_edfs_for_pdir, pdirs)
 
 
 def main():

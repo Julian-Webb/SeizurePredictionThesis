@@ -1,5 +1,6 @@
 from pandas import Timedelta
 
+# ---- GENERAL ---------------------------------------------------------------------------------------------------------
 # The sampling frequency of all EEG signals in the edf files
 SAMPLING_FREQUENCY_HZ = 207.0310546581987
 
@@ -7,31 +8,40 @@ SAMPLING_FREQUENCY_HZ = 207.0310546581987
 CHANNELS = ['EEG SQ_D-SQ_C', 'EEG SQ_P-SQ_C']
 N_CHANNELS = len(CHANNELS)
 
-# The shift used to go from a single marker to the estimated start
-# (as calculated in estimate_seizure_starts)
-single_marker_to_start_shift: Timedelta | None = None
+# How the EEG bands are defined (lower frequency, upper frequency, name)
+# Note: dicts maintain insertion order in Python
+SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': (12, 35), 'Gamma': (35, 100)}
 
+# ---- PREPROCESSING ---------------------------------------------------------------------------------------------------
 # The minimum number of valid seizures for a patient to be included in the analysis
 MIN_VALID_SEIZURES_PER_PATIENT = 10
 
 # How much of a patient's total recording timespan must be recorded for him/her to be valid
 MIN_RATIO_RECORDED_TO_BE_VALID = 0.4
 
-# How the EEG bands are defined (lower frequency, upper frequency, name)
-# Note: dicts maintain insertion order in Python
-SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': (12, 35), 'Gamma': (35, 100)}
+# How many of a clip's segments must be valid/exist for the clip to be valid (i.e. not have too much missing data)
+MIN_SEGMENTS_PER_CLIP_RATIO = 0.875
 
+# ---- MODEL TRAINING --------------------------------------------------------------------------------------------------
 # In the data, there are much more interictal that preictal segments (about 100 to 1)
 # During training, we want to subsample the interictal segments to reach a ratio that works well for training.
 MAX_INTERICTAL_TO_PREICTAL_SEGMENT_RATIO = 20
 
-# How many of a clip's segments must be valid/exist for the clip to be valid (i.e. not have too much missing data)
-MIN_SEGMENTS_PER_CLIP_RATIO = 0.875
-
 # The random state used for subsampling interictal segments and shuffling for the train data.
 RANDOM_STATE_FOR_TRAIN_DATA = 42
 
-# ---- Cycle Extraction ------------------------------------------------------------------------------------------------
+ENSEMBLE_LEARNING_RATE = 0.0001  # 0.0001
+CNN_LEARNING_RATE = 0.001
+ENSEMBLE_EPOCHS = 200  # 500
+CNN_EPOCHS = 50  # 50
+ENSEMBLE_SIZE = 50  # 100
+
+# for debugging
+# ENSEMBLE_EPOCHS = 1
+# CNN_EPOCHS = 1
+# ENSEMBLE_SIZE = 2
+
+# ---- CYCLE EXTRACTION ------------------------------------------------------------------------------------------------
 # How much time there must be between missing recording data to split the data into chunks, rather than filling it.
 LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING = Timedelta(days=14)  # From Honglui Yang 2024
 

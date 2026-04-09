@@ -10,8 +10,8 @@ from utils import QueuedCall, run_queued_calls_on_gpus
 
 def _train_cnn_task(pdir: PatientDir):
     # Imported inside worker after CUDA_VISIBLE_DEVICES is set by gpu_multiprocessing
-    from models.CNN import create_ptnt_cnn_and_save
-    create_ptnt_cnn_and_save(pdir)
+    from models.CNN import create_cnn_and_save_for_pdir
+    create_cnn_and_save_for_pdir(pdir)
 
 
 def _train_ensemble_task(pdir: PatientDir) -> None:
@@ -49,7 +49,7 @@ def train_models(
         gpus=gpus,
         log_dir=run_log_dir,
         merged_log_file=merged_log_file,
-        keep_gpu_logs=True,
+        keep_gpu_logs=False,
     )
 
     return merged_log_file

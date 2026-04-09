@@ -8,16 +8,14 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
 from config import PatientDir, PATHS, save_dataframe_multiformat
-from config.constants import N_CHANNELS, RANDOM_STATE_FOR_TRAIN_DATA
+from config.constants import N_CHANNELS, RANDOM_STATE_FOR_TRAIN_DATA, CNN_EPOCHS, CNN_LEARNING_RATE
 from config.intervals import SEGMENT
 from models.ensemble import calc_class_weights
 from models.load_data import load_data
 from utils.tensorflow_utils import PeriodicalLogger
 from utils.utils import timeit, FunctionTimer
 
-EPOCHS = 50  # 50
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
-LEARNING_RATE = 0.001
 LEAKY_RELU_NEGATIVE_SLOPE = 0.3
 CONV2D_KWARGS = {
     'use_bias': False,  # no bias because we use BatchNorm afterward
@@ -77,7 +75,7 @@ def cnn_model(n_samples: int, n_channels: int) -> tf.keras.models.Sequential:
     ], name='CNN')
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=CNN_LEARNING_RATE),
         loss=BinaryCrossentropy(from_logits=False),
         metrics=["accuracy", Recall(name='recall'), AUC(name='AUC')]
     )
@@ -86,7 +84,7 @@ def cnn_model(n_samples: int, n_channels: int) -> tf.keras.models.Sequential:
 
 
 @timeit(kwarg_names=['pdir'])
-def create_ptnt_cnn_and_save(pdir: PatientDir):
+def create_cnn_and_save_for_pdir(pdir: PatientDir):
     cnn = cnn_model(SEGMENT.n_samples, N_CHANNELS)
     ptnt_model_str = f'[{pdir.name} - CNN]'
 
@@ -107,7 +105,7 @@ def create_ptnt_cnn_and_save(pdir: PatientDir):
     logging.info('%s Training model', ptnt_model_str)
     class_weights = calc_class_weights(train_data['y'])
     history = cnn.fit(train_data['x'], train_data['y'],
-                      epochs=EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
+                      epochs=CNN_EPOCHS, batch_size=BATCH_SIZE, class_weight=class_weights,
                       verbose=0,
                       callbacks=[PeriodicalLogger(ptnt_model_str, interval=10, print_func=logging.info)])
 
@@ -120,11 +118,11 @@ def create_ptnt_cnn_and_save(pdir: PatientDir):
     )
 
 
-def create_ptnt_cnns(pdirs: list[PatientDir]):
+def create_cnns_for_pdirs(pdirs: list[PatientDir]):
     for pdir in pdirs:
-        create_ptnt_cnn_and_save(pdir)
+        create_cnn_and_save_for_pdir(pdir)
 
 
 if __name__ == '__main__':
     pdirs_ = PATHS.patient_dirs()
-    create_ptnt_cnns(pdirs_)
+    create_cnns_for_pdirs(pdirs_)

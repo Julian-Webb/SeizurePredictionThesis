@@ -265,7 +265,7 @@ def cycle_extraction_and_plot_for_pdir(
     logging.info(f'[{pdir.name}] 🚀 Starting Cycle Extraction...')
 
     # Load test data and discard irrelevant columns
-    szrs = partition_dataframe(pd.read_pickle(pdir.valid_szr_starts_file.pickle), pdir)['test'].values
+    szrs = partition_dataframe(pd.read_pickle(pdir.valid_szr_starts_file.pickle), pdir)['test']['start_mtz'].values
     clips = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)['test']
     clips = clips[clips['valid']]
 

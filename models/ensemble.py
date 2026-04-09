@@ -11,17 +11,14 @@ from tensorflow.keras.layers import Dense, Input, BatchNormalization
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import Recall, AUC
 
-from config.constants import RANDOM_STATE_FOR_TRAIN_DATA
+from config.constants import RANDOM_STATE_FOR_TRAIN_DATA, ENSEMBLE_SIZE, ENSEMBLE_EPOCHS, ENSEMBLE_LEARNING_RATE
 from config import PatientDir, PATHS, save_dataframe_multiformat
 from feature_extraction.extract_features import FeatureNames
 from models.load_data import load_data
 from utils.tensorflow_utils import PeriodicalLogger
 from utils.utils import timeit
 
-EPOCHS = 200  # 500
 BATCH_SIZE = 256  # larger batch size, so that preictal samples are most likely in every batch
-LEARNING_RATE = 0.0001  # 0.0001
-ENSEMBLE_SIZE = 50  # 100
 
 
 def mlp_model(n_features: int, name: str) -> tf.keras.models.Sequential:
@@ -37,7 +34,7 @@ def mlp_model(n_features: int, name: str) -> tf.keras.models.Sequential:
     ], name=name)
 
     model.compile(
-        optimizer=tf.keras.optimizers.SGD(learning_rate=LEARNING_RATE),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=ENSEMBLE_LEARNING_RATE),
         loss=BinaryCrossentropy(from_logits=False),
         metrics=["accuracy", Recall(name='recall'), AUC(name='AUC')]
     )
@@ -62,7 +59,7 @@ def create_ensemble(
         n_features: int,
         patient: str = 'unknown patient',
         ensemble_size: int = ENSEMBLE_SIZE,
-        epochs: int = EPOCHS,
+        epochs: int = ENSEMBLE_EPOCHS,
         batch_size: int = BATCH_SIZE
 ):
     class_weights = calc_class_weights(y_train)
