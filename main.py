@@ -32,14 +32,14 @@ def main(
 
     # Default logging for top-level orchestration and console output.
     configure_root_logging(log_file=root_log)
+    logging.info(f'Starting pipeline for {PATHS.root} with patients:')
+    for pdir in pdirs:
+        logging.info(f'    {pdir.name}')
 
     # ---- Pipeline Start ----------------------------------------------------------------------------------------------
-    # Clean Annotations
-    configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_clean_annotations.log")
-    drop_duplicates_and_localize_for_pdirs(pdirs)
-
     # Preprocessing
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_preprocessing.log")
+    drop_duplicates_and_localize_for_pdirs(pdirs)  # Clean Annotations
     preprocessing(pdirs, ask_confirm=False, setup_logging=False)
 
     # Train Models - sets up and manages its own logs.
