@@ -16,6 +16,7 @@ from cycle_extraction import compute_plv_for_split_signal, rayleigh_test
 from cycle_extraction.cycle_functions import nc_filter_multidien, plot_filtered_feature, \
     plot_phase_histogram_for_all_features
 from feature_extraction.extract_features import FeatureNames
+from preprocessing.dataset_partitioning import partition_dataframe
 
 
 def map_events_to_interval_index(events: np.ndarray,
@@ -45,6 +46,7 @@ def map_events_to_interval_index(events: np.ndarray,
     return interval_indices
 
 
+# noinspection PyTypeChecker
 def get_event_indices_per_chunk(chunked_intervals: list[DataFrame], events: np.ndarray):
     """Assign events (Timestamps) to chunks and get their relative indices in the chunks"""
     idxs_per_chunk = []
@@ -97,6 +99,7 @@ def normalize_feature(f: np.ndarray):
     return res
 
 
+# noinspection PyTypeChecker
 def cycle_extraction_for_ptnt(
         seg_features: DataFrame,
         event_timestamps: dict[str, np.ndarray],
@@ -198,6 +201,7 @@ def get_false_positives_from_clips(clips: DataFrame, thresh: float, score_col: s
     return fp_timestamps.to_numpy()
 
 
+# noinspection PyTypeChecker
 def _make_filtered_feature_plots(seg_feats: DataFrame, seg_feats_filt: DataFrame, event_timestamps: dict,
                                  feature_names: list[str], save_dir: Path):
     seg_starts = seg_feats['start_mtz'].values
@@ -251,6 +255,7 @@ def _make_phase_histogram_plots(
         plt.close(fig)
 
 
+# noinspection PyTypeChecker
 def cycle_extraction_and_plot_for_pdir(
         pdir: PatientDir,
         feature_names: list[str] = FeatureNames.ALL_ORDERED,
@@ -260,12 +265,8 @@ def cycle_extraction_and_plot_for_pdir(
     logging.info(f'[{pdir.name}] 🚀 Starting Cycle Extraction...')
 
     # Load test data and discard irrelevant columns
-    partition = pd.read_pickle(pdir.dataset_partition.pickle)
-    test_start_mtz = partition.loc['start_mtz', 'test']
-    szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values
-    szrs = szrs[szrs > test_start_mtz]
-    test_first_idx_clip = partition.loc['first_idx_clips', 'test']
-    clips = pd.read_pickle(pdir.clip_scores_table.pickle)[test_first_idx_clip:]
+    szrs = partition_dataframe(pd.read_pickle(pdir.valid_szr_starts_file.pickle), pdir)['test'].values
+    clips = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)['test']
     clips = clips[clips['valid']]
 
     # Get features for just test set

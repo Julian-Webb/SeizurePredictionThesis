@@ -98,7 +98,7 @@ def create_ptnt_cnn_and_save(pdir: PatientDir):
             type_='eeg',
             subsample_shuffle_and_subselect_types=True,
             train=True,
-            test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test'],
+            test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz'],
             edf_dir=pdir.edf_dir,
             random_state=RANDOM_STATE_FOR_TRAIN_DATA
         )

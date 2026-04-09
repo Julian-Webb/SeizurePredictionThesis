@@ -25,8 +25,7 @@ def ptnt_valid_szrs(all_szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     n_valid = valid.value_counts()[True]
     enough_valid_szrs = n_valid >= MIN_VALID_SEIZURES_PER_PATIENT
 
-    # todo valid seizure index isn't reset. I might want to do this and save the all_szrs index in a separate column
-    valid_szrs = all_szrs[valid]
+    valid_szrs = all_szrs[valid].reset_index(drop=True)
     all_szrs['valid'] = valid
 
     # noinspection PyTypeChecker
@@ -43,7 +42,6 @@ def find_lead_szrs(szrs: DataFrame):
     diff = szrs['start_mtz'].diff()
     lead = diff > intervals.LEAD.exact_dur
     lead.iloc[0] = True  # First szr is always lead
-    szrs = szrs.copy()  # ensure we're not writing to a view
     szrs['lead'] = lead
     return szrs
 
@@ -118,8 +116,8 @@ def validate_patients(
             logging.warning(f'All seizure starts file not found for {pdir.name}')
             all_szrs = DataFrame()
 
+        all_szrs = find_lead_szrs(all_szrs)
         valid_szrs, all_szrs, ptnt_szr_info = ptnt_valid_szrs(all_szrs)
-        valid_szrs = find_lead_szrs(valid_szrs)
 
         if 'valid' in valid_szrs.columns:
             valid_szrs.drop(columns=['valid'], inplace=True)

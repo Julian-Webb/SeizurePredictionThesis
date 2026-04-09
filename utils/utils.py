@@ -126,3 +126,29 @@ def contains_nan(obj: DataFrame | Series | np.ndarray):
         obj = obj.values
     return np.isnan(obj).any()
 
+
+def autofit_excel_columns(
+        xlsx_path: str,
+        sheet_name: str | None = None,
+        max_width: int = 24,
+        min_width: int = 8,
+        scale: float = 0.75,
+) -> None:
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
+
+    wb = load_workbook(xlsx_path)
+    ws = wb[sheet_name] if sheet_name else wb.active
+
+    for col_idx, col_cells in enumerate(ws.columns, start=1):
+        max_len = 0
+        for cell in col_cells:
+            v = cell.value
+            if v is None:
+                continue
+            max_len = max(max_len, len(str(v)))
+        width = max(min_width, min(int(max_len * scale), max_width))
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+    wb.save(xlsx_path)
+

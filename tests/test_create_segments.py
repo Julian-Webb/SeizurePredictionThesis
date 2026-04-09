@@ -6,7 +6,7 @@ import pandas as pd
 from config.constants import SAMPLING_FREQUENCY_HZ
 from config.intervals import SEGMENT, PREICTAL, INTER_PRE, INTERVENTION, POSTICTAL, INTER_POST, INTERICTAL
 # Now import the module under test
-from preprocessing import create_segments
+from preprocessing import create_segments, plot_segments
 from utils.edf_utils import time_to_index
 
 
@@ -131,7 +131,7 @@ class TestSegmentTables(unittest.TestCase):
         # Single seizure somewhere inside
         valid_szrs = pd.DataFrame([{'start_mtz': first_recording_start + pd.Timedelta(seconds=60), 'lead': False}])
 
-        segs = create_segments.make_segs_for_ptnt(first_recording_start, timespan, valid_edf_intervals, edfs, valid_szrs)
+        segs = create_segments.create_segs_for_ptnt(first_recording_start, timespan, valid_edf_intervals, edfs, valid_szrs)
 
         # Basic sanity checks
         self.assertIn('start_mtz', segs.columns)
@@ -147,7 +147,7 @@ class TestSegmentTables(unittest.TestCase):
         szrs = pd.DataFrame([{'start_mtz': pd.Timestamp('2020-01-01 00:01:00'), 'lead': False}])
 
         # Should not raise
-        create_segments.plot_segs(segs, szrs, edfs=None, title='test', show=False)
+        plot_segments.plot_segs(segs, szrs, edfs=None, title='test')
 
 
 if __name__ == '__main__':

@@ -182,6 +182,7 @@ class Paths(type(Path())):
         self.patient_info_exact = MultiPath(self.patient_info_dir, "patient_info_exact")
         self.patient_info_readable = Path(self.patient_info_dir, "patient_info_readable.csv")
         self.invalid_patients_dir = Path(self, "invalid_patients")
+        self.partition_info_table = MultiPath(self.patient_info_dir, "partition_info")
 
         # model comparison, cycle extraction
         self.statistical_results_dir = Path(self, "statistical_results")

@@ -6,17 +6,8 @@ import pandas as pd
 from pandas import Interval
 from pyedflib import highlevel
 
-import model_eval.calc_scores
-import model_eval.eval_models
-import model_eval.event_based_metrics_deprecated
-from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
 from config import PatientDir, PATHS, Dataset
 from config.constants import SAMPLING_FREQUENCY_HZ, N_CHANNELS, CHANNELS
-from feature_extraction.extract_features import run_feature_extraction
-from preprocessing.filter_signals import filter_edfs_for_pdirs
-from preprocessing.create_segments import create_segs_for_pdirs
-from preprocessing.dataset_partitioning import find_splits_for_pdirs
-from preprocessing.validate_patients import validate_patients
 
 PHYSICAL_MIN = -1374.21
 PHYSICAL_MAX = 1373.54
@@ -46,18 +37,6 @@ def generate_fake_ptnt_data(pdir: PatientDir):
         interval = Interval(edf['start'], edf['end'])
         generate_edf(interval, pdir.edf_dir / edf['file_name'], pdir.name)
         print(f"\rFiles generated: {i} | {edf['file_name']}", end='')
-
-
-def process_fake_ptnt(pdir: PatientDir):
-    pdirs = [pdir]
-    drop_duplicates_and_localize(pdirs)
-    validate_patients(PATHS.patient_dirs(include_invalid_ptnts=True), move_invalid_pdirs=False)
-    filter_edfs_for_pdirs(pdirs)
-    create_segs_for_pdirs(pdirs)
-    find_splits_for_pdirs(pdirs)
-    run_feature_extraction(pdirs)
-    model_eval.calc_scores.calc_scores_for_pdirs(pdirs)
-    model_eval.event_based_metrics.calc_metrics(pdirs)
 
 
 if __name__ == '__main__':

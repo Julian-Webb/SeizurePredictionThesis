@@ -1,4 +1,3 @@
-import pandas as pd
 from pandas import Timedelta
 
 # The sampling frequency of all EEG signals in the edf files
@@ -18,9 +17,6 @@ MIN_VALID_SEIZURES_PER_PATIENT = 10
 # How much of a patient's total recording timespan must be recorded for him/her to be valid
 MIN_RATIO_RECORDED_TO_BE_VALID = 0.4
 
-# How much of the data's entire timespan should be allocated to training the models
-RATIO_OF_TIMESPAN_FOR_TRAINING = 0.6
-
 # How the EEG bands are defined (lower frequency, upper frequency, name)
 # Note: dicts maintain insertion order in Python
 SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': (12, 35), 'Gamma': (35, 100)}
@@ -37,7 +33,7 @@ RANDOM_STATE_FOR_TRAIN_DATA = 42
 
 # ---- Cycle Extraction ------------------------------------------------------------------------------------------------
 # How much time there must be between missing recording data to split the data into chunks, rather than filling it.
-LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING = Timedelta(days=14) # From Honglui Yang 2024
+LONG_GAP_MIN_DURATION_FOR_FEATURE_FILLING = Timedelta(days=14)  # From Honglui Yang 2024
 
 # Up to which quantile a feature will not be clipped.
 UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING = 0.99999

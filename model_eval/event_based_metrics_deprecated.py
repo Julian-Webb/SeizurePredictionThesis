@@ -9,7 +9,7 @@ from typing import Iterable, Optional, Any, Tuple
 import numpy as np
 import pandas as pd
 import portion as P
-from pandas import DataFrame, Timedelta, Series
+from pandas import DataFrame, Timedelta, Series, Timestamp
 
 from config import PATHS, PatientDir, save_dataframe_multiformat
 from config.intervals import Interval, INTERVENTION, SPH
@@ -274,8 +274,7 @@ def _load_data_per_split(pdir: PatientDir):
     """
     #### Select correct EDFs per split and split the EDF that contain the split (if any)
     edfs = pd.read_pickle(pdir.edf_files_table.pickle)
-    partition = pd.read_pickle(pdir.dataset_partition.pickle)
-    test_start_mtz = partition.loc['start_mtz', 'test']
+    test_start_mtz: Timestamp = pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz']
     edfs = edfs[['file_name', 'start_mtz', 'end_mtz']].copy()
 
     # Select train and test EDFs that don't contain the split
@@ -296,7 +295,7 @@ def _load_data_per_split(pdir: PatientDir):
         edfs['duration'] = edfs['end_mtz'] - edfs['start_mtz']
 
     # Get clip scores and szr starts
-    clip_scores = pd.read_pickle(pdir.clip_scores_table.pickle)
+    clip_scores: DataFrame = pd.read_pickle(pdir.clip_scores_table.pickle)
     clip_scores = clip_scores[clip_scores['valid']]
     clip_scores = partition_dataframe(clip_scores, test_start_mtz=test_start_mtz)
 

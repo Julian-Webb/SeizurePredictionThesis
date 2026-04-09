@@ -71,7 +71,7 @@ def load_data(
     :param train: Whether to load training data
     :param test: Whether to load testing data
     :param test_start_mtz: The `Timestamp` where the test set starts. Only needed if train and test are not both True.
-    ``pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test']``
+    ``pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz']``
     :param edf_dir: The patient's edf_dir, if type_ is 'eeg'.
     :param feature_names: The names of the features to load, if type_ is 'features'.
     :param random_state: Optional random state for subsampling and shuffling
@@ -152,6 +152,6 @@ if __name__ == '__main__':
         train=True,
         test=False,
         subsample_shuffle_and_subselect_types=True,
-        test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test'],
+        test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz'],
         edf_dir=pdir.edf_dir,
     )

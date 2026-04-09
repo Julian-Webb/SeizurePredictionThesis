@@ -28,7 +28,8 @@ Various abbreviations throughout the code:
     3. create_segments
     4. create_clips
     5. dataset_partitioning
-    6. feature_extraction.extract_features
+    6. plot_segments
+    7. feature_extraction.extract_features
 3. models.train_models
 4. model_eval
    1. calc_scores

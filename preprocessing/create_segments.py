@@ -3,10 +3,8 @@ from __future__ import annotations
 import logging
 import math
 import multiprocessing
-from concurrent.futures import as_completed, ProcessPoolExecutor
 from typing import Tuple, List
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -108,7 +106,7 @@ def assert_window_type_matches_sph(
     assert not nonpre_szr_in_sph.any(), "There are seizures in non-preictal windows' SPH."
 
 
-def make_segs_for_ptnt(
+def create_segs_for_ptnt(
         first_recording_start: Timestamp,
         timespan: Timedelta,
         valid_edf_intervals: DataFrame,
@@ -143,124 +141,29 @@ def load_ptnt_timespan_info(pdir: PatientDir) -> Tuple[Timestamp, Timestamp, Tim
     return ptnt_info['recordings_start'], ptnt_info['recordings_end'], ptnt_info['timespan']
 
 
-def make_segs_for_pdir(pdir: PatientDir):
+def create_segs_for_pdir(pdir: PatientDir):
+    logging.info(f'[{pdir.name}] 🎬 Creating segs table')
     first_recording_start, _, timespan = load_ptnt_timespan_info(pdir)
-
-    return make_segs_for_ptnt(
+    segs = create_segs_for_ptnt(
         first_recording_start, timespan,
         pd.read_pickle(pdir.valid_edf_intervals.pickle),
         pd.read_pickle(pdir.edf_files_table.pickle),
         pd.read_pickle(pdir.valid_szr_starts_file.pickle)
     )
-
-
-def plot_segs(segs: DataFrame,
-              szrs: DataFrame,
-              edfs: DataFrame = None,
-              title: str = None,
-              figsize=(30, 8),
-              save_path: str = None,
-              show: bool = True):
-    types = [INTERICTAL.label, INTER_PRE.label, PREICTAL.label, INTERVENTION.label, POSTICTAL.label, INTER_POST.label]
-    type_to_y = {t: i for i, t in enumerate(types)}
-
-    y = segs['type'].map(type_to_y)
-
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Plot seg types
-    ax.set_yticks(np.arange(len(types)))
-    ax.set_yticklabels(types)
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Segment type')
-
-    # If title provided, place it below the x-axis and reserve space
-    if title:
-        ax.set_title(title, y=-0.12)  # y in axes fraction; negative moves it below
-        fig.subplots_adjust(bottom=0.18)  # make room at bottom so title is not clipped
-
-    # Different types of segments' plotting properties
-    type_props = [
-        {'label': 'seg starts lead', 'color': 'blue', 'mask': segs['lead_szr'] == True},
-        {'label': 'seg start non-lead', 'color': 'turquoise', 'mask': segs['lead_szr'] == False},
-        {'label': 'seg starts interictal', 'color': 'grey', 'mask': segs['lead_szr'].isna()},
-    ]
-
-    for exists in [True, False]:
-        for tp in type_props:
-            marker = '>' if exists else 'x'
-            mask = tp['mask'] & (segs['exists'] == exists)
-            ax.scatter(segs.loc[mask, 'start_mtz'], y[mask], s=7, label=tp['label'], c=tp['color'], marker=marker)
-
-    # Plot seizures
-    for t in szrs['start_mtz']:
-        ax.axvline(t, color='r', linestyle='--', linewidth=0.5)
-        ax.annotate(t.strftime("%d.%m.%y %H:%M:%S"), xy=(t, 1.0),
-                    xycoords=('data', 'axes fraction'),
-                    xytext=(0, 4),  # offset in points (x,y)
-                    textcoords='offset points',
-                    rotation=90,
-                    ha='center', va='bottom',
-                    fontsize=7,
-                    color='r',
-                    clip_on=False)
-
-    # Plot edf times
-    if edfs is not None:
-        for edf in edfs.itertuples(index=False):
-            ax.axvspan(edf.start_mtz, edf.end_mtz, color='green', alpha=0.2)
-
-    ax.grid(axis='x', linestyle='--', alpha=0.4)
-    ax.legend(loc='upper left')
-
-    if save_path:
-        fig.savefig(save_path, bbox_inches='tight')
-    if show:
-        plt.show()
-    plt.close(fig)
-
-
-def make_segs_and_plot_for_pdir(pdir: PatientDir, from_preexisting_segs: bool = False):
-    # Make segs table and save it to csv
-    logging.info(f"Processing {pdir.name}")
-    if from_preexisting_segs:
-        segs = pd.read_pickle(pdir.segments_table.pickle)
-    else:
-        segs = make_segs_for_pdir(pdir)
-        save_dataframe_multiformat(segs.drop(columns=['end_mtz']), pdir.segments_table)
-
-    # Make the plot
-    szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)
-    edfs = pd.read_pickle(pdir.edf_files_table.pickle)
-
-    plot_segs(segs, szrs, edfs, pdir.name, show=False, save_path=pdir.segments_plot)
+    save_dataframe_multiformat(segs.drop(columns=['end_mtz']), pdir.segments_table)
+    logging.info(f'[{pdir.name}] ✅ Finished segs table')
 
 
 def create_segs_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False):
     if serial_processing:
         for pdir in pdirs:
-            make_segs_and_plot_for_pdir(pdir)
+            create_segs_for_pdir(pdir)
     else:
-        max_workers = min(len(pdirs), multiprocessing.cpu_count())
-        logging.info(f"Using {max_workers} max workers")
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(make_segs_and_plot_for_pdir, pt): pt for pt in pdirs}
-            for fut in as_completed(futures):
-                pdir = futures[fut]
-                try:
-                    fut.result()
-                    logging.info(f"Finished seg table for: {pdir.name}")
-                except:
-                    logging.warning(f"Failed seg table for: {pdir.name}")
+        with multiprocessing.Pool() as p:
+            p.map(create_segs_for_pdir, pdirs)
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    create_segs_for_pdirs(
-        PATHS.patient_dirs(),
-        serial_processing=False,
-    )
-
-    # Just make plots
-    # for pdir_ in PATHS.patient_dirs():
-    #     make_segs_and_plot_for_pdir(pdir_, True)
+    pdirs_ = PATHS.patient_dirs()
+    create_segs_for_pdirs(pdirs_, serial_processing=False)

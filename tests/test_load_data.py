@@ -29,7 +29,7 @@ class TestLoadData(unittest.TestCase):
                         subsample_shuffle_and_subselect_types=subsample_shuffle_and_subselect_types,
                         train=train,
                         test=test,
-                        test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test'],
+                        test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz'],
                         edf_dir=pdir.edf_dir,
                     )
 

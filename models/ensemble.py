@@ -117,7 +117,7 @@ def create_ptnt_mlp_ensemble(
                                 segs=segs,
                                 type_='features',
                                 train=True,
-                                test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['start_mtz', 'test'],
+                                test_start_mtz=pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz'],
                                 feature_names=feature_names)
 
     # Fit z-score normalizer on the features of the entire train set
