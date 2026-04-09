@@ -29,7 +29,7 @@ class TestValidPatients(unittest.TestCase):
         valid_szrs_comp, szrs_comp, patient_info = ptnt_valid_szrs(szrs_corr)
 
         # correct results
-        valid_szrs_corr = szrs_corr[szrs_corr['should_be_valid']]
+        valid_szrs_corr = szrs_corr[szrs_corr['should_be_valid']].reset_index(drop=True)
 
         pd.testing.assert_series_equal(valid_szrs_comp['start_mtz'], valid_szrs_corr['start_mtz'], )
 
