@@ -39,7 +39,7 @@ def localize_anns_dataframe(anns: DataFrame, tz: PatientTimezone) -> DataFrame:
     return anns
 
 
-def drop_duplicates_and_localize(pdirs: list[PatientDir]):
+def drop_duplicates_and_localize_for_pdirs(pdirs: list[PatientDir]):
     for pdir in pdirs:
         is_competition = pdir.dataset == Dataset.competition
         datetime_cols = ['start_naive'] if is_competition else ['start_naive', 'end_naive']
@@ -75,4 +75,4 @@ def drop_duplicates_and_localize(pdirs: list[PatientDir]):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-    drop_duplicates_and_localize(PATHS.patient_dirs())
+    drop_duplicates_and_localize_for_pdirs(PATHS.patient_dirs())

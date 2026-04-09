@@ -198,7 +198,7 @@ def event_based_metrics_for_ptnt(
     return metrics, szrs_pred_series
 
 
-def _run_ebm_task(task: tuple[PatientDir, str, str]) -> tuple[str, str, str]:
+def event_based_metrics_for_pdir(task: tuple[PatientDir, str, str]) -> tuple[str, str, str]:
     pdir, split, model = task
     log_prefix = f"{pdir.name} {split} {model}"
     logging.info(f"[{log_prefix}] 🎬 Calculating Event-Based Metrics...")
@@ -234,10 +234,10 @@ def event_based_metrics_for_pdirs(
 
     if serial_processing:
         for task in tasks:
-            _run_ebm_task(task)
+            event_based_metrics_for_pdir(task)
     else:
         with ProcessPoolExecutor(max_workers=max_workers) as exe:
-            exe.map(_run_ebm_task, tasks, chunksize=1)
+            exe.map(event_based_metrics_for_pdir, tasks, chunksize=1)
 
 
 if __name__ == '__main__':

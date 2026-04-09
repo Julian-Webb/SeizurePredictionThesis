@@ -8,7 +8,7 @@ from preprocessing.create_segments import create_segs_for_pdirs
 from preprocessing.dataset_partitioning import partition_for_pdirs
 from preprocessing.plot_segments import plot_segs_for_pdirs
 from preprocessing.validate_patients import validate_patients
-from feature_extraction.extract_features import run_feature_extraction
+from feature_extraction.extract_features import extract_features_for_pdirs
 from utils.logging_config import configure_root_logging
 from utils.utils import FunctionTimer
 
@@ -65,7 +65,7 @@ def preprocessing(
 
         logging.info("---- Extracting features ----")
         with FunctionTimer('run_feature_extraction'):
-            run_feature_extraction(pdirs)
+            extract_features_for_pdirs(pdirs)
 
 
 if __name__ == "__main__":

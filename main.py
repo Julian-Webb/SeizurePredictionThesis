@@ -1,11 +1,11 @@
 import logging
 from datetime import datetime
 
-from cleaning_annotations.localize_annotations import drop_duplicates_and_localize
+from cleaning_annotations.localize_annotations import drop_duplicates_and_localize_for_pdirs
 from config import PATHS, PatientDir
 from cycle_extraction.main import cycle_extraction
 from model_eval.main import model_eval
-from models.train_models import train_models
+from models.train_models import train_models_for_pdirs
 from preprocessing.main import preprocessing
 from utils.logging_config import configure_root_logging
 from utils.utils import timeit
@@ -36,7 +36,7 @@ def main(
     # ---- Pipeline Start ----------------------------------------------------------------------------------------------
     # Clean Annotations
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_clean_annotations.log")
-    drop_duplicates_and_localize(pdirs)
+    drop_duplicates_and_localize_for_pdirs(pdirs)
 
     # Preprocessing
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_preprocessing.log")
@@ -44,7 +44,7 @@ def main(
 
     # Train Models - sets up and manages its own logs.
     configure_root_logging()
-    train_models(pdirs, gpus=available_gpus, train_cnn=True, train_ensemble=True, run_name=run_name)
+    train_models_for_pdirs(pdirs, gpus=available_gpus, train_cnn=True, train_ensemble=True, run_name=run_name)
 
     # Model Evaluation - sets up and manages its own logs.
     configure_root_logging()

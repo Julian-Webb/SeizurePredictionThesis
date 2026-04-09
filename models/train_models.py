@@ -15,11 +15,11 @@ def _train_cnn_task(pdir: PatientDir):
 
 
 def _train_ensemble_task(pdir: PatientDir) -> None:
-    from models.ensemble import create_ptnt_ensemble_and_save
-    create_ptnt_ensemble_and_save(pdir)
+    from models.ensemble import create_ensemble_and_save_for_pdir
+    create_ensemble_and_save_for_pdir(pdir)
 
 
-def train_models(
+def train_models_for_pdirs(
         pdirs: List[PatientDir],
         gpus: List[int],
         train_cnn: bool = True,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     for pdir_ in pdirs_:
         print(f'    {pdir_.name}')
 
-    train_models(
+    train_models_for_pdirs(
         pdirs_,
         gpus=[0, 1, 2, 3],
         train_cnn=True,

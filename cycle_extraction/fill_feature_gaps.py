@@ -1,7 +1,7 @@
 """
 Fill gaps in the features during missing recording intervals of patients.
 """
-
+import logging
 import multiprocessing
 from functools import partial
 from typing import Optional
@@ -134,7 +134,7 @@ def fill_short_gaps_per_column(
     return out
 
 
-def fill_ptnt_gaps(
+def fill_gaps_for_ptnt(
         segs: DataFrame,
         long_gap_min_segs: int,
         warn_gap_n_segs_threshold: Optional[int] = None,
@@ -169,7 +169,7 @@ def fill_ptnt_gaps(
     return out
 
 
-def fill_ptnt_gaps_and_save(
+def fill_gaps_for_pdir(
         pdir: PatientDir,
         long_gap_min_segs: int,
         warn_gap_n_segs_threshold: Optional[int] = None,
@@ -178,20 +178,20 @@ def fill_ptnt_gaps_and_save(
         random_state: Optional[int] = None,
         feature_cols: list[str] = FeatureNames.ALL_ORDERED,
 ):
-    print(f'[{pdir.name}] Filling Feature Gaps...', flush=True)
+    logging.info(f'[{pdir.name}] 🎬 Filling Feature Gaps...')
     segs = pd.read_pickle(pdir.segments_table.pickle)
-    filled_features = fill_ptnt_gaps(segs,
-                                     long_gap_min_segs,
-                                     warn_gap_n_segs_threshold,
-                                     min_donor_n_segs,
-                                     max_distortion_pct,
-                                     random_state,
-                                     feature_cols,
-                                     pdir.name)
+    filled_features = fill_gaps_for_ptnt(segs,
+                                         long_gap_min_segs,
+                                         warn_gap_n_segs_threshold,
+                                         min_donor_n_segs,
+                                         max_distortion_pct,
+                                         random_state,
+                                         feature_cols,
+                                         pdir.name)
 
     # Save results
     save_dataframe_multiformat(filled_features, pdir.filled_features_for_segs, csv_kwargs={'float_format': '%.3f'})
-    print(f'[{pdir.name}] Saved filled features ({len(filled_features)} rows)', flush=True)
+    logging.info(f'[{pdir.name}] ✅ Saved filled features ({len(filled_features)} rows)')
 
 
 def fill_gaps_for_pdirs(
@@ -208,7 +208,7 @@ def fill_gaps_for_pdirs(
     long_gap_min_segs = long_gap_min_duration // SEGMENT.exact_dur
     warn_gap_n_segs_threshold = None if warn_gap_threshold is None else warn_gap_threshold // SEGMENT.exact_dur
 
-    func = partial(fill_ptnt_gaps_and_save, long_gap_min_segs=long_gap_min_segs,
+    func = partial(fill_gaps_for_pdir, long_gap_min_segs=long_gap_min_segs,
                    warn_gap_n_segs_threshold=warn_gap_n_segs_threshold,
                    min_donor_n_segs=min_donor_n_segs,
                    max_distortion_pct=max_distortion_pct,

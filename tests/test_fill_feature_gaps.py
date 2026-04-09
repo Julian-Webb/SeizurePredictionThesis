@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from cycle_extraction.fill_feature_gaps import fill_ptnt_gaps, fill_short_gaps_per_column
+from cycle_extraction.fill_feature_gaps import fill_gaps_for_ptnt, fill_short_gaps_per_column
 
 def test_min_donor_window_changes_sampling_pool():
     idx = np.arange(0, 11)
@@ -92,7 +92,7 @@ def test_fill_ptnt_gaps_reintegrates_chunks_and_keeps_long_gaps_nan():
         index=idx,
     )
 
-    out = fill_ptnt_gaps(
+    out = fill_gaps_for_ptnt(
         df,
         long_gap_min_segs=3,
         feature_cols=['feat'],

@@ -245,7 +245,7 @@ def extract_ptnt_features_and_save_from_pdir(pdir: PatientDir, serial_processing
 
 
 @timeit
-def run_feature_extraction(pdirs: List[PatientDir], serial_processing: bool = False):
+def extract_features_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False):
     """Extract the features for the segments of a patient."""
     if serial_processing:
         for pdir in pdirs:
@@ -257,4 +257,4 @@ def run_feature_extraction(pdirs: List[PatientDir], serial_processing: bool = Fa
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s', force=True)
-    run_feature_extraction(PATHS.patient_dirs(), serial_processing=False)
+    extract_features_for_pdirs(PATHS.patient_dirs(), serial_processing=False)

@@ -1,6 +1,6 @@
 from .fill_feature_gaps import (
     fill_gaps_for_pdirs,
-    fill_ptnt_gaps_and_save
+    fill_gaps_for_pdir
 )
 
 from .cycle_functions import (

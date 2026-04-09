@@ -137,7 +137,7 @@ def create_ptnt_mlp_ensemble(
 
 
 @timeit(kwarg_names=['pdir'])
-def create_ptnt_ensemble_and_save(pdir: PatientDir):
+def create_ensemble_and_save_for_pdir(pdir: PatientDir):
     logging.info('[%s - ensemble] Creating model', pdir.name)
     ensemble, scaler, histories = create_ptnt_mlp_ensemble(pdir)
 
@@ -150,14 +150,14 @@ def create_ptnt_ensemble_and_save(pdir: PatientDir):
     save_dataframe_multiformat(histories, pdir.mlp_history, save_index=True)
 
 
-def create_mlp_ensembles(pdirs: list[PatientDir]):
+def create_mlp_ensemble_for_pdirs(pdirs: list[PatientDir]):
     st = time.perf_counter()
 
     for pdir in pdirs:
-        create_ptnt_ensemble_and_save(pdir)
+        create_ensemble_and_save_for_pdir(pdir)
 
     elapsed_time = time.perf_counter() - st
     logging.info('Finished ensemble creation in %.2f hours', elapsed_time / 3600)
 
 
-if __name__ == '__main__': create_mlp_ensembles(PATHS.patient_dirs())
+if __name__ == '__main__': create_mlp_ensemble_for_pdirs(PATHS.patient_dirs())
