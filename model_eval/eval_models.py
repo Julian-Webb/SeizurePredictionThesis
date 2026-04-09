@@ -18,8 +18,6 @@ from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
 
 
-# todo not sure if this code is doing what it should.
-# todo shouldn't samples be independent for this test?
 def hanley_mcneil_test(N1, N2, auc):
     """
     Hanley-McNeil method for ROC-AUC significance/better than chance classification performance.
@@ -171,7 +169,6 @@ def eval_models_for_pdir(
             y_scores = split_clips[f'{model}_score']
             y_pred: Series = y_scores >= best_thresh
 
-            # todo check this with Sot - the results are super sketchy
             # Hanley-McNeil test for ROC-AUC significance/better than chance classification performance.
             roc_auc = roc_auc_score(y_true, y_scores)
             n_pos = y_true.sum()

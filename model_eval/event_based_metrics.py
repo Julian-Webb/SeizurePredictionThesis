@@ -207,7 +207,6 @@ def _run_ebm_task(task: tuple[PatientDir, str, str]) -> tuple[str, str, str]:
         # Load once per task
         clip_scores = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)[split]
         clip_scores = clip_scores[clip_scores['valid']]
-        # todo might need to change to all szrs here
         szrs = partition_dataframe(pd.read_pickle(pdir.valid_szr_starts_file.pickle), pdir)[split]
 
         ebms, szrs_pred = event_based_metrics_for_ptnt(

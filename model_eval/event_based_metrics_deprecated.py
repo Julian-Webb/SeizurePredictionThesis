@@ -117,8 +117,6 @@ def safe_dataframe_concat(objs: list, concat_kwargs) -> DataFrame:
         return DataFrame(objs[0])
 
 
-# todo it's possible to seizures to not be predicted at the beginning of the test set, because we're not including the clips that would predict it (1:05h before the split)
-# todo The TIFW can never equal 1 because we're using the total recording time. The duration that should be in warning should be subtracted.
 @timeit(kwarg_names=['logging_info'])
 def event_based_metrics(
         clips: DataFrame,
