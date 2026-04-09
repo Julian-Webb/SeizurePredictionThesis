@@ -4,7 +4,7 @@ import logging
 from config import PATHS, PatientDir
 from preprocessing.filter_signals import filter_edfs_for_pdirs
 from preprocessing.create_segments import create_segs_for_pdirs
-from preprocessing.dataset_partitioning import find_splits_for_pdirs
+from preprocessing.dataset_partitioning import partition_for_pdirs
 from preprocessing.validate_patients import validate_patients
 from feature_extraction.extract_features import run_feature_extraction
 from utils.logging_config import configure_root_logging
@@ -49,9 +49,9 @@ def preprocessing(
         with FunctionTimer('create_segs_for_pdirs'):
             create_segs_for_pdirs(pdirs)
 
-        logging.info("---- Splitting data into train and test ----")
-        with FunctionTimer('find_ptnt_splits'):
-            find_splits_for_pdirs(pdirs)
+        logging.info("---- Partitioning Dataset ----")
+        with FunctionTimer('partition_for_pdirs'):
+            partition_for_pdirs(pdirs)
 
         logging.info("---- Extracting features ----")
         with FunctionTimer('run_feature_extraction'):
