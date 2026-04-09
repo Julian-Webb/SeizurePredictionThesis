@@ -2,11 +2,13 @@ import logging
 import math
 import multiprocessing
 from math import ceil, floor
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import pandas as pd
 from pandas import Series, Timestamp, DataFrame
+from pandas.api.types import is_numeric_dtype, is_timedelta64_dtype
 
 from config import PATHS, PatientDir, save_dataframe_multiformat
 from config.intervals import INTERICTAL
@@ -223,6 +225,34 @@ def combine_partition_info_for_pdirs(pdirs: list[PatientDir]):
     return info
 
 
+def _save_styled_partition_info_xlsx(df: DataFrame, out_path: Path):
+    ratio_cols = [c for c in df.columns if str(c).startswith('ratio_')]
+    other_cols = [c for c in df.columns if c not in ratio_cols]
+
+    # Use only train/test rows to define gradient bounds for non-ratio columns.
+    train_test_mask = df.index.get_level_values(-1).isin(['train', 'test'])
+
+    styler = df.style
+
+    if ratio_cols:
+        # Ratios have a global, fixed meaning: 0=bad, 1=good.
+        styler = styler.background_gradient(cmap='RdYlGn', subset=ratio_cols, axis=0, vmin=0, vmax=1)
+
+    for col in other_cols:
+        s = df[col]
+        if is_numeric_dtype(s):
+            gmap = s.astype(float)
+        elif is_timedelta64_dtype(s):
+            gmap = s.dt.total_seconds()
+        else:
+            continue
+
+        styler = styler.background_gradient(cmap='RdYlGn', subset=[col], axis=0, gmap=gmap, vmin=0,
+                                            vmax=gmap[train_test_mask].max())
+
+    styler.to_excel(out_path)
+
+
 def partition_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False):
     logging.info(f'🎬 Computing partitions for {len(pdirs)} patients.')
     if serial_processing:
@@ -233,8 +263,7 @@ def partition_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False
             pool.map(find_split_for_pdir, pdirs)
 
     partition_info = combine_partition_info_for_pdirs(pdirs)
-    # Save as xlsx because it works properly with MultiIndex
-    save_dataframe_multiformat(partition_info, PATHS.partition_info_table, formats=('xlsx', 'pickle'), save_index=True)
+    _save_styled_partition_info_xlsx(partition_info, PATHS.partition_info_table.xlsx)
     autofit_excel_columns(PATHS.partition_info_table.xlsx)
     logging.info(f'✅ Completed partitions for {len(pdirs)} patients.')
 
