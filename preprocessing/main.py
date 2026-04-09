@@ -41,31 +41,38 @@ def preprocessing(
         logging.info("---- Validating Patients and moving invalid patient dirs ----")
         with FunctionTimer('validate_patients'):
             all_pdirs = PATHS.patient_dirs(include_invalid_ptnts=True)
-            validate_patients(all_pdirs, move_invalid_pdirs=True, leave_fake_ptnts=True)
+            all_valid_pdirs = validate_patients(all_pdirs, move_invalid_pdirs=True, leave_fake_ptnts=True)
+
+        # Keep just valid pdirs
+        valid_pdirs = [pdir for pdir in pdirs if pdir in all_valid_pdirs]
+        logging.info(f'Excluded invalid patients.')
+        logging.info(f'({len(valid_pdirs)}) valid patients remain: {[p.name for p in valid_pdirs]}')
 
         logging.info("---- Filtering EDFs ----")
         with FunctionTimer('filter_all_edfs'):
-            filter_edfs_for_pdirs(pdirs)
+            filter_edfs_for_pdirs(valid_pdirs)
 
         logging.info("---- Creating segment tables ----")
         with FunctionTimer('create_segs_for_pdirs'):
-            create_segs_for_pdirs(pdirs)
+            create_segs_for_pdirs(valid_pdirs)
 
         logging.info("---- Creating clips ----")
         with FunctionTimer('create_clips_for_pdirs'):
-            create_clips_for_pdirs(pdirs)
+            create_clips_for_pdirs(valid_pdirs)
 
         logging.info("---- Partitioning Dataset ----")
         with FunctionTimer('partition_for_pdirs'):
-            partition_for_pdirs(pdirs)
+            partition_for_pdirs(valid_pdirs)
 
         logging.info("---- Creating Segment Plots ----")
         with FunctionTimer('plot_segs_for_pdirs'):
-            plot_segs_for_pdirs(pdirs)
+            plot_segs_for_pdirs(valid_pdirs)
 
         logging.info("---- Extracting features ----")
         with FunctionTimer('run_feature_extraction'):
-            extract_features_for_pdirs(pdirs)
+            extract_features_for_pdirs(valid_pdirs)
+
+        return valid_pdirs
 
 
 if __name__ == "__main__":

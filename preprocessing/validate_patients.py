@@ -14,7 +14,8 @@ def ptnt_valid_szrs(all_szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
     """:return: valid_szrs, szrs, ptnt_szr_info"""
     # find the time difference of a seizure to the *previous* one
     if all_szrs.empty:
-        return all_szrs, all_szrs, {'total_seizures': len(all_szrs), 'valid_seizures': 0, 'enough_valid_seizures': False}
+        return all_szrs, all_szrs, {'total_seizures': len(all_szrs), 'valid_seizures': 0,
+                                    'enough_valid_seizures': False}
 
     diff = all_szrs['start_mtz'].diff()
 
@@ -30,7 +31,7 @@ def ptnt_valid_szrs(all_szrs: DataFrame) -> Tuple[DataFrame, DataFrame, dict]:
 
     # noinspection PyTypeChecker
     return valid_szrs, all_szrs, {'total_seizures': len(all_szrs), 'valid_seizures': n_valid,
-                              'enough_valid_seizures': enough_valid_szrs}
+                                  'enough_valid_seizures': enough_valid_szrs}
 
 
 def find_lead_szrs(szrs: DataFrame):
@@ -101,13 +102,14 @@ def validate_patients(
         pdirs: Iterable[PatientDir],
         move_invalid_pdirs: bool,
         leave_fake_ptnts: bool = True,
-) -> None:
+) -> list[PatientDir]:
     """
     Find valid seizures for all patients. Save the valid seizures info, and the patient timespan info to files.
     :param leave_fake_ptnts: Whether to leave fake patients inplace, rather than moving them, even if they are invalid
     """
     # patients are grouped by dataset
     ptnt_infos = {'exact': {}, 'readable': {}}
+    valid_pdirs = []
 
     for pdir in pdirs:
         try:
@@ -139,12 +141,12 @@ def validate_patients(
         for k in ptnt_infos.keys():
             ptnt_infos[k][(dataset, pdir.name)] = {'valid': ptnt_valid, **ptnt_szr_info, **ptnt_time_info[k]}
 
-        if move_invalid_pdirs and not ptnt_valid:
-            if 'FAKE' in pdir.name:
-                if not leave_fake_ptnts:
-                    move_pdir(pdir)
-            else:
-                move_pdir(pdir)
+        # Move the patient's dir
+        ptnt_fake = 'FAKE' in pdir.name
+        if ptnt_valid or (ptnt_fake and leave_fake_ptnts):
+            valid_pdirs.append(pdir)
+        elif move_invalid_pdirs:
+            move_pdir(pdir)
 
     # Save patient infos
     PATHS.patient_info_dir.mkdir(parents=True, exist_ok=True)
@@ -157,6 +159,8 @@ def validate_patients(
             ptnt_info.to_csv(PATHS.patient_info_readable)
         elif k == 'exact':
             save_dataframe_multiformat(ptnt_info, PATHS.patient_info_exact, save_index=True)
+
+    return valid_pdirs
 
 
 if __name__ == '__main__':
