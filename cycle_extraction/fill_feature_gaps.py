@@ -101,9 +101,8 @@ def fill_short_gaps_per_column(
 
         if g_nsegs > warn_gap_n_segs_threshold:
             duration: Timedelta = g_nsegs * SEGMENT.exact_dur
-            print(
-                f'[{patient}] Gap {g_start}-{g_end} has {g_nsegs} segments with duration {duration}; filling anyway.',
-                flush=True)
+            logging.info(
+                f'[{patient}] Gap {g_start}-{g_end} has {g_nsegs} segments with duration {duration}; filling anyway.')
 
         left_start = max(int(out.index.min()), g_start - window_n_segs)
         left_end = g_start - 1

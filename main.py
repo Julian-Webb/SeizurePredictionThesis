@@ -41,25 +41,24 @@ def main(
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_preprocessing.log")
     drop_duplicates_and_localize_for_pdirs(pdirs)  # Clean Annotations
     # valid patient directories are returned
-    v_pdirs = preprocessing(pdirs, ask_confirm=False, setup_logging=False)
+    pdirs = preprocessing(pdirs, ask_confirm=False, setup_logging=False)
 
     # Train Models - sets up and manages its own logs.
     configure_root_logging()
-    train_models_for_pdirs(v_pdirs, gpus=available_gpus, train_cnn=True, train_ensemble=True, run_name=run_name)
+    train_models_for_pdirs(pdirs, gpus=available_gpus, train_cnn=True, train_ensemble=True, run_name=run_name)
 
     # Model Evaluation - sets up and manages its own logs.
     configure_root_logging()
-    model_eval(v_pdirs, available_gpus, run_name=run_name)
+    model_eval(pdirs, available_gpus, run_name=run_name)
 
     # Cycle Extraction
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_cycle_extraction.log")
-    cycle_extraction(v_pdirs, ask_confirm=False)
+    cycle_extraction(pdirs, ask_confirm=False)
 
     # ---- Pipeline End ------------------------------------------------------------------------------------------------
     # Success message
     configure_root_logging(root_log)
-    ptnt_names = [pdirs.name for pdirs in v_pdirs]
-    logging.info(f'Completed pipeline for {ptnt_names}.')
+    logging.info(f'Completed pipeline for {[pdirs.name for pdirs in pdirs]}.')
 
 
 if __name__ == "__main__":
