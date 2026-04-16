@@ -17,7 +17,7 @@ SPECTRAL_BANDS = {'Delta': (0.5, 4), 'Theta': (4, 8), 'Alpha': (8, 12), 'Beta': 
 MIN_VALID_SEIZURES_PER_PATIENT = 10
 
 # How much of a patient's total recording timespan must be recorded for him/her to be valid
-MIN_RATIO_RECORDED_TO_BE_VALID = 0.4
+MIN_RATIO_RECORDED_TO_BE_VALID = 0.6
 
 # How many of a clip's segments must be valid/exist for the clip to be valid (i.e. not have too much missing data)
 MIN_SEGMENTS_PER_CLIP_RATIO = 0.875
