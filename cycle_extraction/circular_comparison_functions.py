@@ -24,7 +24,7 @@ def circular_mean(angles):
     return np.arctan2(S, C)
 
 
-def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int = 10000, ci_level: int = 95,
+def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int = 5000, ci_level: int = 95,
                         seed: int = 42):
     """
     Bootstrap and permutation
@@ -35,7 +35,7 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
         The phases of the two events in radians
     n_iters
     ci_level
-        Confidence interval level
+        Confidence interval level between 0 and 100
     seed
         The seed for numpy.random
 
@@ -43,14 +43,14 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
     -------
     dict[str, np.ndarray | float]
         Dictionary containing comparison outputs:
-        - ``observed_diff``: Circular mean difference (group 1 - group 2) in radians.
-        - ``ci_lower`` / ``ci_upper``: Bootstrap confidence interval bounds for ``observed_diff``.
-        - ``p_value``: Two-sided permutation p-value for the null of equal mean phase.
-        - ``boot_diffs``: Bootstrap distribution of circular mean differences.
-        - ``perm_diffs``: Permutation null distribution of circular mean differences.
-        - ``obs_mean1`` / ``obs_mean2``: Observed circular means for each input group.
-        - ``lower1`` / ``upper1``: Bootstrap confidence interval bounds for ``obs_mean1``.
-        - ``lower2`` / ``upper2``: Bootstrap confidence interval bounds for ``obs_mean2``.
+        - `obs_mean1` / `obs_mean2`: Observed circular means for each input group.
+        - `observed_diff`: Circular mean difference (group 1 - group 2) in radians.
+        - `lower1` / `upper1`: Bootstrap confidence interval bounds for `obs_mean1`.
+        - `lower2` / `upper2`: Bootstrap confidence interval bounds for `obs_mean2`.
+        - `ci_lower` / `ci_upper`: Bootstrap confidence interval bounds for `observed_diff`.
+        - `p_value`: Two-sided permutation p-value for the null of equal mean phase.
+        - `boot_diffs`: Bootstrap distribution of circular mean differences.
+        - `perm_diffs`: Permutation null distribution of circular mean differences.
     """
     np.random.seed(seed)
     ph1 = np.asarray(phases1)
@@ -99,18 +99,18 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
     p_value = (np.sum(np.abs(perm_diffs) >= np.abs(obs_diff)) + 1) / (n_iters + 1)
 
     return {
+        "obs_mean1": obs_mean1,
+        "obs_mean2": obs_mean2,
         "observed_diff": obs_diff,
+        "lower1": lower1,
+        "upper1": upper1,
+        "lower2": lower2,
+        "upper2": upper2,
         "ci_lower": ci_lower,
         "ci_upper": ci_upper,
         "p_value": p_value,
         "boot_diffs": boot_diffs,
         "perm_diffs": perm_diffs,
-        "obs_mean1": obs_mean1,
-        "lower1": lower1,
-        "upper1": upper1,
-        "obs_mean2": obs_mean2,
-        "lower2": lower2,
-        "upper2": upper2
     }
 
 

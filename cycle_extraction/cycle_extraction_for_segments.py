@@ -185,10 +185,10 @@ def _compute_plv_metrics_for_ptnt(
 
 
 def _compute_circular_comparisons_for_ptnt(
-        event_phases_per_type_per_feat: dict,
+        event_phases_per_type_per_feat: dict[str, dict[str, np.ndarray]],
         feature_names: list[str],
 ):
-    """Compute Watson-Wheeler and pairwise circular comparisons.
+    """Compute Watson-Wheeler test and pairwise circular comparisons with bootstrapping.
 
     Returns
     -------
@@ -197,32 +197,39 @@ def _compute_circular_comparisons_for_ptnt(
     """
     event_types = list(event_phases_per_type_per_feat.keys())
     event_pairs = list(itertools.combinations(event_types, 2))
+    event_pairs = [(e1, e2, f"{e1} vs {e2}") for e1, e2 in event_pairs]  # add name for pair
+    ww_metrics = ['w_stat', 'p_value', 'p_bh']  # ww = watson wheeler (test)
+    pair_metrics_no_bh = ['obs_mean1', 'obs_mean2', 'observed_diff', 'lower1', 'upper1', 'lower2', 'upper2', 'ci_lower',
+                          'ci_upper', 'p_value']
+    pair_metrics = pair_metrics_no_bh + ['p_bh']
 
     # Build DataFrame with MultiIndex columns
-    col_tuples = [('watson_wheeler', 'w_stat'), ('watson_wheeler', 'p_value')]
-    for event_type1, event_type2 in event_pairs:
-        pair_name = f"{event_type1} vs {event_type2}"
-        col_tuples.extend(
-            [(pair_name, 'observed_diff'), (pair_name, 'p_value'), (pair_name, 'ci_lower'), (pair_name, 'ci_upper')])
+    col_tuples = [('watson_wheeler', metric) for metric in ww_metrics]
+    for _, _, pair_name in event_pairs:
+        col_tuples.extend((pair_name, metric) for metric in pair_metrics)
 
     cols = pd.MultiIndex.from_tuples(col_tuples, names=['comparison', 'metric'])
     res = DataFrame(index=feature_names, columns=cols, dtype='float64')  # circular comparison results
 
     # Compute Results
     for feat in feature_names:
+        phases_per_type = {ev_type: per_feat[feat] for ev_type, per_feat in event_phases_per_type_per_feat.items()}
         # Watson-Wheeler test across all event types
-        event_phases = [per_feat[feat] for per_feat in event_phases_per_type_per_feat.values()]
-        res.loc[feat, ('watson_wheeler', ['w_stat', 'p_value'])] = watson_wheeler_test(event_phases)
+        res.loc[feat, ('watson_wheeler', ['w_stat', 'p_value'])] = watson_wheeler_test(list(phases_per_type.values()))
 
         # Pairwise circular comparisons
-        for event_type1, event_type2 in event_pairs:
-            phases1 = event_phases_per_type_per_feat[event_type1][feat]
-            phases2 = event_phases_per_type_per_feat[event_type2][feat]
-            comp = circular_comparison(phases1, phases2)
-            pair_name = f"{event_type1} vs {event_type2}"
-            # todo what to save?
-            res.loc[feat, (pair_name, ['observed_diff', 'p_value', 'ci_lower', 'ci_upper'])] = \
-                comp['observed_diff'], comp['p_value'], comp['ci_lower'], comp['ci_upper']
+        for e1, e2, pair_name in event_pairs:
+            ph1, ph2 = phases_per_type[e1], phases_per_type[e2]
+            comp = circular_comparison(ph1, ph2, n_iters=5000, ci_level=95)
+            res.loc[feat, (pair_name, pair_metrics_no_bh)] = [comp[key] for key in pair_metrics_no_bh]
+
+    # Benjamini-Hochberg FDR correction per comparison across features
+    pvals_ww = res.loc[:, ('watson_wheeler', 'p_value')]
+    res.loc[:, ('watson_wheeler', 'p_bh')] = false_discovery_control(pvals_ww, method='bh')
+
+    for _, _, pair_name in event_pairs:
+        pvals_pair = res.loc[:, (pair_name, 'p_value')]
+        res.loc[:, (pair_name, 'p_bh')] = false_discovery_control(pvals_pair, method='bh')
 
     return res
 
@@ -277,8 +284,13 @@ def get_false_positives_from_clips(clips: DataFrame, thresh: float, score_col: s
 
 
 # noinspection PyTypeChecker
-def _make_filtered_feature_plots(seg_feats: DataFrame, seg_feats_filt: DataFrame, event_timestamps: dict,
-                                 feature_names: list[str], save_dir: Path):
+def _make_filtered_feature_plots(
+        seg_feats: DataFrame,
+        seg_feats_filt: DataFrame,
+        event_timestamps: dict,
+        feature_names: list[str], save_dir: Path,
+        test_start_mtz: pd.Timestamp
+):
     seg_starts = seg_feats['start_mtz'].values
     assert (seg_starts == seg_feats_filt['start_mtz'].values).all(), 'Start times do not match.'
     assert (seg_feats.index == seg_feats_filt.index).all(), 'Segment indices do not match.'
@@ -300,6 +312,13 @@ def _make_filtered_feature_plots(seg_feats: DataFrame, seg_feats_filt: DataFrame
             events=idxs_per_event_type,
         )
         fig.suptitle(feat, x=0.1)
+
+        # Mark test split start on both panels for orientation in timeline plots.
+        for i, ax in enumerate(fig.axes):
+            label = 'test_start' if i == 0 else '_nolegend_'
+            ax.axvline(test_start_mtz, color='tab:green', linestyle='--', label=label, ymin=-0.02, ymax=1.02,
+                       clip_on=False)
+        fig.axes[0].legend(loc='upper left')
 
         save_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(save_dir / f'{feat}.png')
@@ -340,21 +359,17 @@ def cycle_extraction_and_plot_for_pdir(
 ):
     logging.info(f'[{pdir.name}] 🚀 Starting Cycle Extraction...')
 
-    # Load test data and discard irrelevant columns
-    szrs = partition_dataframe(pd.read_pickle(pdir.valid_szr_starts_file.pickle), pdir)['test']['start_mtz'].values
-    clips = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)['test']
-    clips = clips[clips['valid']]
-
-    # Get features for just test set
-    first_test_seg_idx = clips.iloc[0]['start_seg']
-    _sf = pd.read_pickle(pdir.filled_features_for_segs.pickle).drop(columns=['exists'], errors='ignore')
-    seg_feats = _sf.loc[first_test_seg_idx:].reset_index(drop=True)
+    # Load test clips (since model scores are extracted from these) and features and seizures for train and test.
+    szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values
+    seg_feats = pd.read_pickle(pdir.filled_features_for_segs.pickle).drop(columns=['exists'], errors='ignore')
+    test_clips = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)['test']
+    test_start_mtz = test_clips['start_mtz'].iloc[0]
 
     # Get the false positive timestamps for each model
     event_timestamps = {'seizures': szrs}
     for model in models:
         best_thresh = pd.read_pickle(pdir.model_eval_subdir('test', model).metrics_table.pickle)['best_threshold']
-        event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(clips, best_thresh, f'{model}_score')
+        event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(test_clips, best_thresh, f'{model}_score')
 
     metrics, circular_comp_results, seg_feats_filt, event_phases_per_type_per_feat = \
         cycle_extraction_for_ptnt(seg_feats, event_timestamps, upper_quantile_bound_for_clipping, feature_names,
@@ -368,7 +383,7 @@ def cycle_extraction_and_plot_for_pdir(
                                save_index=True, formats=['pickle', 'xlsx'], float_format='%.3f')
 
     _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
-                                 pdir.filtered_feature_plots_dir)
+                                 pdir.filtered_feature_plots_dir, test_start_mtz)
     _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.circular_histograms_dir, pdir.name)
 
     logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction and Figures.')
