@@ -4,6 +4,7 @@ from datetime import datetime
 from cleaning_annotations.localize_annotations import drop_duplicates_and_localize_for_pdirs
 from config import PATHS, PatientDir
 from cycle_extraction.main import cycle_extraction
+from model_comparison.comparison_table import make_comparison_table_and_save
 from model_eval.main import model_eval
 from models.train_models import train_models_for_pdirs
 from preprocessing.main import preprocessing
@@ -50,6 +51,7 @@ def main(
     # Model Evaluation - sets up and manages its own logs.
     configure_root_logging()
     model_eval(pdirs, available_gpus, run_name=run_name)
+    make_comparison_table_and_save(pdirs)
 
     # Cycle Extraction
     configure_root_logging(log_file=PATHS.logs_dir / f"{run_name}_cycle_extraction.log")

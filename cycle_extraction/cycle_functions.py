@@ -1,4 +1,6 @@
 from math import ceil
+import logging
+from typing import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,6 +8,7 @@ from numpy import pi
 import pandas as pd
 import scipy.signal
 from scipy.signal import butter, sosfiltfilt
+from scipy.stats import chi2, rankdata
 
 from utils.utils import contains_nan
 
@@ -420,7 +423,7 @@ def plot_phase_histogram_for_all_features(
         event_phases_per_feat: dict[str, np.ndarray],
         plv_per_feat: dict[str, float],
         mean_angle_per_feat: dict[str, float],
-        p_value_bh_per_feat: dict[str, float],
+        p_bh_per_feat: dict[str, float],
         n_bins=24,
         ncols=5,
         max_n_y_ticks: int = 6,
@@ -460,15 +463,71 @@ def plot_phase_histogram_for_all_features(
         plv = plv_per_feat[feat]
         mean_angle = mean_angle_per_feat[feat]
         mean_angle_deg = np.degrees(mean_angle) % 360
-        p_value_bh = p_value_bh_per_feat[feat]
+        p_bh = p_bh_per_feat[feat]
 
         plot_phase_histogram_for_single_feature(ax, event_phases_per_feat[feat], plv, mean_angle, n_bins, show_x_ticks,
                                                 max_n_y_ticks)
 
         ax.set_title(feat, fontsize=14, y=1.1)
         # Add statistics info
-        info = f'Mean Angle: {mean_angle_deg:.1f}°\np BH: {p_value_bh:.4f}\nPLV: {plv:.2f}'
+        info = f'Mean Angle: {mean_angle_deg:.1f}°\np BH: {p_bh:.4f}\nPLV: {plv:.2f}'
         ax.annotate(info, xy=(0.02, 0.98), xycoords='axes fraction',
                     fontsize=8, ha='left', )
 
     return fig
+
+
+
+
+def watson_wheeler_test(samples: Sequence[np.ndarray]):
+    """
+    Performs the (Mardia-)Watson-Wheeler test for equal circular distributions.
+
+    Parameters:
+    samples: 1D numpy arrays of circular data (in radians).
+               e.g., watson_wheeler_test(group1, group2, group3)
+
+    Returns:
+    W : float, the test statistic
+    p_value : float, the p-value
+    """
+    pooled = np.concatenate(samples)
+    n_total = len(pooled)
+    k = len(samples)
+
+    # The Chi-square approximation is generally valid for N >= 15
+    if n_total < 15:
+        logging.warning("Warning: Chi-square approximation may be inaccurate for N < 15.")
+
+    # 1. Rank the pooled data
+    ranks = rankdata(pooled)
+
+    # 2. Convert ranks to uniform scores (angles in radians)
+    uniform_scores = 2 * np.pi * ranks / n_total
+
+    # 3. Calculate the test statistic W
+    W = 0
+    current_idx = 0
+    for sample in samples:
+        n_j = len(sample)
+        if n_j == 0:
+            continue
+
+        # Isolate the uniform scores for the current group
+        group_scores = uniform_scores[current_idx: current_idx + n_j]
+        current_idx += n_j
+
+        # Calculate vector sums for the group
+        C_j = np.sum(np.cos(group_scores))
+        S_j = np.sum(np.sin(group_scores))
+
+        # Add to the overall statistic
+        W += (C_j ** 2 + S_j ** 2) / n_j
+
+    W *= 2
+
+    # 4. Calculate p-value based on Degrees of Freedom
+    df = 2 * (k - 1)
+    p_value = 1 - chi2.cdf(W, df)
+
+    return W, p_value

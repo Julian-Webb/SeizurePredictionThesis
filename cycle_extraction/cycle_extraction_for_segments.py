@@ -14,7 +14,7 @@ from config.constants import UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING
 from config.intervals import SEGMENT
 from cycle_extraction import compute_plv_for_split_signal, rayleigh_test
 from cycle_extraction.cycle_functions import nc_filter_multidien, plot_filtered_feature, \
-    plot_phase_histogram_for_all_features
+    plot_phase_histogram_for_all_features, watson_wheeler_test
 from feature_extraction.extract_features import FeatureNames
 from preprocessing.dataset_partitioning import partition_dataframe
 
@@ -132,16 +132,16 @@ def cycle_extraction_for_ptnt(
     end_mtz = seg_feats['start_mtz'] + SEGMENT.exact_dur
     seg_feats.insert(seg_feats.columns.get_loc("start_mtz") + 1, "end_mtz", end_mtz)
 
-    # Handle outliers and normalize features
+    # ---- Handle outliers and normalize features
     for feat in feature_names:
         h = handle_feature_outliers(seg_feats[feat].values, upper_quantile_bound_for_clipping)
         seg_feats[feat] = normalize_feature(h)
 
-    # Split by long gaps (where the features are still NA)
+    # ---- Split by long gaps (where the features are still NA)
     chunked_segs = split_dataframe_by_nan_gaps(seg_feats, feature_names)
     logging.info(f'[{patient}] Number of chunks: {len(chunked_segs)}')
 
-    # Filter the features per chunk
+    # ---- Filter the features per chunk
     segs_per_hour = Timedelta(hours=1) / SEGMENT.exact_dur
     filtered_chunks = []
     # for plotting - single DataFrame equivalent to filtered_chunk, but with NaN gaps
@@ -158,15 +158,20 @@ def cycle_extraction_for_ptnt(
         filtered_chunks.append(filt_chunk)
         seg_feats_filt.loc[chunk.index, feature_names] = filt_chunk[feature_names].values
 
-    # Assign events to chunks and get their relative indices in the chunks
+    # ---- Assign events to chunks and get their relative indices in the chunks
     event_idxs_per_type_per_chunk = {k: get_event_indices_per_chunk(chunked_segs, timestamps)
                                      for k, timestamps in event_timestamps.items()}
 
-    # Compute Phase Locking Values (PLV) and related metrics
+    # ---- Compute Phase Locking Values (PLV) and related metrics
     event_types = list(event_idxs_per_type_per_chunk.keys())
-    base_metrics = ['plv', 'mean_angle', 'mean_angle_deg', 'n_events', 'p_value', 'z_stat']
-    all_metrics = [*base_metrics, 'p_value_bh']
-    cols = pd.MultiIndex.from_product([event_types, all_metrics], names=['event_type', 'metric'])
+    base_metrics = ['plv', 'mean_angle', 'mean_angle_deg', 'n_events', 'p_rayleigh', 'z_stat']
+    all_metrics = [*base_metrics, 'p_bh']
+    event_cols = pd.MultiIndex.from_product([event_types, all_metrics], names=['event_type', 'metric'])
+    ww_cols = pd.MultiIndex.from_tuples([
+        ('overall', 'w_stat_ww'),
+        ('overall', 'p_ww'),
+    ], names=['event_type', 'metric'])
+    cols = event_cols.append(ww_cols)
     metrics = DataFrame(index=feature_names, columns=cols, dtype='float64')
 
     event_phases_per_type_per_feat = {e: {} for e in event_types}  # for plotting circular histogram
@@ -178,16 +183,22 @@ def cycle_extraction_for_ptnt(
 
             plv, mean_angle, mean_angle_deg, event_phases = compute_plv_for_split_signal(feat_per_chunk,
                                                                                          event_idxs_per_chunk)
-            p_value, z_stat = rayleigh_test(n_events, plv)
+            p_rayleigh, z_stat = rayleigh_test(n_events, plv)
 
             # Store values
             event_phases_per_type_per_feat[event_type][feat] = event_phases
-            metrics.loc[feat, (event_type, base_metrics)] = [plv, mean_angle, mean_angle_deg, n_events, p_value, z_stat]
+            metrics.loc[feat, (event_type, base_metrics)] = [plv, mean_angle, mean_angle_deg, n_events, p_rayleigh,
+                                                             z_stat]
 
         # Benjamini-Hochberg False Discovery Rate Control because of multiple p-values (p-value per feature).
-        p_vals = metrics.loc[:, (event_type, 'p_value')]
-        p_vals_adj = false_discovery_control(p_vals, method='bh')
-        metrics.loc[:, (event_type, 'p_value_bh')] = p_vals_adj
+        ps_rayleigh = metrics.loc[:, (event_type, 'p_rayleigh')]
+        ps_bh = false_discovery_control(ps_rayleigh, method='bh')
+        metrics.loc[:, (event_type, 'p_bh')] = ps_bh
+
+    # ---- Watson-Wheeler-Test: test whether False Positives come from the same circular distribution as seizures
+    for feat in feature_names:
+        event_phases = [per_feat[feat] for per_feat in event_phases_per_type_per_feat.values()]
+        metrics.loc[feat, ('overall', ['w_stat_ww', 'p_ww'])] = watson_wheeler_test(event_phases)
 
     return metrics, seg_feats_filt, event_phases_per_type_per_feat
 
@@ -239,7 +250,7 @@ def _make_phase_histogram_plots(
     # Make a figure per event.
     for event_type, event_phases_per_feat in event_phases_per_type_per_feat.items():
         m = metrics.loc[:, event_type]  # Metrics for this event type
-        metrics_as_dict = [m[k].to_dict() for k in ['plv', 'mean_angle', 'p_value_bh']]
+        metrics_as_dict = [m[k].to_dict() for k in ['plv', 'mean_angle', 'p_bh']]
 
         fig = plot_phase_histogram_for_all_features(
             event_phases_per_feat,
@@ -309,5 +320,5 @@ def cycle_extraction_for_pdirs(
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-    pdirs_ = PATHS.patient_dirs()
+    pdirs_ = PATHS.patient_dirs()[0:]
     cycle_extraction_for_pdirs(pdirs_, serial_processing=False)

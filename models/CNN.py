@@ -24,7 +24,7 @@ CONV2D_KWARGS = {
 }
 
 
-def block_after_conv(layer_idx: int, pool_size: int, pool_padding: str = 'same'):
+def post_conv_block(layer_idx: int, pool_size: int, pool_padding: str = 'same'):
     return [
         BatchNormalization(name=f'batch_norm{layer_idx}'),
         LeakyReLU(negative_slope=LEAKY_RELU_NEGATIVE_SLOPE, name=f'leaky_relu{layer_idx}'),
@@ -36,7 +36,7 @@ def block_after_conv(layer_idx: int, pool_size: int, pool_padding: str = 'same')
 def conv_block1(layer_idx: int, kernel_size: int, n_filters: int, pool_size: int):
     return [
         Conv2D(n_filters, [kernel_size, 1], padding='same', **CONV2D_KWARGS, name=f'conv{layer_idx}'),
-        *block_after_conv(layer_idx, pool_size)
+        *post_conv_block(layer_idx, pool_size)
     ]
 
 
@@ -45,7 +45,7 @@ def conv_block2(layer_idx: int, kernel_size: int, n_filters1: int, n_filters2: i
     return [
         Conv2D(n_filters1, [kernel_size, 1], padding='valid', **CONV2D_KWARGS, name=f'conv{layer_idx}.1'),
         Conv2D(n_filters2, [kernel_size, 1], padding='valid', **CONV2D_KWARGS, name=f'conv{layer_idx}.2'),
-        *block_after_conv(layer_idx, pool_size, pool_padding)
+        *post_conv_block(layer_idx, pool_size, pool_padding)
     ]
 
 

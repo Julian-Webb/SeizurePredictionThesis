@@ -23,10 +23,11 @@ def cycle_extraction(
             fill_gaps_for_pdirs(pdirs)
 
         logging.info("---- Cycle Extraction for Segments ----")
-        with FunctionTimer('cycle_extraction_for_segments'):
+        with FunctionTimer('cycle_extraction_for_pdirs'):
             cycle_extraction_for_pdirs(pdirs)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     pdirs_ = PATHS.patient_dirs()
     cycle_extraction(pdirs_)

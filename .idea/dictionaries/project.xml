@@ -3,6 +3,7 @@
     <words>
       <w>Benjamini</w>
       <w>Hochberg</w>
+      <w>Mardia</w>
       <w>acfw</w>
       <w>acfws</w>
       <w>corrcoef</w>
@@ -35,6 +36,7 @@
       <w>uneeg</w>
       <w>uniclinic</w>
       <w>vclips</w>
+      <w>wstat</w>
     </words>
   </dictionary>
 </component>
