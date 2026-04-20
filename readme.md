@@ -4,7 +4,7 @@ Various abbreviations throughout the code:
 `ann`: annotation  
 `mtz`: main time zone (of a patient)  
 `ptnt`: patient  
-`pdir`: patient directory 
+`pdir`: patient directory  
 `seg`: segment  
 `esegs`: existing segments  
 `dur`: duration  
