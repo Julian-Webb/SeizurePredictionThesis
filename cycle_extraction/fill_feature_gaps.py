@@ -189,7 +189,7 @@ def fill_gaps_for_pdir(
                                          pdir.name)
 
     # Save results
-    save_dataframe_multiformat(filled_features, pdir.filled_features_for_segs, csv_kwargs={'float_format': '%.3f'})
+    save_dataframe_multiformat(filled_features, pdir.filled_features_for_segs, float_format='%.3f')
     logging.info(f'[{pdir.name}] ✅ Saved filled features ({len(filled_features)} rows)')
 
 

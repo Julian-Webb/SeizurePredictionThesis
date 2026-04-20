@@ -39,7 +39,7 @@ def save_dataframe_multiformat(
         formats: tuple[str, ...] = ('csv', 'pickle'),
         save_index: bool = False,
         make_parent_dir: bool = True,
-        csv_kwargs: dict = None,
+        float_format: str = None,
 ):
     """
     Save a pd.DataFrame in multiple formats (csv, pickle).
@@ -56,12 +56,11 @@ def save_dataframe_multiformat(
             case 'pickle_visible':
                 df.to_pickle(path.pickle_visible)
             case 'csv':
-                csv_kwargs = csv_kwargs or {}
-                df.to_csv(path.csv, index=save_index, **csv_kwargs)
+                df.to_csv(path.csv, index=save_index, float_format=float_format)
             case 'ods':
-                df.to_excel(path.ods, index=save_index)
+                df.to_excel(path.ods, index=save_index, float_format=float_format)
             case 'xlsx':
-                df.to_excel(path.xlsx, index=save_index)
+                df.to_excel(path.xlsx, index=save_index, float_format=float_format)
             case _:
                 raise ValueError(f"Unknown format: {f}")
 

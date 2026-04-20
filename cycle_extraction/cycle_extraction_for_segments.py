@@ -362,11 +362,10 @@ def cycle_extraction_and_plot_for_pdir(
 
     # Save Metrics and Plots
     logging.info(f'[{pdir.name}] 🎨 Saving Results and Making Cycle Extraction Figures...')
-    save_dataframe_multiformat(metrics, pdir.cycle_extraction_results_table, save_index=True,
-                               formats=['pickle', 'xlsx'],
-                               csv_kwargs={'float_format': '%.3f'})
+    save_dataframe_multiformat(metrics, pdir.cycle_extraction_results_table,
+                               save_index=True, formats=['pickle', 'xlsx'], float_format='%.3f')
     save_dataframe_multiformat(circular_comp_results, pdir.circular_comparison_table,
-                               formats=['pickle', 'xlsx'], save_index=True)
+                               save_index=True, formats=['pickle', 'xlsx'], float_format='%.3f')
 
     _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
                                  pdir.filtered_feature_plots_dir)
