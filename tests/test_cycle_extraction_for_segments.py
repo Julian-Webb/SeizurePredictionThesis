@@ -40,14 +40,25 @@ class TestCycleExtraction(unittest.TestCase):
 
         event_timestamps = {"events_1": np.array(["2026-01-02 12:00:00"], dtype="datetime64")}
         n_event_types = len(event_timestamps)
-        metrics, filtered_features, event_phases_per_type_per_feat = \
+        metrics, circular_comp_results, filtered_features, event_phases_per_type_per_feat = \
             cycle_extraction_for_ptnt(seg_features, event_timestamps, feature_names=["feature_1", "feature_2"])
 
         # Check metrics structure
+        metric_event_types = metrics.columns.get_level_values(0)
+        metric_names = metrics.columns.get_level_values(1)
         self.assertFalse(metrics.empty)
-        self.assertIn("events_1", metrics.columns.levels[0])
-        self.assertIn("plv", metrics.columns.levels[1])
+        self.assertIn("events_1", metric_event_types)
+        self.assertIn("plv", metric_names)
         self.assertGreaterEqual(metrics.shape[0], 2)
+
+        # Check circular comparison structure
+        comp_event_types = circular_comp_results.columns.get_level_values(0)
+        comp_metric_names = circular_comp_results.columns.get_level_values(1)
+        self.assertFalse(circular_comp_results.empty)
+        self.assertIn("watson_wheeler", comp_event_types)
+        self.assertIn("w_stat", comp_metric_names)
+        self.assertIn("p_value", comp_metric_names)
+        self.assertEqual(circular_comp_results.shape[0], n_features)
 
         # Check filtered features structure
         self.assertEqual(len(filtered_features), len(seg_features))

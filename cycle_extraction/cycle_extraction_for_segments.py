@@ -1,3 +1,4 @@
+import itertools
 import logging
 import multiprocessing
 from pathlib import Path
@@ -14,9 +15,11 @@ from config.constants import UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING
 from config.intervals import SEGMENT
 from cycle_extraction import compute_plv_for_split_signal, rayleigh_test
 from cycle_extraction.cycle_functions import nc_filter_multidien, plot_filtered_feature, \
-    plot_phase_histogram_for_all_features, watson_wheeler_test
+    plot_phase_histogram_for_all_features
+from cycle_extraction.circular_comparison_functions import watson_wheeler_test, circular_comparison
 from feature_extraction.extract_features import FeatureNames
 from preprocessing.dataset_partitioning import partition_dataframe
+from utils.utils import timeit
 
 
 def map_events_to_interval_index(events: np.ndarray,
@@ -42,7 +45,6 @@ def map_events_to_interval_index(events: np.ndarray,
     interval_indices = np.where(in_interval.any(axis=1),
                                 in_interval.argmax(axis=1),
                                 -1)
-
     return interval_indices
 
 
@@ -99,33 +101,23 @@ def normalize_feature(f: np.ndarray):
     return res
 
 
-# noinspection PyTypeChecker
-def cycle_extraction_for_ptnt(
+def _compute_plv_metrics_for_ptnt(
         seg_features: DataFrame,
         event_timestamps: dict[str, np.ndarray],
-        upper_quantile_bound_for_clipping: float = UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING,
-        feature_names: list[str] = FeatureNames.ALL_ORDERED,
-        patient: str = 'unknown patient',
+        feature_names: list[str],
+        upper_quantile_bound_for_clipping: float,
+        patient: str,
 ):
-    """
-
-    Parameters
-    ----------
-    seg_features
-        Features per segment and start_mtz
-    event_timestamps
-        Values are arrays of event ``Timestamps`` (e.g., seizures starts, False positive predictions of models).
-        Keys are the event type/origin (e.g., seizures, ensemble, CNN).
-    upper_quantile_bound_for_clipping
-    feature_names
-    patient
-        For logging purposes
+    """Compute PLV, Rayleigh, and Benjamini-Hochberg metrics per event type.
 
     Returns
     -------
-    metrics: DataFrame,
-    filtered features per segment with gaps: DataFrame,
-    event phases per event type per feature: dict[str, dict[str, np.ndarray]]
+    metrics: DataFrame
+        Index: feature_names. Columns: MultiIndex(event_type, [plv, mean_angle, mean_angle_deg, n_events, p_rayleigh, z_stat, p_bh])
+    seg_feats_filt: DataFrame
+        Filtered features with NaN gaps preserved.
+    event_phases_per_type_per_feat: dict
+        Phases keyed by event_type, then feature.
     """
     seg_feats = seg_features.copy()
     # Create end_mtz column
@@ -166,15 +158,10 @@ def cycle_extraction_for_ptnt(
     event_types = list(event_idxs_per_type_per_chunk.keys())
     base_metrics = ['plv', 'mean_angle', 'mean_angle_deg', 'n_events', 'p_rayleigh', 'z_stat']
     all_metrics = [*base_metrics, 'p_bh']
-    event_cols = pd.MultiIndex.from_product([event_types, all_metrics], names=['event_type', 'metric'])
-    ww_cols = pd.MultiIndex.from_tuples([
-        ('overall', 'w_stat_ww'),
-        ('overall', 'p_ww'),
-    ], names=['event_type', 'metric'])
-    cols = event_cols.append(ww_cols)
+    cols = pd.MultiIndex.from_product([event_types, all_metrics], names=['event_type', 'metric'])
     metrics = DataFrame(index=feature_names, columns=cols, dtype='float64')
 
-    event_phases_per_type_per_feat = {e: {} for e in event_types}  # for plotting circular histogram
+    event_phases_per_type_per_feat = {e: {} for e in event_types}
     for event_type, event_idxs_per_chunk in event_idxs_per_type_per_chunk.items():
         n_events = sum(len(ix) for ix in event_idxs_per_chunk)
 
@@ -185,7 +172,6 @@ def cycle_extraction_for_ptnt(
                                                                                          event_idxs_per_chunk)
             p_rayleigh, z_stat = rayleigh_test(n_events, plv)
 
-            # Store values
             event_phases_per_type_per_feat[event_type][feat] = event_phases
             metrics.loc[feat, (event_type, base_metrics)] = [plv, mean_angle, mean_angle_deg, n_events, p_rayleigh,
                                                              z_stat]
@@ -195,12 +181,90 @@ def cycle_extraction_for_ptnt(
         ps_bh = false_discovery_control(ps_rayleigh, method='bh')
         metrics.loc[:, (event_type, 'p_bh')] = ps_bh
 
-    # ---- Watson-Wheeler-Test: test whether False Positives come from the same circular distribution as seizures
-    for feat in feature_names:
-        event_phases = [per_feat[feat] for per_feat in event_phases_per_type_per_feat.values()]
-        metrics.loc[feat, ('overall', ['w_stat_ww', 'p_ww'])] = watson_wheeler_test(event_phases)
-
     return metrics, seg_feats_filt, event_phases_per_type_per_feat
+
+
+def _compute_circular_comparisons_for_ptnt(
+        event_phases_per_type_per_feat: dict,
+        feature_names: list[str],
+):
+    """Compute Watson-Wheeler and pairwise circular comparisons.
+
+    Returns
+    -------
+    circular_comp_results: DataFrame
+        Index: feature_names. Columns: MultiIndex(comparison_name, [metric_key])
+    """
+    event_types = list(event_phases_per_type_per_feat.keys())
+    event_pairs = list(itertools.combinations(event_types, 2))
+
+    # Build DataFrame with MultiIndex columns
+    col_tuples = [('watson_wheeler', 'w_stat'), ('watson_wheeler', 'p_value')]
+    for event_type1, event_type2 in event_pairs:
+        pair_name = f"{event_type1} vs {event_type2}"
+        col_tuples.extend(
+            [(pair_name, 'observed_diff'), (pair_name, 'p_value'), (pair_name, 'ci_lower'), (pair_name, 'ci_upper')])
+
+    cols = pd.MultiIndex.from_tuples(col_tuples, names=['comparison', 'metric'])
+    res = DataFrame(index=feature_names, columns=cols, dtype='float64')  # circular comparison results
+
+    # Compute Results
+    for feat in feature_names:
+        # Watson-Wheeler test across all event types
+        event_phases = [per_feat[feat] for per_feat in event_phases_per_type_per_feat.values()]
+        res.loc[feat, ('watson_wheeler', ['w_stat', 'p_value'])] = watson_wheeler_test(event_phases)
+
+        # Pairwise circular comparisons
+        for event_type1, event_type2 in event_pairs:
+            phases1 = event_phases_per_type_per_feat[event_type1][feat]
+            phases2 = event_phases_per_type_per_feat[event_type2][feat]
+            comp = circular_comparison(phases1, phases2)
+            pair_name = f"{event_type1} vs {event_type2}"
+            # todo what to save?
+            res.loc[feat, (pair_name, ['observed_diff', 'p_value', 'ci_lower', 'ci_upper'])] = \
+                comp['observed_diff'], comp['p_value'], comp['ci_lower'], comp['ci_upper']
+
+    return res
+
+
+def cycle_extraction_for_ptnt(
+        seg_features: DataFrame,
+        event_timestamps: dict[str, np.ndarray],
+        upper_quantile_bound_for_clipping: float = UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING,
+        feature_names: list[str] = FeatureNames.ALL_ORDERED,
+        patient: str = 'unknown patient',
+):
+    """Compute PLV metrics and circular comparisons per patient.
+
+    Parameters
+    ----------
+    seg_features
+        Features per segment and start_mtz
+    event_timestamps
+        Values are arrays of event ``Timestamps`` (e.g., seizures starts, False positive predictions of models).
+        Keys are the event type/origin (e.g., seizures, ensemble, CNN).
+    upper_quantile_bound_for_clipping
+    feature_names
+    patient
+        For logging purposes
+
+    Returns
+    -------
+    metrics: DataFrame
+        PLV and related metrics per event type.
+    circular_comp_results: DataFrame
+        Watson-Wheeler and pairwise circular comparisons.
+    seg_feats_filt: DataFrame
+        Filtered features per segment with gaps preserved.
+    event_phases_per_type_per_feat: dict
+        Phases per event type per feature (for plotting).
+    """
+    metrics, seg_feats_filt, event_phases_per_type_per_feat = _compute_plv_metrics_for_ptnt(
+        seg_features, event_timestamps, feature_names, upper_quantile_bound_for_clipping, patient
+    )
+    circular_comp_results = _compute_circular_comparisons_for_ptnt(event_phases_per_type_per_feat, feature_names)
+
+    return metrics, circular_comp_results, seg_feats_filt, event_phases_per_type_per_feat
 
 
 def get_false_positives_from_clips(clips: DataFrame, thresh: float, score_col: str):
@@ -267,6 +331,7 @@ def _make_phase_histogram_plots(
 
 
 # noinspection PyTypeChecker
+@timeit(kwarg_names=['pdir'])
 def cycle_extraction_and_plot_for_pdir(
         pdir: PatientDir,
         feature_names: list[str] = FeatureNames.ALL_ORDERED,
@@ -291,14 +356,18 @@ def cycle_extraction_and_plot_for_pdir(
         best_thresh = pd.read_pickle(pdir.model_eval_subdir('test', model).metrics_table.pickle)['best_threshold']
         event_timestamps[f'{model} FPs'] = get_false_positives_from_clips(clips, best_thresh, f'{model}_score')
 
-    metrics, seg_feats_filt, event_phases_per_type_per_feat = \
+    metrics, circular_comp_results, seg_feats_filt, event_phases_per_type_per_feat = \
         cycle_extraction_for_ptnt(seg_feats, event_timestamps, upper_quantile_bound_for_clipping, feature_names,
                                   patient=pdir.name)
 
-    logging.info(f'[{pdir.name}] 🎨 Making Cycle Extraction Figures...')
     # Save Metrics and Plots
+    logging.info(f'[{pdir.name}] 🎨 Saving Results and Making Cycle Extraction Figures...')
     save_dataframe_multiformat(metrics, pdir.cycle_extraction_results_table, save_index=True,
+                               formats=['pickle', 'xlsx'],
                                csv_kwargs={'float_format': '%.3f'})
+    save_dataframe_multiformat(circular_comp_results, pdir.circular_comparison_table,
+                               formats=['pickle', 'xlsx'], save_index=True)
+
     _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
                                  pdir.filtered_feature_plots_dir)
     _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.circular_histograms_dir, pdir.name)
@@ -320,5 +389,5 @@ def cycle_extraction_for_pdirs(
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-    pdirs_ = PATHS.patient_dirs()[0:]
+    pdirs_ = PATHS.patient_dirs()
     cycle_extraction_for_pdirs(pdirs_, serial_processing=False)

@@ -142,6 +142,7 @@ class PatientDir(type(Path())):
         self.cycle_extraction_dir = Path(self, 'cycle_extraction')
         self.filled_features_for_segs = MultiPath(self.cycle_extraction_dir, 'filled_features_for_segs')
         self.cycle_extraction_results_table = MultiPath(self.cycle_extraction_dir, 'cycle_extraction_metrics')
+        self.circular_comparison_table = MultiPath(self.cycle_extraction_dir, 'circular_comparison_results')
         self.filtered_feature_plots_dir = Path(self.cycle_extraction_dir, 'filtered_feature_plots')
         self.circular_histograms_dir = Path(self.cycle_extraction_dir, 'circular_histograms')
 
