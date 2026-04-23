@@ -7,7 +7,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from pandas import DataFrame, Timedelta
+from pandas import DataFrame, Timedelta, Index
 from scipy.stats import false_discovery_control
 
 from config import PatientDir, PATHS, save_dataframe_multiformat
@@ -113,7 +113,7 @@ def _compute_plv_metrics_for_ptnt(
     Returns
     -------
     metrics: DataFrame
-        Index: feature_names. Columns: MultiIndex(event_type, [plv, mean_angle, mean_angle_deg, n_events, p_rayleigh, z_stat, p_bh])
+        Index: feature_names. Columns: MultiIndex(event_type, [plv, mean_angle, mean_angle_deg, n_events, p_rayleigh, z_stat, p_rayleigh_bh])
     seg_feats_filt: DataFrame
         Filtered features with NaN gaps preserved.
     event_phases_per_type_per_feat: dict
@@ -157,9 +157,9 @@ def _compute_plv_metrics_for_ptnt(
     # ---- Compute Phase Locking Values (PLV) and related metrics
     event_types = list(event_idxs_per_type_per_chunk.keys())
     base_metrics = ['plv', 'mean_angle', 'mean_angle_deg', 'n_events', 'p_rayleigh', 'z_stat']
-    all_metrics = [*base_metrics, 'p_bh']
+    all_metrics = [*base_metrics, 'p_rayleigh_bh']
     cols = pd.MultiIndex.from_product([event_types, all_metrics], names=['event_type', 'metric'])
-    metrics = DataFrame(index=feature_names, columns=cols, dtype='float64')
+    metrics = DataFrame(index=Index(feature_names, name='feature'), columns=cols, dtype='float64')
 
     event_phases_per_type_per_feat = {e: {} for e in event_types}
     for event_type, event_idxs_per_chunk in event_idxs_per_type_per_chunk.items():
@@ -179,7 +179,7 @@ def _compute_plv_metrics_for_ptnt(
         # Benjamini-Hochberg False Discovery Rate Control because of multiple p-values (p-value per feature).
         ps_rayleigh = metrics.loc[:, (event_type, 'p_rayleigh')]
         ps_bh = false_discovery_control(ps_rayleigh, method='bh')
-        metrics.loc[:, (event_type, 'p_bh')] = ps_bh
+        metrics.loc[:, (event_type, 'p_rayleigh_bh')] = ps_bh
 
     return metrics, seg_feats_filt, event_phases_per_type_per_feat
 
@@ -198,10 +198,10 @@ def _compute_circular_comparisons_for_ptnt(
     event_types = list(event_phases_per_type_per_feat.keys())
     event_pairs = list(itertools.combinations(event_types, 2))
     event_pairs = [(e1, e2, f"{e1} vs {e2}") for e1, e2 in event_pairs]  # add name for pair
-    ww_metrics = ['w_stat', 'p_value', 'p_bh']  # ww = watson wheeler (test)
+    ww_metrics = ['w_stat', 'p_value', 'p_ww_bh']  # ww = watson wheeler (test)
     pair_metrics_no_bh = ['obs_mean1', 'obs_mean2', 'observed_diff', 'lower1', 'upper1', 'lower2', 'upper2', 'ci_lower',
                           'ci_upper', 'p_value']
-    pair_metrics = pair_metrics_no_bh + ['p_bh']
+    pair_metrics = pair_metrics_no_bh + ['p_circ_bh']
 
     # Build DataFrame with MultiIndex columns
     col_tuples = [('watson_wheeler', metric) for metric in ww_metrics]
@@ -209,7 +209,7 @@ def _compute_circular_comparisons_for_ptnt(
         col_tuples.extend((pair_name, metric) for metric in pair_metrics)
 
     cols = pd.MultiIndex.from_tuples(col_tuples, names=['comparison', 'metric'])
-    res = DataFrame(index=feature_names, columns=cols, dtype='float64')  # circular comparison results
+    res = DataFrame(index=Index(feature_names, name='feature'), columns=cols, dtype='float64')
 
     # Compute Results
     for feat in feature_names:
@@ -225,11 +225,11 @@ def _compute_circular_comparisons_for_ptnt(
 
     # Benjamini-Hochberg FDR correction per comparison across features
     pvals_ww = res.loc[:, ('watson_wheeler', 'p_value')]
-    res.loc[:, ('watson_wheeler', 'p_bh')] = false_discovery_control(pvals_ww, method='bh')
+    res.loc[:, ('watson_wheeler', 'p_ww_bh')] = false_discovery_control(pvals_ww, method='bh')
 
     for _, _, pair_name in event_pairs:
         pvals_pair = res.loc[:, (pair_name, 'p_value')]
-        res.loc[:, (pair_name, 'p_bh')] = false_discovery_control(pvals_pair, method='bh')
+        res.loc[:, (pair_name, 'p_circ_bh')] = false_discovery_control(pvals_pair, method='bh')
 
     return res
 
@@ -333,7 +333,7 @@ def _make_phase_histogram_plots(
     # Make a figure per event.
     for event_type, event_phases_per_feat in event_phases_per_type_per_feat.items():
         m = metrics.loc[:, event_type]  # Metrics for this event type
-        metrics_as_dict = [m[k].to_dict() for k in ['plv', 'mean_angle', 'p_bh']]
+        metrics_as_dict = [m[k].to_dict() for k in ['plv', 'mean_angle', 'p_rayleigh_bh']]
 
         fig = plot_phase_histogram_for_all_features(
             event_phases_per_feat,
@@ -341,7 +341,7 @@ def _make_phase_histogram_plots(
             n_bins=24,
         )
 
-        fig.suptitle(f'{patient} - {event_type}: Phase distribution of seizure occurrences', y=0.98, fontsize=16, )
+        fig.suptitle(f'Phase distribution compared to features: {patient} - {event_type}', y=0.98, fontsize=16, )
         fig.tight_layout(h_pad=3.0, rect=[0, 0, 1, 0.97])
 
         save_dir.mkdir(exist_ok=True, parents=True)
@@ -350,7 +350,7 @@ def _make_phase_histogram_plots(
 
 
 # noinspection PyTypeChecker
-@timeit(kwarg_names=['pdir'])
+@timeit(arg_indices=[0])
 def cycle_extraction_and_plot_for_pdir(
         pdir: PatientDir,
         feature_names: list[str] = FeatureNames.ALL_ORDERED,
@@ -378,9 +378,9 @@ def cycle_extraction_and_plot_for_pdir(
     # Save Metrics and Plots
     logging.info(f'[{pdir.name}] 🎨 Saving Results and Making Cycle Extraction Figures...')
     save_dataframe_multiformat(metrics, pdir.cycle_extraction_results_table,
-                               save_index=True, formats=['pickle', 'xlsx'], float_format='%.3f')
+                               save_index=True, formats=['pickle', 'xlsx'])
     save_dataframe_multiformat(circular_comp_results, pdir.circular_comparison_table,
-                               save_index=True, formats=['pickle', 'xlsx'], float_format='%.3f')
+                               save_index=True, formats=['pickle', 'xlsx'])
 
     _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
                                  pdir.filtered_feature_plots_dir, test_start_mtz)

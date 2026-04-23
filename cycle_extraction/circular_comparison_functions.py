@@ -2,6 +2,7 @@ import logging
 from typing import Sequence
 
 import numpy as np
+from numpy import pi, arctan2, sin, cos
 from scipy.stats import rankdata, chi2
 
 
@@ -14,18 +15,38 @@ def get_safe_ci(boot_angles, obs_mean, ci_level=95):
 
 def wrap_angle(angle):
     """Bounds an angle between -pi and pi."""
-    return (angle + np.pi) % (2 * np.pi) - np.pi
+    return (angle + pi) % (2 * pi) - pi
 
 
 def circular_mean(angles):
     """Calculates the circular mean."""
-    S = np.sum(np.sin(angles))
-    C = np.sum(np.cos(angles))
-    return np.arctan2(S, C)
+    S = np.sum(sin(angles))
+    C = np.sum(cos(angles))
+    return arctan2(S, C)
 
 
-def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int = 5000, ci_level: int = 95,
-                        seed: int = 42):
+def _circular_var_and_T(sin1, cos1, n1, sin2, cos2, n2, diff):
+    eps = 1e-8  # buffer to prevent zero div.
+    R1 = np.sqrt(sin1 ** 2 + cos1 ** 2) / n1
+    R2 = np.sqrt(sin2 ** 2 + cos2 ** 2) / n2
+    var1 = (1.0 - R1) / (n1 * (R1 ** 2 + eps))
+    var2 = (1.0 - R2) / (n2 * (R2 ** 2 + eps))
+    T = np.abs(diff) / np.sqrt(var1 + var2)
+    return var1, var2, T
+
+
+def _sum_sin_cos(x):
+    """Returns (sum_sin, sum_cos) for input array x."""
+    return np.sum(sin(x), axis=-1), np.sum(cos(x), axis=-1)
+
+
+def circular_comparison(
+        phases1: np.ndarray,
+        phases2: np.ndarray,
+        n_iters: int = 5000,
+        ci_level: int = 95,
+        seed: int = 42,
+):
     """
     Bootstrap and permutation
 
@@ -37,7 +58,7 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
     ci_level
         Confidence interval level between 0 and 100
     seed
-        The seed for numpy.random
+        The seed for the random number generator
 
     Returns
     -------
@@ -52,9 +73,8 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
         - `boot_diffs`: Bootstrap distribution of circular mean differences.
         - `perm_diffs`: Permutation null distribution of circular mean differences.
     """
-    np.random.seed(seed)
-    ph1 = np.asarray(phases1)
-    ph2 = np.asarray(phases2)
+    rng = np.random.default_rng(seed)
+    ph1, ph2 = np.asarray(phases1), np.asarray(phases2)
     n1, n2 = len(ph1), len(ph2)
 
     # Calculate true observed means and difference
@@ -65,14 +85,16 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
     # =========================================================
     #  THE BOOTSTRAP (Calculates the physical 95% CI)
     # =========================================================
-    idxs1 = np.random.randint(0, n1, size=(n_iters, n1))
-    idxs2 = np.random.randint(0, n2, size=(n_iters, n2))
+    idxs1 = rng.integers(0, n1, size=(n_iters, n1))
+    idxs2 = rng.integers(0, n2, size=(n_iters, n2))
 
-    S1, C1 = np.sum(np.sin(ph1[idxs1]), axis=1), np.sum(np.cos(ph1[idxs1]), axis=1)
-    S2, C2 = np.sum(np.sin(ph2[idxs2]), axis=1), np.sum(np.cos(ph2[idxs2]), axis=1)
+    sel1, sel2 = ph1[idxs1], ph2[idxs2]  # select samples
 
-    boot_means1 = np.arctan2(S1, C1)
-    boot_means2 = np.arctan2(S2, C2)
+    sin1, cos1 = _sum_sin_cos(sel1)
+    sin2, cos2 = _sum_sin_cos(sel2)
+
+    boot_means1 = arctan2(sin1, cos1)
+    boot_means2 = arctan2(sin2, cos2)
     boot_diffs = wrap_angle(boot_means1 - boot_means2)
 
     # Calculate CIs for individual groups (for polar plot)
@@ -82,21 +104,29 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
     # Calculate CI for the difference (for histogram/reporting)
     ci_lower, ci_upper = get_safe_ci(boot_diffs, obs_diff, ci_level=ci_level)
 
-    # Permutation for p_val
+    # =========================================================
+    # PERMUTATION TEST
+    # =========================================================
+    # ---- For real phases
+    sin1, cos1 = _sum_sin_cos(ph1)
+    sin2, cos2 = _sum_sin_cos(ph2)
+    _, _, obs_T = _circular_var_and_T(sin1, cos1, n1, sin2, cos2, n2, obs_diff)
+
+    # ---- For permutations
     pool = np.concatenate([ph1, ph2])
     n_total = len(pool)
-
-    shuffled_idxs = np.random.rand(n_iters, n_total).argsort(axis=1)
+    shuffled_idxs = rng.random((n_iters, n_total)).argsort(axis=1)
     shuffled_pool = pool[shuffled_idxs]
 
     pseudo1 = shuffled_pool[:, :n1]
     pseudo2 = shuffled_pool[:, n1:]
 
-    S_p1, C_p1 = np.sum(np.sin(pseudo1), axis=1), np.sum(np.cos(pseudo1), axis=1)
-    S_p2, C_p2 = np.sum(np.sin(pseudo2), axis=1), np.sum(np.cos(pseudo2), axis=1)
+    sin1, cos1 = _sum_sin_cos(pseudo1)
+    sin2, cos2 = _sum_sin_cos(pseudo2)
 
-    perm_diffs = wrap_angle(np.arctan2(S_p1, C_p1) - np.arctan2(S_p2, C_p2))
-    p_value = (np.sum(np.abs(perm_diffs) >= np.abs(obs_diff)) + 1) / (n_iters + 1)
+    perm_diffs = wrap_angle(arctan2(sin1, cos1) - arctan2(sin2, cos2))
+    _, _, perm_T = _circular_var_and_T(sin1, cos1, n1, sin2, cos2, n2, perm_diffs)
+    p_value = (np.sum(perm_T >= obs_T) + 1) / (n_iters + 1)
 
     return {
         "obs_mean1": obs_mean1,
@@ -106,8 +136,8 @@ def circular_comparison(phases1: np.ndarray, phases2: np.ndarray, n_iters: int =
         "upper1": upper1,
         "lower2": lower2,
         "upper2": upper2,
-        "ci_lower": ci_lower,
-        "ci_upper": ci_upper,
+        "ci_lower": np.degrees(ci_lower),
+        "ci_upper": np.degrees(ci_upper),
         "p_value": p_value,
         "boot_diffs": boot_diffs,
         "perm_diffs": perm_diffs,
@@ -138,7 +168,7 @@ def watson_wheeler_test(samples: Sequence[np.ndarray]):
     ranks = rankdata(pooled)
 
     # 2. Convert ranks to uniform scores (angles in radians)
-    uniform_scores = 2 * np.pi * ranks / n_total
+    uniform_scores = 2 * pi * ranks / n_total
 
     # 3. Calculate the test statistic W
     W = 0
@@ -153,8 +183,8 @@ def watson_wheeler_test(samples: Sequence[np.ndarray]):
         current_idx += n_j
 
         # Calculate vector sums for the group
-        C_j = np.sum(np.cos(group_scores))
-        S_j = np.sum(np.sin(group_scores))
+        C_j = np.sum(cos(group_scores))
+        S_j = np.sum(sin(group_scores))
 
         # Add to the overall statistic
         W += (C_j ** 2 + S_j ** 2) / n_j
