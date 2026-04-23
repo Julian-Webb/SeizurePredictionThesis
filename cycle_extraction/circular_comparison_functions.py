@@ -40,7 +40,7 @@ def _sum_sin_cos(x):
     return np.sum(sin(x), axis=-1), np.sum(cos(x), axis=-1)
 
 
-def circular_comparison(
+def permutation_test(
         phases1: np.ndarray,
         phases2: np.ndarray,
         n_iters: int = 5000,

@@ -101,7 +101,7 @@ def cycle_extraction_for_ptnts(pdirs: list[PatientDir] = PATHS.patient_dirs(), s
     per_patient = {pdir.name: res for pdir, res in zip(pdirs, results)}
     metrics = pd.concat(per_patient, names=['patient', 'feature'])
 
-    save_dataframe_multiformat(metrics, PATHS.cycle_extraction_results_table, save_index=True, float_format='%.3f')
+    save_dataframe_multiformat(metrics, PATHS.cycle_extraction_metrics_table, save_index=True, float_format='%.3f')
 
 
 if __name__ == '__main__':

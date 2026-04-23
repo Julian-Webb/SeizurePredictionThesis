@@ -140,7 +140,7 @@ class PatientDir(type(Path())):
         # Cycles
         self.cycle_extraction_dir = Path(self, 'cycle_extraction')
         self.filled_features_for_segs = MultiPath(self.cycle_extraction_dir, 'filled_features_for_segs')
-        self.cycle_extraction_results_table = MultiPath(self.cycle_extraction_dir, 'cycle_extraction_metrics')
+        self.cycle_extraction_metrics_table = MultiPath(self.cycle_extraction_dir, 'cycle_extraction_metrics')
         self.circular_comparison_table = MultiPath(self.cycle_extraction_dir, 'circular_comparison_results')
         self.filtered_feature_plots_dir = Path(self.cycle_extraction_dir, 'filtered_feature_plots')
         self.circular_histograms_dir = Path(self.cycle_extraction_dir, 'circular_histograms')
@@ -188,7 +188,10 @@ class Paths(type(Path())):
         self.statistical_results_dir = Path(self, "statistical_results")
         self.per_patient_comparison_table = MultiPath(self.statistical_results_dir, "per_patient")
         self.per_model_comparison_table = MultiPath(self.statistical_results_dir, "per_model")
-        self.cycle_extraction_results_table = MultiPath(self.statistical_results_dir, "cycle_extraction")
+        self.cycle_extraction_metrics_per_ptnt_table = MultiPath(self.statistical_results_dir, "cycle_extraction")
+        self.circular_comparison_per_ptnt_table = MultiPath(self.statistical_results_dir, "circular_comparison")
+        self.model_feature_qualifications_table = MultiPath(self.statistical_results_dir,
+                                                            "model_feature_qualifications")
 
         return self
 

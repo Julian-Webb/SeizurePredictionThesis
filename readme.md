@@ -39,3 +39,4 @@ Various abbreviations throughout the code:
 6. cycle_extraction
    1. fill_feature_gaps
    2. cycle_extraction_for_segments
+   3. qualifications

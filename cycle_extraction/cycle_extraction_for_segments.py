@@ -16,7 +16,7 @@ from config.intervals import SEGMENT
 from cycle_extraction import compute_plv_for_split_signal, rayleigh_test
 from cycle_extraction.cycle_functions import nc_filter_multidien, plot_filtered_feature, \
     plot_phase_histogram_for_all_features
-from cycle_extraction.circular_comparison_functions import watson_wheeler_test, circular_comparison
+from cycle_extraction.circular_comparison_functions import watson_wheeler_test, permutation_test
 from feature_extraction.extract_features import FeatureNames
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
@@ -201,7 +201,7 @@ def _compute_circular_comparisons_for_ptnt(
     ww_metrics = ['w_stat', 'p_value', 'p_ww_bh']  # ww = watson wheeler (test)
     pair_metrics_no_bh = ['obs_mean1', 'obs_mean2', 'observed_diff', 'lower1', 'upper1', 'lower2', 'upper2', 'ci_lower',
                           'ci_upper', 'p_value']
-    pair_metrics = pair_metrics_no_bh + ['p_circ_bh']
+    pair_metrics = pair_metrics_no_bh + ['p_perm_bh']
 
     # Build DataFrame with MultiIndex columns
     col_tuples = [('watson_wheeler', metric) for metric in ww_metrics]
@@ -220,7 +220,7 @@ def _compute_circular_comparisons_for_ptnt(
         # Pairwise circular comparisons
         for e1, e2, pair_name in event_pairs:
             ph1, ph2 = phases_per_type[e1], phases_per_type[e2]
-            comp = circular_comparison(ph1, ph2, n_iters=5000, ci_level=95)
+            comp = permutation_test(ph1, ph2, n_iters=5000, ci_level=95)
             res.loc[feat, (pair_name, pair_metrics_no_bh)] = [comp[key] for key in pair_metrics_no_bh]
 
     # Benjamini-Hochberg FDR correction per comparison across features
@@ -229,7 +229,7 @@ def _compute_circular_comparisons_for_ptnt(
 
     for _, _, pair_name in event_pairs:
         pvals_pair = res.loc[:, (pair_name, 'p_value')]
-        res.loc[:, (pair_name, 'p_circ_bh')] = false_discovery_control(pvals_pair, method='bh')
+        res.loc[:, (pair_name, 'p_perm_bh')] = false_discovery_control(pvals_pair, method='bh')
 
     return res
 
@@ -248,7 +248,7 @@ def cycle_extraction_for_ptnt(
     seg_features
         Features per segment and start_mtz
     event_timestamps
-        Values are arrays of event ``Timestamps`` (e.g., seizures starts, False positive predictions of models).
+        Values are arrays of event `Timestamps` (e.g., seizure starts, False positive predictions of models).
         Keys are the event type/origin (e.g., seizures, ensemble, CNN).
     upper_quantile_bound_for_clipping
     feature_names
@@ -377,7 +377,7 @@ def cycle_extraction_and_plot_for_pdir(
 
     # Save Metrics and Plots
     logging.info(f'[{pdir.name}] 🎨 Saving Results and Making Cycle Extraction Figures...')
-    save_dataframe_multiformat(metrics, pdir.cycle_extraction_results_table,
+    save_dataframe_multiformat(metrics, pdir.cycle_extraction_metrics_table,
                                save_index=True, formats=['pickle', 'xlsx'])
     save_dataframe_multiformat(circular_comp_results, pdir.circular_comparison_table,
                                save_index=True, formats=['pickle', 'xlsx'])
@@ -387,6 +387,8 @@ def cycle_extraction_and_plot_for_pdir(
     _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.circular_histograms_dir, pdir.name)
 
     logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction and Figures.')
+
+    return metrics, circular_comp_results
 
 
 def cycle_extraction_for_pdirs(
@@ -401,7 +403,20 @@ def cycle_extraction_for_pdirs(
             pool.map(cycle_extraction_and_plot_for_pdir, pdirs)
 
 
+def aggregate_results_per_pdir(pdirs: list[PatientDir]):
+    cycle_extr = {pdir.name: pd.read_pickle(pdir.cycle_extraction_metrics_table.pickle) for pdir in pdirs}
+    circ_comp = {pdir.name: pd.read_pickle(pdir.circular_comparison_table.pickle) for pdir in pdirs}
+    cycle_extr_df = pd.concat(cycle_extr, names=['patient', 'feature'])
+    circ_comp_df = pd.concat(circ_comp, names=['patient', 'feature'])
+    save_dataframe_multiformat(cycle_extr_df, PATHS.cycle_extraction_metrics_per_ptnt_table, formats=['pickle', 'xlsx'],
+                               save_index=True)
+    save_dataframe_multiformat(circ_comp_df, PATHS.circular_comparison_per_ptnt_table, formats=['pickle', 'xlsx'],
+                               save_index=True)
+    return cycle_extr_df, circ_comp_df
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     pdirs_ = PATHS.patient_dirs()
     cycle_extraction_for_pdirs(pdirs_, serial_processing=False)
+    aggregate_results_per_pdir(PATHS.patient_dirs(include_fake_ptnts=False))
