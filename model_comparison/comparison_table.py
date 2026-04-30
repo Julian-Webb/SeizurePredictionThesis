@@ -1,5 +1,5 @@
 import pandas as pd
-from pandas import DataFrame, MultiIndex, Series
+from pandas import DataFrame, MultiIndex, Series, Index
 
 from config import PatientDir, PATHS
 from model_comparison.correlation_of_prediction_errors import correlation_of_prediction_errors_from_pdir
@@ -75,22 +75,25 @@ def make_comparison_table(
 
     # Build per-patient comparison table
     per_p = DataFrame(
-        index=MultiIndex.from_product([ptnts, SPLITS], names=['patient', 'split']),
-        columns=per_ptnt_probe.index,
+        index=Index(ptnts, name='patient'),
+        columns=MultiIndex.from_product([per_ptnt_probe.index, SPLITS], names=['metric', 'split']),
         dtype='Int64'
     )
 
-    copes = []  # correlation of prediction errors.
+    # Fill per-patient table
     for pdir in pdirs:
         for split in SPLITS:
             per_ptnt, _ = cache[(pdir.name, split, models[0])]
-            per_p.loc[(pdir.name, split)] = per_ptnt
-            copes.append(correlation_of_prediction_errors_from_pdir(pdir, split))
+            for metric in per_ptnt.index:
+                per_p.loc[pdir.name, (metric, split)] = per_ptnt[metric]
 
-    per_p['preictal_ratio'] = per_p['preictal_clips'] / per_p['total_clips']
-
-    # To avoid mixed data types in DataFrame on initialization, we add COPEs here
-    per_p['corr_of_pred_errors'] = copes
+    # Add preictal_ratio and corr_of_pred_errors for each split with separate loops for insertion order
+    for split in SPLITS:
+        per_p[('preictal_ratio', split)] = per_p[('preictal_clips', split)] / per_p[('total_clips', split)]
+    for split in SPLITS:
+        # Compute correlation of prediction errors for each patient/split
+        per_p[('corr_of_pred_errors', split)] = [correlation_of_prediction_errors_from_pdir(pdir, split) for pdir in
+                                                 pdirs]
 
     # Build per-model comparison table
     per_m = DataFrame(
@@ -138,10 +141,12 @@ def make_comparison_table_and_save(
                                                                 subset=lower_better_cols)
 
     # Style per_ptnt
+    preictal_cols = [col for col in per_ptnt.columns if col[0] == 'preictal_ratio']
+    cope_cols = [col for col in per_ptnt.columns if col[0] == 'corr_of_pred_errors']
     per_ptnt_styled = (per_ptnt.style
-                       .background_gradient(cmap='Blues', vmin=0, vmax=per_ptnt['preictal_ratio'].max(), axis=None,
-                                            subset=['preictal_ratio'])
-                       .background_gradient(cmap='RdYlGn', vmin=0, vmax=1, axis=None, subset=['corr_of_pred_errors'])
+                       .background_gradient(cmap='Blues', vmin=0, vmax=per_ptnt[preictal_cols].max().max(), axis=None,
+                                            subset=preictal_cols)
+                       .background_gradient(cmap='RdYlGn', vmin=0, vmax=1, axis=None, subset=cope_cols)
                        )
 
     # Save DataFrames
@@ -151,7 +156,7 @@ def make_comparison_table_and_save(
     _save_styled_excel(per_model_styled, per_model, PATHS.per_model_comparison_table.xlsx, autosize_data=False)
 
     per_ptnt.to_pickle(PATHS.per_patient_comparison_table.pickle)
-    _save_styled_excel(per_ptnt_styled, per_ptnt, PATHS.per_patient_comparison_table.xlsx)
+    _save_styled_excel(per_ptnt_styled, per_ptnt, PATHS.per_patient_comparison_table.xlsx, autosize_data=False,)
 
 
 if __name__ == '__main__':
