@@ -1,12 +1,11 @@
 import itertools
 import logging
 import multiprocessing
-from pathlib import Path
+import pickle
 from typing import Optional
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from pandas import DataFrame, Timedelta, Index
 from scipy.stats import false_discovery_control
 
@@ -14,9 +13,8 @@ from config import PatientDir, PATHS, save_dataframe_multiformat
 from config.constants import UPPER_QUANTILE_BOUND_FOR_FEATURE_CLIPPING
 from config.intervals import SEGMENT
 from cycle_extraction import compute_plv_for_split_signal, rayleigh_test
-from cycle_extraction.cycle_functions import nc_filter_multidien, plot_filtered_feature, \
-    plot_phase_histogram_for_all_features
 from cycle_extraction.circular_comparison_functions import watson_wheeler_test, permutation_test
+from cycle_extraction.cycle_functions import nc_filter_multidien
 from feature_extraction.extract_features import FeatureNames
 from preprocessing.dataset_partitioning import partition_dataframe
 from utils.utils import timeit
@@ -283,75 +281,10 @@ def get_false_positives_from_clips(clips: DataFrame, thresh: float, score_col: s
     return fp_timestamps.to_numpy()
 
 
-# noinspection PyTypeChecker
-def _make_filtered_feature_plots(
-        seg_feats: DataFrame,
-        seg_feats_filt: DataFrame,
-        event_timestamps: dict,
-        feature_names: list[str], save_dir: Path,
-        test_start_mtz: pd.Timestamp
-):
-    seg_starts = seg_feats['start_mtz'].values
-    assert (seg_starts == seg_feats_filt['start_mtz'].values).all(), 'Start times do not match.'
-    assert (seg_feats.index == seg_feats_filt.index).all(), 'Segment indices do not match.'
-
-    seg_ends = seg_feats_filt['end_mtz'].values
-    idxs_per_event_type = {name: map_events_to_interval_index(timestamps, seg_starts, seg_ends)
-                           for name, timestamps in event_timestamps.items()}
-
-    for feat in feature_names:
-        original = seg_feats[feat].values
-        filtered = seg_feats_filt[feat].values
-        assert (np.all(np.isnan(original) == np.isnan(filtered))), \
-            'NaN values in filtered features do not match original features.'
-
-        fig = plot_filtered_feature(
-            original, filtered,
-            samples_per_hour=Timedelta(hours=1) / SEGMENT.exact_dur,
-            time=seg_starts,
-            events=idxs_per_event_type,
-        )
-        fig.suptitle(feat, x=0.1)
-
-        # Mark test split start on both panels for orientation in timeline plots.
-        for i, ax in enumerate(fig.axes):
-            label = 'test_start' if i == 0 else '_nolegend_'
-            ax.axvline(test_start_mtz, color='tab:green', linestyle='--', label=label, ymin=-0.02, ymax=1.02,
-                       clip_on=False)
-        fig.axes[0].legend(loc='upper left')
-
-        save_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_dir / f'{feat}.png')
-
-
-def _make_phase_histogram_plots(
-        event_phases_per_type_per_feat: dict,
-        metrics: DataFrame,
-        save_dir: Path,
-        patient: str,
-):
-    # Make a figure per event.
-    for event_type, event_phases_per_feat in event_phases_per_type_per_feat.items():
-        m = metrics.loc[:, event_type]  # Metrics for this event type
-        metrics_as_dict = [m[k].to_dict() for k in ['plv', 'mean_angle', 'p_rayleigh_bh']]
-
-        fig = plot_phase_histogram_for_all_features(
-            event_phases_per_feat,
-            *metrics_as_dict,
-            n_bins=24,
-        )
-
-        fig.suptitle(f'Phase distribution compared to features: {patient} - {event_type}', y=0.98, fontsize=16, )
-        fig.tight_layout(h_pad=3.0, rect=[0, 0, 1, 0.97])
-
-        save_dir.mkdir(exist_ok=True, parents=True)
-        fig.savefig(save_dir / f'{event_type}.pdf')
-        plt.close(fig)
-
 
 # noinspection PyTypeChecker
 @timeit(arg_indices=[0])
-def cycle_extraction_and_plot_for_pdir(
+def cycle_extraction_for_pdir(
         pdir: PatientDir,
         feature_names: list[str] = FeatureNames.ALL_ORDERED,
         models: tuple[str] = ('CNN', 'ensemble'),
@@ -363,7 +296,6 @@ def cycle_extraction_and_plot_for_pdir(
     szrs = pd.read_pickle(pdir.valid_szr_starts_file.pickle)['start_mtz'].values
     seg_feats = pd.read_pickle(pdir.filled_features_for_segs.pickle).drop(columns=['exists'], errors='ignore')
     test_clips = partition_dataframe(pd.read_pickle(pdir.clip_scores_table.pickle), pdir)['test']
-    test_start_mtz = test_clips['start_mtz'].iloc[0]
 
     # Get the false positive timestamps for each model
     event_timestamps = {'seizures': szrs}
@@ -375,18 +307,18 @@ def cycle_extraction_and_plot_for_pdir(
         cycle_extraction_for_ptnt(seg_feats, event_timestamps, upper_quantile_bound_for_clipping, feature_names,
                                   patient=pdir.name)
 
-    # Save Metrics and Plots
-    logging.info(f'[{pdir.name}] 🎨 Saving Results and Making Cycle Extraction Figures...')
+    # Save Metrics
     save_dataframe_multiformat(metrics, pdir.cycle_extraction_metrics_table,
                                save_index=True, formats=['pickle', 'xlsx'])
     save_dataframe_multiformat(circular_comp_results, pdir.circular_comparison_table,
                                save_index=True, formats=['pickle', 'xlsx'])
+    save_dataframe_multiformat(seg_feats_filt, pdir.filtered_features_for_segs, save_index=True)
+    with pdir.event_phases_per_type_per_feat.open('wb') as f:
+        pickle.dump(event_phases_per_type_per_feat, f, pickle.HIGHEST_PROTOCOL)
+    with pdir.event_timestamps_dict.open('wb') as f:
+        pickle.dump(event_timestamps, f, pickle.HIGHEST_PROTOCOL)
 
-    _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
-                                 pdir.filtered_feature_plots_dir, test_start_mtz)
-    _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.circular_histograms_dir, pdir.name)
-
-    logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction and Figures.')
+    logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction.')
 
     return metrics, circular_comp_results
 
@@ -397,10 +329,10 @@ def cycle_extraction_for_pdirs(
 ):
     if serial_processing:
         for pdir in pdirs:
-            cycle_extraction_and_plot_for_pdir(pdir)
+            cycle_extraction_for_pdir(pdir)
     else:
         with multiprocessing.Pool() as pool:
-            pool.map(cycle_extraction_and_plot_for_pdir, pdirs)
+            pool.map(cycle_extraction_for_pdir, pdirs)
 
 
 def aggregate_results_per_pdir(pdirs: list[PatientDir]):

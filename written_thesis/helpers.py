@@ -2,6 +2,16 @@ import re
 
 import pandas as pd
 
+PRETTY_FEATURE_NAMES_MAP = {
+    'corrcoef': 'Corr. Coef.',
+    'acfw_D': 'ACFW (D)',
+    'acfw_P': 'ACFW (P)',
+    'var_D': 'Var. (D)',
+    'var_P': 'Var. (P)',
+    **{f'{band}_P': f'{band} (P)' for band in ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']},
+    **{f'{band}_D': f'{band} (D)' for band in ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']},
+}
+
 
 def rename_patient(patient: str) -> str:
     m = re.fullmatch(r"competition-(\d+)", patient)

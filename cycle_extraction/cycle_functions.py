@@ -8,6 +8,7 @@ import scipy.signal
 from scipy.signal import butter, sosfiltfilt
 
 from utils.utils import contains_nan
+from written_thesis.helpers import PRETTY_FEATURE_NAMES_MAP
 
 
 def butter_bandpass_sos(a, b, fs=1.0, order=10, mode='f'):
@@ -169,12 +170,14 @@ def nc_filter(
     return res
 
 
+# noinspection PyDefaultArgument
 def plot_filtered_feature(
         original_sig: np.ndarray,
         filtered_sig: np.ndarray,
         samples_per_hour: float,
         time: np.ndarray = None,
         events: dict[str, np.ndarray] = None,
+        subplots_kwargs: dict = {'figsize': (14, 8)},
 ):
     """
 
@@ -186,6 +189,7 @@ def plot_filtered_feature(
     time
     events
         dict with event name as keys and event indices as values
+    subplots_kwargs
 
     Returns
     -------
@@ -198,7 +202,7 @@ def plot_filtered_feature(
     else:
         x_label = "Time"
 
-    fig, axes = plt.subplots(2, 1, sharex=True, figsize=(14, 8))
+    fig, axes = plt.subplots(2, 1, sharex=True, **subplots_kwargs)
     axes[-1].set_xlabel(x_label)
 
     axes[0].set_title("Original Signal")
@@ -382,7 +386,7 @@ def plot_phase_histogram_for_single_feature(
         'Rising' if 'left' in show_x_ticks else '',
         '315°' if 'top_left' in show_x_ticks else '',
     ]
-    ax.set_xticks(x_tick_angles, x_tick_labels, fontsize=12, color='grey')
+    ax.set_xticks(x_tick_angles, x_tick_labels, color='grey')
 
     # Keep Falling/Rising as real tick labels and enforce rotation by tick index on each draw.
     # Tick order is [0, 45, 90, 135, 180, 225, 270, 315].
@@ -400,17 +404,6 @@ def plot_phase_histogram_for_single_feature(
 
     _apply_falling_rising_tick_rotation()
     ax.figure.canvas.mpl_connect('draw_event', _apply_falling_rising_tick_rotation)
-
-    # # --- Add 'Falling' and 'Rising' text on the outside curvature ---
-    # text_radius = max_count * 1.05
-    #
-    # # 90 degrees (pi/2) is the center of the 0 to 180 falling side
-    # ax.text(pi / 2, text_radius, 'Falling', ha='center', va='center',
-    #         rotation=-90, fontsize=14, color='darkred', weight='bold')
-    #
-    # # 270 degrees (3*pi/2) is the center of the 180 to 360 rising side
-    # ax.text(3 * pi / 2, text_radius, 'Rising', ha='center', va='center',
-    #         rotation=90, fontsize=14, color='darkgreen', weight='bold')
 
     return ax
 
@@ -465,10 +458,16 @@ def plot_phase_histogram_for_all_features(
         plot_phase_histogram_for_single_feature(ax, event_phases_per_feat[feat], plv, mean_angle, n_bins, show_x_ticks,
                                                 max_n_y_ticks)
 
-        ax.set_title(feat, fontsize=14, y=1.1)
-        # Add statistics info
-        info = f'Mean Angle: {mean_angle_deg:.1f}°\np BH: {p_bh:.4f}\nPLV: {plv:.2f}'
-        ax.annotate(info, xy=(0.02, 0.98), xycoords='axes fraction',
-                    fontsize=8, ha='left', )
+        title = f'{PRETTY_FEATURE_NAMES_MAP[feat]}: {mean_angle_deg:.0f}°'
+        # title = f'{PRETTY_FEATURE_NAMES_MAP[feat]}: {mean_angle_deg:.0f}°\nPLV: {plv:.2f}\np: {p_bh:.2f}'
+        ax.set_title(title)
+        # if row == 0:
+        #     ax.set_title(title)
+        # else:
+        #     ax.set_title(title, y=1.1)
+        # # Add statistics info
+        # # info = f'Mean Angle: {mean_angle_deg:.1f}°\np BH: {p_bh:.4f}\nPLV: {plv:.2f}'
+        # info = f'PLV: {plv:.2f}\np: {p_bh:.2f}'
+        # ax.annotate(info, xy=(0.02, 0.98), xycoords='axes fraction', ha='left', fontsize=ax.title.get_fontsize() - 2)
 
     return fig
