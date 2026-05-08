@@ -1,8 +1,6 @@
-from pathlib import Path
-
 import matplotlib as mpl
 
-THESIS_FIGS_DIR = Path('/data/home/webb/thesis_data/figures')
+from written_thesis.helpers import THESIS_FIGS_DIR
 
 # External parameters --------------------------------------------------------------------------------------------------
 TEXT_WIDTH_PT = 418.25555  # from LaTeX: ``\typeout{TEXTWIDTH=\the\textwidth}``

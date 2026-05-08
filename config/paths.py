@@ -147,7 +147,7 @@ class PatientDir(type(Path())):
         self.event_timestamps_dict = Path(self.cycle_extraction_dir, 'event_timestamps_dict.pkl')
 
         self.filtered_feature_plots_dir = Path(self.cycle_extraction_dir, 'filtered_feature_plots')
-        self.circular_histograms_dir = Path(self.cycle_extraction_dir, 'circular_histograms')
+        self.phase_histograms_dir = Path(self.cycle_extraction_dir, 'phase_histograms')
 
         return self
 

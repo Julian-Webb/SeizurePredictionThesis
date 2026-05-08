@@ -1,6 +1,10 @@
 import re
+from pathlib import Path
 
 import pandas as pd
+
+THESIS_DATA_DIR = Path('/data/home/webb/thesis_data')
+THESIS_FIGS_DIR = THESIS_DATA_DIR / 'figures'
 
 PRETTY_FEATURE_NAMES_MAP = {
     'corrcoef': 'Corr. Coef.',

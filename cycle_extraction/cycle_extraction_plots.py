@@ -14,6 +14,7 @@ from cycle_extraction.cycle_functions import plot_filtered_feature, plot_phase_h
 from cycle_extraction_for_segments import map_events_to_interval_index
 from feature_extraction.extract_features import FeatureNames
 from written_thesis import matplotlib_style
+from written_thesis.helpers import PRETTY_FEATURE_NAMES_MAP
 
 
 # noinspection PyTypeChecker
@@ -21,9 +22,12 @@ def _make_filtered_feature_plots(
         seg_feats: DataFrame,
         seg_feats_filt: DataFrame,
         event_timestamps: dict,
-        feature_names: list[str], save_dir: Path,
+        feature_names: list[str],
+        save_dir: Path,
         test_start_mtz: pd.Timestamp
 ):
+    matplotlib_style.apply_style(use_small_font=True)
+
     seg_starts = seg_feats['start_mtz'].values
     assert (seg_starts == seg_feats_filt['start_mtz'].values).all(), 'Start times do not match.'
     assert (seg_feats.index == seg_feats_filt.index).all(), 'Segment indices do not match.'
@@ -43,18 +47,22 @@ def _make_filtered_feature_plots(
             samples_per_hour=Timedelta(hours=1) / SEGMENT.exact_dur,
             time=seg_starts,
             events=idxs_per_event_type,
+            subplots_kwargs={'figsize': matplotlib_style.latex_figsize(height_ratio=0.65)},
         )
-        fig.suptitle(feat, x=0.1)
 
         # Mark test split start on both panels for orientation in timeline plots.
         for i, ax in enumerate(fig.axes):
-            label = 'test_start' if i == 0 else '_nolegend_'
+            label = 'start of test set' if i == 0 else '_nolegend_'
             ax.axvline(test_start_mtz, color='tab:green', linestyle='--', label=label, ymin=-0.02, ymax=1.02,
                        clip_on=False)
+            ax.margins(x=0)
+
         fig.axes[0].legend(loc='upper left')
 
+        fig.tight_layout(pad=0, h_pad=1)
+        # fig.suptitle(PRETTY_FEATURE_NAMES_MAP[feat], x=0, y=1, fontweight='bold', ha='left', va='top')
         save_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_dir / f'{feat}.png')
+        fig.savefig(save_dir / f'{PRETTY_FEATURE_NAMES_MAP[feat]}.pdf')
 
 
 def _make_phase_histogram_plots(
@@ -100,7 +108,7 @@ def cycle_extraction_plots_for_pdir(
     # Make Plots
     _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
                                  pdir.filtered_feature_plots_dir, test_start_mtz)
-    _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.circular_histograms_dir, pdir.name)
+    # _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.phase_histograms_dir, pdir.name)
 
     logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction Plots.')
 

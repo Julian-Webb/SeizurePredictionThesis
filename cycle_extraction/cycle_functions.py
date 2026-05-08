@@ -209,7 +209,7 @@ def plot_filtered_feature(
     axes[0].plot(time, original_sig, color='k', lw=0.25)
 
     axes[1].set_title("Filtered Signal")
-    axes[1].plot(time, filtered_sig, color='k')
+    axes[1].plot(time, filtered_sig, color='k', lw=0.5)
 
     # Plot event markers
     if events is not None:
@@ -221,9 +221,9 @@ def plot_filtered_feature(
                 if e_name == 'seizures':
                     for i, x in enumerate(xs):
                         label = label if i == 0 else '_nolegend_'  # Make legend entry only appear once
-                        ax.axvline(x, label=label, color="r", alpha=0.7)
+                        ax.axvline(x, label=label, color="r", alpha=0.5, linewidth=0.5)
                 else:
-                    ax.scatter(xs, ys, label=label, s=10, zorder=3, alpha=0.7, marker='x')
+                    ax.scatter(xs, ys, label=label, s=10, zorder=3, alpha=0.5, marker='x', linewidth=0.5)
 
                 ax.grid(True, alpha=0.3)
 
