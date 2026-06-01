@@ -11,14 +11,14 @@ from pandas import DataFrame, Timedelta
 from config import PatientDir, PATHS
 from config.intervals import SEGMENT
 from cycle_extraction.cycle_functions import plot_filtered_feature, plot_phase_histogram_for_all_features
-from cycle_extraction_for_segments import map_events_to_interval_index
+from cycle_extraction.cycle_extraction_for_segments import map_events_to_interval_index
 from feature_extraction.extract_features import FeatureNames
 from written_thesis import matplotlib_style
 from written_thesis.helpers import PRETTY_FEATURE_NAMES_MAP
 
 
 # noinspection PyTypeChecker
-def _make_filtered_feature_plots(
+def make_filtered_feature_plots(
         seg_feats: DataFrame,
         seg_feats_filt: DataFrame,
         event_timestamps: dict,
@@ -106,8 +106,8 @@ def cycle_extraction_plots_for_pdir(
     test_start_mtz = pd.read_pickle(pdir.dataset_partition.pickle).loc['test', 'start_mtz']
 
     # Make Plots
-    _make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
-                                 pdir.filtered_feature_plots_dir, test_start_mtz)
+    make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
+                                pdir.filtered_feature_plots_dir, test_start_mtz)
     # _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.phase_histograms_dir, pdir.name)
 
     logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction Plots.')

@@ -94,14 +94,14 @@ def plot_segs_for_pdir(pdir: PatientDir):
 
 
 def plot_segs_for_pdirs(pdirs: List[PatientDir], serial_processing: bool = False):
-    logging.info(f'🎬 Creating segments plot')
+    logging.info(f'🎬 Creating segments plots')
     if serial_processing:
         for pdir in pdirs:
             plot_segs_for_pdir(pdir)
     else:
         with multiprocessing.Pool() as p:
             p.map(plot_segs_for_pdir, pdirs)
-    logging.info(f'✅ Created segments plot')
+    logging.info(f'✅ Created segments plots')
 
 
 if __name__ == '__main__':
