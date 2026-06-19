@@ -108,7 +108,7 @@ def cycle_extraction_plots_for_pdir(
     # Make Plots
     make_filtered_feature_plots(seg_feats, seg_feats_filt, event_timestamps, feature_names,
                                 pdir.filtered_feature_plots_dir, test_start_mtz)
-    # _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.phase_histograms_dir, pdir.name)
+    _make_phase_histogram_plots(event_phases_per_type_per_feat, metrics, pdir.phase_histograms_dir, pdir.name)
 
     logging.info(f'[{pdir.name}] ✅ Completed Cycle Extraction Plots.')
 
