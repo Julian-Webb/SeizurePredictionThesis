@@ -1,3 +1,6 @@
+# Info
+This repository contain the code for my master's thesis with the title: "Seizure Propensity in Epilepsy: A Comparison of Epileptic Cycles and  Deep-Learning Seizure Predictions".
+
 # Abbreviations
 Various abbreviations throughout the code:  
 `szr`: seizure  
